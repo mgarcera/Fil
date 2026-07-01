@@ -37,6 +37,7 @@ struct ContentView: View {
     @State private var pendingPinnedNoteID: UUID?
     @State private var sectionCollapseCommandID = 0
     @State private var sectionCollapseCommandStage = 0
+    @State private var isScreensaverActive = false
     @AppStorage("collapsedDaySectionKeys") private var collapsedDaySectionKeysRaw = ""
 
     var body: some View {
@@ -80,6 +81,23 @@ struct ContentView: View {
                 .padding(.bottom, 16)
                 .zIndex(1)
             }
+        }
+        .overlay {
+            // The full-bleed frame lives on this always-present container that ignores
+            // the safe area, so it is established before the screensaver is inserted.
+            // Only opacity/scale transition inside it — the Canvas is full-screen from
+            // its first frame, so the centered blob block never repositions on open/close.
+            ZStack {
+                if isScreensaverActive {
+                    FilScreensaverView(notes: notes) {
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            isScreensaverActive = false
+                        }
+                    }
+                    .transition(.scale(scale: 0.92).combined(with: .opacity))
+                }
+            }
+            .ignoresSafeArea()
         }
         .sheet(item: $selectedNote, onDismiss: handleArticleDismissed) { note in
             NavigationStack(path: $filSheetPath) {
@@ -196,10 +214,18 @@ struct ContentView: View {
 
     private var header: some View {
         HStack {
-            Image("FilLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(height: 32)
+            Button {
+                guard !notes.isEmpty else { return }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+                    isScreensaverActive = true
+                }
+            } label: {
+                Image("FilLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 32)
+            }
+            .buttonStyle(.plain)
             Spacer()
             HStack(spacing: 14) {
                 Button {
