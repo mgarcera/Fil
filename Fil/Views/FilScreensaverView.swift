@@ -91,7 +91,7 @@ struct FilScreensaverView: View {
     }
 
     /// Fils ordered chronologically (oldest first), laid out left-to-right, top-to-bottom.
-    private static func buildBlobs(from notes: [Note]) -> [Blob] {
+    static func buildBlobs(from notes: [Note]) -> [Blob] {
         let ordered = notes.sorted { $0.timestamp < $1.timestamp }
         guard !ordered.isEmpty else { return [] }
         let unitRect = CGRect(x: 0, y: 0, width: 1, height: 1)

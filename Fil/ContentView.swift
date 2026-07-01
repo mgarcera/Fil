@@ -38,6 +38,7 @@ struct ContentView: View {
     @State private var sectionCollapseCommandID = 0
     @State private var sectionCollapseCommandStage = 0
     @State private var activeScreensaverMode: FilScreensaverView.Mode?
+    @State private var showKoiPond = false
     @AppStorage("lastScreensaverMode") private var lastScreensaverModeRaw = FilScreensaverView.Mode.liquid.rawValue
     @AppStorage("collapsedDaySectionKeys") private var collapsedDaySectionKeysRaw = ""
 
@@ -105,6 +106,15 @@ struct ContentView: View {
                         }
                     }
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
+                }
+
+                if showKoiPond {
+                    KoiPondView(blobs: FilScreensaverView.buildBlobs(from: notes)) {
+                        withAnimation(.easeInOut(duration: 0.4)) {
+                            showKoiPond = false
+                        }
+                    }
+                    .transition(.opacity)
                 }
             }
             .ignoresSafeArea()
@@ -266,6 +276,13 @@ struct ContentView: View {
                                 Label("filight", systemImage: "sparkles")
                             }
                         }
+                        Section("Aquarium") {
+                            Button {
+                                launchKoiPond()
+                            } label: {
+                                Label("filtank", systemImage: "fish.fill")
+                            }
+                        }
                     } label: {
                         Image(systemName: "zzz")
                             .font(.system(size: 18, weight: .medium))
@@ -304,6 +321,14 @@ struct ContentView: View {
         SoundscapeManager.shared.playTransformRefilSound()
         withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
             activeScreensaverMode = mode
+        }
+    }
+
+    private func launchKoiPond() {
+        guard !notes.isEmpty else { return }
+        SoundscapeManager.shared.playTransformRefilSound()
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+            showKoiPond = true
         }
     }
 
