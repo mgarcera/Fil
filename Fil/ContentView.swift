@@ -45,36 +45,37 @@ struct ContentView: View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                header
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        if notes.isEmpty {
-                            AnimatedGradientRevealText(text: visibleTip)
-                                .font(Theme.dmSans(15, weight: .medium))
-                                .foregroundStyle(Theme.secondaryText)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .blur(radius: isComposerFocused ? 8 : 0)
-                                .opacity(isComposerFocused ? 0 : 1)
-                                .animation(.easeInOut(duration: 0.3), value: isComposerFocused)
-                        }
-
-                        notesSection
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    if notes.isEmpty {
+                        AnimatedGradientRevealText(text: visibleTip)
+                            .font(Theme.dmSans(15, weight: .medium))
+                            .foregroundStyle(Theme.secondaryText)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                            .blur(radius: isComposerFocused ? 8 : 0)
+                            .opacity(isComposerFocused ? 0 : 1)
+                            .animation(.easeInOut(duration: 0.3), value: isComposerFocused)
                     }
-                    .padding(.bottom, 100)
+
+                    notesSection
                 }
-                .frame(maxHeight: .infinity)
-                .scrollDismissesKeyboard(.interactively)
+                // Clear the floating header so content starts below it, then scrolls under.
+                .padding(.top, 64)
+                .padding(.bottom, 100)
             }
+            .frame(maxHeight: .infinity)
+            .scrollDismissesKeyboard(.interactively)
             .overlay {
                 if isComposerFocused {
                     Color.clear
                         .contentShape(Rectangle())
                         .onTapGesture { isComposerFocused = false }
                 }
+            }
+            .overlay(alignment: .top) {
+                header
             }
             .overlay(alignment: .bottom) {
                 bottomComposer
@@ -218,63 +219,61 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack {
-            Image("FilLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(height: 32)
-            Spacer()
-            HStack(spacing: 14) {
-                Button {
-                    SoundscapeManager.shared.playSettingsSound()
-                    showFilSetup = true
-                } label: {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(Theme.primaryText)
-                }
+        GlassEffectContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                Image("FilLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                    .padding(11)
+                    .glassEffect(in: .circle)
 
-                Menu {
-                    Section("Screensavers") {
-                        Button {
-                            launchScreensaver(.liquid)
-                        } label: {
-                            Label("filosophy", systemImage: "camera.filters")
-                        }
-                        Button {
-                            launchScreensaver(.wave)
-                        } label: {
-                            Label("filiform", systemImage: "water.waves")
-                        }
+                Spacer()
+
+                HStack(spacing: 18) {
+                    Button {
+                        SoundscapeManager.shared.playSettingsSound()
+                        showFilSetup = true
+                    } label: {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundStyle(Theme.primaryText)
                     }
-                } label: {
-                    Image(systemName: "zzz")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(Theme.primaryText)
-                }
-                .disabled(notes.isEmpty)
-                .opacity(notes.isEmpty ? 0.45 : 1)
-                .accessibilityLabel("Screensaver")
 
-                Button {
-                    SoundscapeManager.shared.playLightModeSound()
-                    withAnimation(.snappy) { isDarkMode.toggle() }
-                } label: {
-                    Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
-                        .font(.system(size: 18))
-                        .foregroundStyle(Theme.primaryText)
-                }
+                    Menu {
+                        Section("Screensavers") {
+                            Button {
+                                launchScreensaver(.liquid)
+                            } label: {
+                                Label("filosophy", systemImage: "camera.filters")
+                            }
+                            Button {
+                                launchScreensaver(.wave)
+                            } label: {
+                                Label("filiform", systemImage: "water.waves")
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "zzz")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundStyle(Theme.primaryText)
+                    }
+                    .disabled(notes.isEmpty)
+                    .opacity(notes.isEmpty ? 0.45 : 1)
+                    .accessibilityLabel("Screensaver")
 
-                Button {
-                    toggleAllDaySections()
-                } label: {
-                    Image(systemName: areAllDaySectionsCollapsed ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(Theme.primaryText)
+                    Button {
+                        SoundscapeManager.shared.playLightModeSound()
+                        withAnimation(.snappy) { isDarkMode.toggle() }
+                    } label: {
+                        Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.primaryText)
+                    }
                 }
-                .disabled(allDaySectionKeys.isEmpty)
-                .opacity(allDaySectionKeys.isEmpty ? 0.45 : 1)
-                .accessibilityLabel(areAllDaySectionsCollapsed ? "Expand all sections" : "Collapse all sections")
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .glassEffect()
             }
         }
         .padding(.horizontal, 16)
@@ -383,8 +382,38 @@ struct ContentView: View {
 
     private var bottomComposer: some View {
         GlassEffectContainer(spacing: 8) {
-            composerContent
+            VStack(spacing: 10) {
+                if showsSectionToggleFAB {
+                    HStack {
+                        Spacer()
+                        sectionToggleFAB
+                    }
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                }
+                composerContent
+            }
+            .animation(.spring(response: 0.4, dampingFraction: 0.86), value: showsSectionToggleFAB)
         }
+    }
+
+    /// The expand/collapse control lives as a floating glass button above the composer
+    /// (Apple Maps style), sharing the composer's glass container. Hidden when there's
+    /// nothing to collapse or while recording / bulk-selecting so it never crowds it.
+    private var showsSectionToggleFAB: Bool {
+        !allDaySectionKeys.isEmpty && !isSelectingNotes && !recorder.isRecording
+    }
+
+    private var sectionToggleFAB: some View {
+        Button {
+            toggleAllDaySections()
+        } label: {
+            Image(systemName: areAllDaySectionsCollapsed ? "arrow.up.left.and.arrow.down.right" : "arrow.down.right.and.arrow.up.left")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 44, height: 44)
+        }
+        .glassEffect(.regular.interactive(), in: .circle)
+        .accessibilityLabel(areAllDaySectionsCollapsed ? "Expand all sections" : "Collapse all sections")
     }
 
     @ViewBuilder
