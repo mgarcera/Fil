@@ -24,6 +24,8 @@ struct FilScreensaverView: View {
     enum Mode: String, CaseIterable {
         case wave
         case liquid
+        case auroraLeaves
+        case auroraRibbons
 
         var next: Mode {
             let all = Mode.allCases
@@ -40,6 +42,12 @@ struct FilScreensaverView: View {
                     .transition(.opacity)
             case .liquid:
                 LiquidScreensaverLayer(blobs: blobs)
+                    .transition(.opacity)
+            case .auroraLeaves:
+                AuroraLeavesScreensaverLayer(blobs: blobs)
+                    .transition(.opacity)
+            case .auroraRibbons:
+                AuroraRibbonsScreensaverLayer(blobs: blobs)
                     .transition(.opacity)
             }
         }
@@ -254,5 +262,134 @@ private struct LiquidScreensaverLayer: View {
 
     private func fract(_ value: Double) -> Double {
         value - floor(value)
+    }
+}
+
+// MARK: - Aurora: leaves on the wind
+
+/// Every fil stays a recognizable blob, but all of them drift on one shared, slowly
+/// evolving noise "current" — sampling the same flow field at each blob's position, so
+/// neighbors move together, clustering and dispersing like leaves on the wind.
+private struct AuroraLeavesScreensaverLayer: View {
+    let blobs: [FilScreensaverView.Blob]
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let time = timeline.date.timeIntervalSinceReferenceDate
+            Canvas { context, size in
+                draw(&context, size: size, time: time)
+            }
+        }
+    }
+
+    private func draw(_ context: inout GraphicsContext, size: CGSize, time: Double) {
+        guard !blobs.isEmpty else { return }
+
+        let blobSize = min(size.width, size.height) * 0.12
+        let margin = 0.12
+        let freq = 1.3              // spatial scale of the current (low = broad, coherent)
+        let timeScale = 0.09        // how fast the current evolves
+        let ampX = Double(size.width) * 0.26
+        let ampY = Double(size.height) * 0.22
+
+        for blob in blobs {
+            let o = Double(blob.order)
+            let hx = fract(sin(o * 12.9898 + 1.3) * 43758.5453)
+            let hy = fract(sin(o * 78.2330 + 2.7) * 24634.6345)
+            let baseNX = margin + (1 - 2 * margin) * hx
+            let baseNY = margin + (1 - 2 * margin) * hy
+
+            // Shared flow field: same noise sampled at the blob's home position, so
+            // nearby blobs are displaced in nearly the same direction.
+            let nx = FilValueNoise.noise(baseNX * freq, baseNY * freq, time * timeScale) * 2 - 1
+            let ny = FilValueNoise.noise(baseNX * freq + 5.2, baseNY * freq + 1.7, time * timeScale + 10) * 2 - 1
+
+            let cx = baseNX * Double(size.width) + ampX * nx
+            let cy = baseNY * Double(size.height) + ampY * ny
+            let minX = cx - Double(blobSize) / 2
+            let minY = cy - Double(blobSize) / 2
+
+            let transform = CGAffineTransform(scaleX: blobSize, y: blobSize)
+                .concatenating(CGAffineTransform(translationX: CGFloat(minX), y: CGFloat(minY)))
+            let path = blob.unitPath.applying(transform)
+
+            context.fill(
+                path,
+                with: .linearGradient(
+                    Gradient(colors: [blob.startColor, blob.endColor]),
+                    startPoint: CGPoint(x: minX, y: minY),
+                    endPoint: CGPoint(x: minX + Double(blobSize), y: minY + Double(blobSize))
+                )
+            )
+        }
+    }
+
+    private func fract(_ value: Double) -> Double {
+        value - floor(value)
+    }
+}
+
+// MARK: - Aurora: curtains of light
+
+/// The fils dissolve into flowing ribbons of color — a Metal fractal-noise field draws
+/// each fil color as a wavering, shimmering curtain (northern-lights style).
+private struct AuroraRibbonsScreensaverLayer: View {
+    let blobs: [FilScreensaverView.Blob]
+
+    private var colors: [Color] { blobs.map(\.midColor) }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let size = geometry.size
+            TimelineView(.animation) { timeline in
+                // Bound the time so the Metal noise keeps float precision.
+                let time = timeline.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 100_000)
+                Rectangle()
+                    .fill(.black)
+                    .colorEffect(
+                        ShaderLibrary.filAurora(
+                            .float2(size.width, size.height),
+                            .colorArray(colors),
+                            .float(Float(time))
+                        )
+                    )
+            }
+        }
+    }
+}
+
+// MARK: - Value noise (shared)
+
+/// Smooth 3D value noise in 0...1 — coherent randomness for the aurora "leaves" current.
+private enum FilValueNoise {
+    static func noise(_ x: Double, _ y: Double, _ z: Double) -> Double {
+        let xi = floor(x), yi = floor(y), zi = floor(z)
+        let xf = x - xi, yf = y - yi, zf = z - zi
+        let u = smooth(xf), v = smooth(yf), w = smooth(zf)
+
+        func lattice(_ dx: Double, _ dy: Double, _ dz: Double) -> Double {
+            hash(xi + dx, yi + dy, zi + dz)
+        }
+
+        let x00 = mix(lattice(0, 0, 0), lattice(1, 0, 0), u)
+        let x10 = mix(lattice(0, 1, 0), lattice(1, 1, 0), u)
+        let x01 = mix(lattice(0, 0, 1), lattice(1, 0, 1), u)
+        let x11 = mix(lattice(0, 1, 1), lattice(1, 1, 1), u)
+        let y0 = mix(x00, x10, v)
+        let y1 = mix(x01, x11, v)
+        return mix(y0, y1, w)
+    }
+
+    private static func hash(_ x: Double, _ y: Double, _ z: Double) -> Double {
+        let n = sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453
+        return n - floor(n)
+    }
+
+    private static func smooth(_ t: Double) -> Double {
+        t * t * (3 - 2 * t)
+    }
+
+    private static func mix(_ a: Double, _ b: Double, _ t: Double) -> Double {
+        a + (b - a) * t
     }
 }

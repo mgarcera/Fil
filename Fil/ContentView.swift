@@ -255,6 +255,16 @@ struct ContentView: View {
                             } label: {
                                 Label("filiform", systemImage: "water.waves")
                             }
+                            Button {
+                                launchScreensaver(.auroraLeaves)
+                            } label: {
+                                Label("filow", systemImage: "wind")
+                            }
+                            Button {
+                                launchScreensaver(.auroraRibbons)
+                            } label: {
+                                Label("filight", systemImage: "sparkles")
+                            }
                         }
                     } label: {
                         Image(systemName: "zzz")
