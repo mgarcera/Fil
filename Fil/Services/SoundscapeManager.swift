@@ -18,7 +18,6 @@ final class SoundscapeManager {
     private var settingsPlayer: AVAudioPlayer?
     private var collapsingPlayer: AVAudioPlayer?
     private var collapsingPartTwoPlayer: AVAudioPlayer?
-    private var isAmbientSessionConfigured = false
 
     private init() {
         clickPlayer = makePlayer(named: "click", fileExtension: "mp3", volume: 0.75)
@@ -185,14 +184,9 @@ final class SoundscapeManager {
     }
 
     private func configureAmbientSession() {
-        guard !isAmbientSessionConfigured else { return }
-
-        Task { [weak self] in
-            guard let self else { return }
-            let didConfigure = await AudioSessionCoordinator.configureAmbient()
-            if didConfigure {
-                self.isAmbientSessionConfigured = true
-            }
-        }
+        // Re-assert the mixing `.ambient` category synchronously before each effect so
+        // sounds never pause the user's music — even after the recorder has switched the
+        // shared session to an interrupting category. Cheap, and avoids a startup race.
+        AudioSessionCoordinator.ensureMixingAmbient()
     }
 }

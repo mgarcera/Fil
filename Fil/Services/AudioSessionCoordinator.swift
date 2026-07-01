@@ -6,9 +6,19 @@ enum AudioSessionCoordinator {
 
     static func configureAmbient() async -> Bool {
         #if os(iOS)
-        await configure(category: .ambient, mode: .default, options: [])
+        await configure(category: .ambient, mode: .default, options: [.mixWithOthers])
         #else
         true
+        #endif
+    }
+
+    /// Synchronously puts the shared session into the mixing `.ambient` category.
+    /// Used right before UI sound effects so they never interrupt the user's music —
+    /// the default `.soloAmbient` category (and a lingering `.playAndRecord` from the
+    /// recorder) both interrupt, so we re-assert `.ambient` every time.
+    static func ensureMixingAmbient() {
+        #if os(iOS)
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, mode: .default, options: [.mixWithOthers])
         #endif
     }
 

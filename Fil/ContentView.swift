@@ -38,6 +38,7 @@ struct ContentView: View {
     @State private var sectionCollapseCommandID = 0
     @State private var sectionCollapseCommandStage = 0
     @State private var activeScreensaverMode: FilScreensaverView.Mode?
+    @AppStorage("lastScreensaverMode") private var lastScreensaverModeRaw = FilScreensaverView.Mode.liquid.rawValue
     @AppStorage("collapsedDaySectionKeys") private var collapsedDaySectionKeysRaw = ""
 
     var body: some View {
@@ -89,7 +90,11 @@ struct ContentView: View {
             // its first frame, so the centered blob block never repositions on open/close.
             ZStack {
                 if let mode = activeScreensaverMode {
-                    FilScreensaverView(notes: notes, initialMode: mode) {
+                    FilScreensaverView(
+                        notes: notes,
+                        initialMode: mode,
+                        onModeChanged: { lastScreensaverModeRaw = $0.rawValue }
+                    ) {
                         withAnimation(.easeInOut(duration: 0.4)) {
                             activeScreensaverMode = nil
                         }
@@ -234,7 +239,7 @@ struct ContentView: View {
                         Button {
                             launchScreensaver(.liquid)
                         } label: {
-                            Label("filosophy", systemImage: "drop.fill")
+                            Label("filosophy", systemImage: "camera.filters")
                         }
                         Button {
                             launchScreensaver(.wave)
@@ -279,6 +284,8 @@ struct ContentView: View {
 
     private func launchScreensaver(_ mode: FilScreensaverView.Mode) {
         guard !notes.isEmpty else { return }
+        lastScreensaverModeRaw = mode.rawValue
+        SoundscapeManager.shared.playTransformRefilSound()
         withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
             activeScreensaverMode = mode
         }

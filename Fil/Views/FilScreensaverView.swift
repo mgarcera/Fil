@@ -9,17 +9,19 @@ import UIKit
 /// All other UI disappears and the idle timer is held off while it's open.
 struct FilScreensaverView: View {
     var onExit: () -> Void
+    var onModeChanged: ((Mode) -> Void)?
 
     private let blobs: [Blob]
     @State private var mode: Mode = .wave
 
-    init(notes: [Note], initialMode: Mode = .wave, onExit: @escaping () -> Void) {
+    init(notes: [Note], initialMode: Mode = .wave, onModeChanged: ((Mode) -> Void)? = nil, onExit: @escaping () -> Void) {
         self.onExit = onExit
+        self.onModeChanged = onModeChanged
         self.blobs = Self.buildBlobs(from: notes)
         self._mode = State(initialValue: initialMode)
     }
 
-    enum Mode: CaseIterable {
+    enum Mode: String, CaseIterable {
         case wave
         case liquid
 
@@ -55,6 +57,7 @@ struct FilScreensaverView: View {
                     withAnimation(.easeInOut(duration: 0.5)) {
                         mode = mode.next
                     }
+                    onModeChanged?(mode)
                 }
         )
         .onAppear { setIdleTimer(disabled: true) }
