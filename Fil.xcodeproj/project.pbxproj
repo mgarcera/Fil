@@ -6,14 +6,109 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D1AB5A062FF476E200D6D5EB /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1AB5A052FF476E200D6D5EB /* WidgetKit.framework */; };
+		D1AB5A082FF476E200D6D5EB /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1AB5A072FF476E200D6D5EB /* SwiftUI.framework */; };
+		D1AB5A192FF476E300D6D5EB /* FilPinnedWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D1AB5A032FF476E200D6D5EB /* FilPinnedWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D1CB73B02FF491FB00C0E269 /* FilShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D1CB73A62FF491FB00C0E269 /* FilShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D1AB5A172FF476E300D6D5EB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D11FBF362FA40BDB00FB77E8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D1AB5A022FF476E200D6D5EB;
+			remoteInfo = FilPinnedWidgetExtension;
+		};
+		D1CB73AE2FF491FB00C0E269 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D11FBF362FA40BDB00FB77E8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D1CB73A52FF491FB00C0E269;
+			remoteInfo = FilShareExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		D1AB5A1E2FF476E300D6D5EB /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D1CB73B02FF491FB00C0E269 /* FilShareExtension.appex in Embed Foundation Extensions */,
+				D1AB5A192FF476E300D6D5EB /* FilPinnedWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		D11FBF3E2FA40BDC00FB77E8 /* Fil.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Fil.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1AB5A032FF476E200D6D5EB /* FilPinnedWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FilPinnedWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1AB5A052FF476E200D6D5EB /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		D1AB5A072FF476E200D6D5EB /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		D1CB73A62FF491FB00C0E269 /* FilShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FilShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1CB73B72FF4949E00C0E269 /* FilPinnedWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FilPinnedWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D1AB59FE2FF4766E00D6D5EB /* Exceptions for "Fil" folder in "Fil" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D11FBF3D2FA40BDB00FB77E8 /* Fil */;
+		};
+		D1AB5A1D2FF476E300D6D5EB /* Exceptions for "FilPinnedWidget" folder in "FilPinnedWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D1AB5A022FF476E200D6D5EB /* FilPinnedWidgetExtension */;
+		};
+		D1CB73B42FF491FB00C0E269 /* Exceptions for "FilShareExtension" folder in "FilShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = D1CB73A52FF491FB00C0E269 /* FilShareExtension */;
+		};
+		D1CB73BA2FF495A000C0E269 /* Exceptions for "Fil" folder in "FilShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Services/SharedDraftInbox.swift,
+			);
+			target = D1CB73A52FF491FB00C0E269 /* FilShareExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D11FBF402FA40BDC00FB77E8 /* Fil */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D1AB59FE2FF4766E00D6D5EB /* Exceptions for "Fil" folder in "Fil" target */,
+				D1CB73BA2FF495A000C0E269 /* Exceptions for "Fil" folder in "FilShareExtension" target */,
+			);
 			path = Fil;
+			sourceTree = "<group>";
+		};
+		D1AB5A092FF476E200D6D5EB /* FilPinnedWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D1AB5A1D2FF476E300D6D5EB /* Exceptions for "FilPinnedWidget" folder in "FilPinnedWidgetExtension" target */,
+			);
+			path = FilPinnedWidget;
+			sourceTree = "<group>";
+		};
+		D1CB73A72FF491FB00C0E269 /* FilShareExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D1CB73B42FF491FB00C0E269 /* Exceptions for "FilShareExtension" folder in "FilShareExtension" target */,
+			);
+			path = FilShareExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,13 +121,33 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D1AB5A002FF476E200D6D5EB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1AB5A082FF476E200D6D5EB /* SwiftUI.framework in Frameworks */,
+				D1AB5A062FF476E200D6D5EB /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1CB73A32FF491FB00C0E269 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		D11FBF352FA40BDB00FB77E8 = {
 			isa = PBXGroup;
 			children = (
+				D1CB73B72FF4949E00C0E269 /* FilPinnedWidgetExtension.entitlements */,
 				D11FBF402FA40BDC00FB77E8 /* Fil */,
+				D1AB5A092FF476E200D6D5EB /* FilPinnedWidget */,
+				D1CB73A72FF491FB00C0E269 /* FilShareExtension */,
+				D1AB5A042FF476E200D6D5EB /* Frameworks */,
 				D11FBF3F2FA40BDC00FB77E8 /* Products */,
 				D15011D62FAB991F007F7F52 /* Resources */,
 			);
@@ -42,6 +157,8 @@
 			isa = PBXGroup;
 			children = (
 				D11FBF3E2FA40BDC00FB77E8 /* Fil.app */,
+				D1AB5A032FF476E200D6D5EB /* FilPinnedWidgetExtension.appex */,
+				D1CB73A62FF491FB00C0E269 /* FilShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,6 +178,15 @@
 			path = Audio;
 			sourceTree = "<group>";
 		};
+		D1AB5A042FF476E200D6D5EB /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				D1AB5A052FF476E200D6D5EB /* WidgetKit.framework */,
+				D1AB5A072FF476E200D6D5EB /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -71,10 +197,13 @@
 				D11FBF3A2FA40BDB00FB77E8 /* Sources */,
 				D11FBF3B2FA40BDB00FB77E8 /* Frameworks */,
 				D11FBF3C2FA40BDB00FB77E8 /* Resources */,
+				D1AB5A1E2FF476E300D6D5EB /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				D1AB5A182FF476E300D6D5EB /* PBXTargetDependency */,
+				D1CB73AF2FF491FB00C0E269 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				D11FBF402FA40BDC00FB77E8 /* Fil */,
@@ -86,6 +215,50 @@
 			productReference = D11FBF3E2FA40BDC00FB77E8 /* Fil.app */;
 			productType = "com.apple.product-type.application";
 		};
+		D1AB5A022FF476E200D6D5EB /* FilPinnedWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1AB5A1A2FF476E300D6D5EB /* Build configuration list for PBXNativeTarget "FilPinnedWidgetExtension" */;
+			buildPhases = (
+				D1AB59FF2FF476E200D6D5EB /* Sources */,
+				D1AB5A002FF476E200D6D5EB /* Frameworks */,
+				D1AB5A012FF476E200D6D5EB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D1AB5A092FF476E200D6D5EB /* FilPinnedWidget */,
+			);
+			name = FilPinnedWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = FilPinnedWidgetExtension;
+			productReference = D1AB5A032FF476E200D6D5EB /* FilPinnedWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		D1CB73A52FF491FB00C0E269 /* FilShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D1CB73B32FF491FB00C0E269 /* Build configuration list for PBXNativeTarget "FilShareExtension" */;
+			buildPhases = (
+				D1CB73A22FF491FB00C0E269 /* Sources */,
+				D1CB73A32FF491FB00C0E269 /* Frameworks */,
+				D1CB73A42FF491FB00C0E269 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D1CB73A72FF491FB00C0E269 /* FilShareExtension */,
+			);
+			name = FilShareExtension;
+			packageProductDependencies = (
+			);
+			productName = FilShareExtension;
+			productReference = D1CB73A62FF491FB00C0E269 /* FilShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -93,11 +266,17 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2640;
+				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					D11FBF3D2FA40BDB00FB77E8 = {
 						CreatedOnToolsVersion = 26.4.1;
+					};
+					D1AB5A022FF476E200D6D5EB = {
+						CreatedOnToolsVersion = 26.6;
+					};
+					D1CB73A52FF491FB00C0E269 = {
+						CreatedOnToolsVersion = 27.0;
 					};
 				};
 			};
@@ -116,12 +295,28 @@
 			projectRoot = "";
 			targets = (
 				D11FBF3D2FA40BDB00FB77E8 /* Fil */,
+				D1AB5A022FF476E200D6D5EB /* FilPinnedWidgetExtension */,
+				D1CB73A52FF491FB00C0E269 /* FilShareExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		D11FBF3C2FA40BDB00FB77E8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1AB5A012FF476E200D6D5EB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1CB73A42FF491FB00C0E269 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -138,7 +333,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D1AB59FF2FF476E200D6D5EB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D1CB73A22FF491FB00C0E269 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D1AB5A182FF476E300D6D5EB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D1AB5A022FF476E200D6D5EB /* FilPinnedWidgetExtension */;
+			targetProxy = D1AB5A172FF476E300D6D5EB /* PBXContainerItemProxy */;
+		};
+		D1CB73AF2FF491FB00C0E269 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D1CB73A52FF491FB00C0E269 /* FilShareExtension */;
+			targetProxy = D1CB73AE2FF491FB00C0E269 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		D11FBF472FA40BDC00FB77E8 /* Debug */ = {
@@ -262,6 +484,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Fil/Fil.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VH4SN2F4US;
@@ -270,6 +493,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Fil/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fil needs camera access to add attachments. ";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Fil needs access to your microphone to record voice notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Fil needs access to your microphone to record voice notes.";
@@ -309,6 +533,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Fil/Fil.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VH4SN2F4US;
@@ -317,6 +542,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Fil/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Fil needs camera access to add attachments. ";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Fil needs access to your microphone to record voice notes.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Fil needs access to your microphone to record voice notes.";
@@ -351,6 +577,140 @@
 			};
 			name = Release;
 		};
+		D1AB5A1B2FF476E300D6D5EB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FilPinnedWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VH4SN2F4US;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FilPinnedWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FilPinnedWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.masongarcera.Fil.FilPinnedWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D1AB5A1C2FF476E300D6D5EB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = FilPinnedWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VH4SN2F4US;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FilPinnedWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FilPinnedWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.masongarcera.Fil.FilPinnedWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D1CB73B12FF491FB00C0E269 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FilShareExtension/FilShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VH4SN2F4US;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FilShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FilShareExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.masongarcera.Fil.FilShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D1CB73B22FF491FB00C0E269 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FilShareExtension/FilShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = VH4SN2F4US;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = FilShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = FilShareExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.masongarcera.Fil.FilShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -368,6 +728,24 @@
 			buildConfigurations = (
 				D11FBF4A2FA40BDC00FB77E8 /* Debug */,
 				D11FBF4B2FA40BDC00FB77E8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D1AB5A1A2FF476E300D6D5EB /* Build configuration list for PBXNativeTarget "FilPinnedWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1AB5A1B2FF476E300D6D5EB /* Debug */,
+				D1AB5A1C2FF476E300D6D5EB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D1CB73B32FF491FB00C0E269 /* Build configuration list for PBXNativeTarget "FilShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D1CB73B12FF491FB00C0E269 /* Debug */,
+				D1CB73B22FF491FB00C0E269 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -9,11 +9,12 @@ struct ContentView: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @Query(sort: [SortDescriptor(\UserProfile.createdAt, order: .reverse)]) private var userProfiles: [UserProfile]
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedNote: Note?
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showPermissionAlert = false
     @State private var showFilSetup = false
-    @State private var isTextComposerExpanded = false
+    @FocusState private var isComposerFocused: Bool
     @State private var textEntryText = ""
     @State private var selectedComposerPhotos: [PhotosPickerItem] = []
     @State private var stagedComposerImageData: [Data] = []
@@ -22,6 +23,8 @@ struct ContentView: View {
     @State private var temporaryDraft = TemporaryFilDraftStore.shared.draft
     @AppStorage("isDarkMode") private var isDarkMode = true
     @Namespace private var composerNamespace
+    @Namespace private var filCreationNamespace
+    @State private var creatingFilIDs: [UUID] = []
     @State private var visibleTip = emptyStateTip
     @State private var showHomeFocusSheet = false
     @State private var selectedNoteDetent = PresentationDetent.fraction(0.6)
@@ -51,54 +54,31 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 12)
-                                .blur(radius: isTextComposerExpanded ? 8 : 0)
-                                .opacity(isTextComposerExpanded ? 0 : 1)
-                                .animation(.easeInOut(duration: 0.3), value: isTextComposerExpanded)
+                                .blur(radius: isComposerFocused ? 8 : 0)
+                                .opacity(isComposerFocused ? 0 : 1)
+                                .animation(.easeInOut(duration: 0.3), value: isComposerFocused)
                         }
 
-                        Group {
-                            if notes.isEmpty {
-                                emptyState
-                            } else {
-                                NoteGridView(
-                                    notes: notes,
-                                    selectedNote: $selectedNote,
-                                    selectedNoteIDs: selectedNoteIDs,
-                                    landfillingNoteIDs: landfillingNoteIDs,
-                                    isSelectionMode: isSelectingNotes,
-                                    collapseCommandID: sectionCollapseCommandID,
-                                    collapseCommandStage: sectionCollapseCommandStage,
-                                    onSelectNote: { note in
-                                        SoundscapeManager.shared.playOpenFilClick()
-                                        selectedNoteDetent = initialSelectedNoteDetent(for: note)
-                                        filSheetPath.removeAll()
-                                        selectedNote = note
-                                    },
-                                    onToggleSelection: toggleNoteSelection,
-                                    onBeginSelection: beginNoteSelection,
-                                    onToggleSectionSelection: toggleSectionSelection
-                                ) { note in
-                                    landfilNote(note)
-                                }
-                            }
-                        }
+                        notesSection
                     }
                     .padding(.bottom, 100)
                 }
                 .frame(maxHeight: .infinity)
+                .scrollDismissesKeyboard(.interactively)
+            }
+            .overlay {
+                if isComposerFocused {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { isComposerFocused = false }
+                }
             }
             .overlay(alignment: .bottom) {
                 bottomComposer
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
+                .zIndex(1)
             }
-
-            MeshGradientView()
-                .ignoresSafeArea()
-                .opacity(recorder.isProcessing || isCreatingTextEntry ? 0.7 : 0)
-                .allowsHitTesting(recorder.isProcessing || isCreatingTextEntry)
-                .animation(.easeInOut(duration: 0.6), value: recorder.isProcessing)
-                .animation(.easeInOut(duration: 0.6), value: isCreatingTextEntry)
         }
         .sheet(item: $selectedNote, onDismiss: handleArticleDismissed) { note in
             NavigationStack(path: $filSheetPath) {
@@ -148,14 +128,10 @@ struct ContentView: View {
         } message: {
             Text(recorder.errorMessage ?? "")
         }
-        .onChange(of: isTextComposerExpanded) { _, newValue in
-            if !newValue {
-                textEntryText = ""
-                selectedComposerPhotos = []
-                stagedComposerImageData = []
-            }
-        }
         .onChange(of: selectedComposerPhotos) { _, newItems in
+            if !newItems.isEmpty {
+                isComposerFocused = true
+            }
             Task {
                 await loadStagedComposerImages(from: newItems)
             }
@@ -180,6 +156,14 @@ struct ContentView: View {
             }
         }
         .onOpenURL(perform: handleIncomingURL)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                ingestSharedDrafts()
+            }
+        }
+        .task {
+            ingestSharedDrafts()
+        }
     }
 
     @ViewBuilder
@@ -339,34 +323,53 @@ struct ContentView: View {
     }
 
     private var bottomComposer: some View {
+        GlassEffectContainer(spacing: 8) {
+            composerContent
+        }
+    }
+
+    @ViewBuilder
+    private var composerContent: some View {
         Group {
             if isSelectingNotes {
                 bulkSelectionBar
                     .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else if recorder.isRecording {
-                RecordButton(isRecording: true, duration: recorder.recordingDuration, namespace: composerNamespace) {
-                    stopRecording()
-                }
-                .transition(.blurReplace)
             } else {
                 VStack(spacing: 10) {
-                    if !isTextComposerExpanded, let draft = temporaryDraft {
+                    if !creatingFilIDs.isEmpty {
+                        creatingFilIndicator
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+
+                    if let draft = temporaryDraft, !recorder.isRecording {
                         temporaryDraftBar(draft)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
 
-                    if isTextComposerExpanded {
-                        textComposerPanel
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    } else {
-                        composerActionRow
-                            .transition(.blurReplace)
-                    }
+                    composerBar
                 }
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.86), value: recorder.isRecording)
         .animation(.spring(response: 0.4, dampingFraction: 0.86), value: isSelectingNotes)
+    }
+
+    private var composerBar: some View {
+        ComposerBar(
+            text: $textEntryText,
+            selectedPhotos: $selectedComposerPhotos,
+            stagedImageData: stagedComposerImageData,
+            isRecording: recorder.isRecording,
+            recordingDuration: recorder.recordingDuration,
+            isProcessing: isCreatingTextEntry,
+            focus: $isComposerFocused,
+            onSend: {
+                Task { await createTextEntry(from: textEntryText) }
+            },
+            onStartRecording: { startRecording() },
+            onStopRecording: { stopRecording() },
+            onRemoveStagedImage: removeStagedComposerImage
+        )
     }
 
     private static let emptyStateTip = """
@@ -387,6 +390,36 @@ struct ContentView: View {
             .padding(.top, 8)
     }
 
+    @ViewBuilder
+    private var notesSection: some View {
+        if notes.isEmpty && creatingFilIDs.isEmpty {
+            emptyState
+        } else {
+            NoteGridView(
+                notes: notes,
+                selectedNote: $selectedNote,
+                selectedNoteIDs: selectedNoteIDs,
+                landfillingNoteIDs: landfillingNoteIDs,
+                isSelectionMode: isSelectingNotes,
+                collapseCommandID: sectionCollapseCommandID,
+                collapseCommandStage: sectionCollapseCommandStage,
+                creatingFilIDs: creatingFilIDs,
+                creationNamespace: filCreationNamespace,
+                onSelectNote: { note in
+                    SoundscapeManager.shared.playOpenFilClick()
+                    selectedNoteDetent = initialSelectedNoteDetent(for: note)
+                    filSheetPath.removeAll()
+                    selectedNote = note
+                },
+                onToggleSelection: toggleNoteSelection,
+                onBeginSelection: beginNoteSelection,
+                onToggleSectionSelection: toggleSectionSelection
+            ) { note in
+                landfilNote(note)
+            }
+        }
+    }
+
     private var bulkSelectionBar: some View {
         HStack(spacing: 10) {
             Button {
@@ -398,8 +431,8 @@ struct ContentView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
                     .frame(width: 40, height: 40)
-                    .background(Theme.background, in: Circle())
-                    .overlay(Circle().stroke(Theme.divider.opacity(0.55), lineWidth: 1))
+                    .glassEffect(.regular, in: .circle)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
 
@@ -408,8 +441,8 @@ struct ContentView: View {
                 .foregroundStyle(Theme.primaryText)
                 .padding(.horizontal, 20)
                 .frame(height: 40)
-                .background(Theme.background, in: Capsule())
-                .overlay(Capsule().stroke(Theme.divider.opacity(0.55), lineWidth: 1))
+                .glassEffect(.regular, in: .capsule)
+                .contentShape(Capsule())
 
             Button {
                 showBulkLandfilConfirmation = true
@@ -418,38 +451,11 @@ struct ContentView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 40, height: 40)
-                    .background(Theme.recordRed, in: Circle())
+                    .glassEffect(.regular.tint(Theme.recordRed), in: .circle)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
         }
-    }
-
-    private var textComposerPanel: some View {
-        FilComposerInputBar(
-            text: $textEntryText,
-            selectedPhotos: $selectedComposerPhotos,
-            stagedImageData: stagedComposerImageData,
-            placeholder: "(thoughts. lore. fil'osophy.)",
-            actionSymbol: "arrow.up",
-            secondaryActionSymbol: "pin",
-            isProcessing: isCreatingTextEntry,
-            autoFocus: true,
-            onAction: {
-                Task {
-                    await createTextEntry(from: textEntryText)
-                }
-            },
-            onSecondaryAction: {
-                holdTemporaryDraft(from: textEntryText)
-            },
-            onDismiss: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                    isTextComposerExpanded = false
-                }
-            },
-            onFocusChange: { _ in },
-            onRemoveStagedImage: removeStagedComposerImage
-        )
     }
 
     private func temporaryDraftBar(_ draft: TemporaryFilDraft) -> some View {
@@ -458,9 +464,7 @@ struct ContentView: View {
                 textEntryText = draft.text
                 temporaryDraftStore.clear()
                 temporaryDraft = nil
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                    isTextComposerExpanded = true
-                }
+                isComposerFocused = true
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "pin.fill")
@@ -478,11 +482,8 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 14)
                 .frame(height: 40)
-                .background(Theme.background, in: Capsule())
-                .overlay {
-                    Capsule()
-                        .stroke(Theme.divider.opacity(0.55), lineWidth: 1)
-                }
+                .glassEffect(.regular, in: .capsule)
+                .contentShape(Capsule())
             }
             .buttonStyle(.plain)
 
@@ -495,11 +496,8 @@ struct ContentView: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
                     .frame(width: 40, height: 40)
-                    .background(Theme.background, in: Circle())
-                    .overlay {
-                        Circle()
-                            .stroke(Theme.divider.opacity(0.55), lineWidth: 1)
-                    }
+                    .glassEffect(.regular, in: .circle)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .disabled(isCreatingTextEntry)
@@ -515,43 +513,69 @@ struct ContentView: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
                     .frame(width: 40, height: 40)
-                    .background(Theme.background, in: Circle())
-                    .overlay {
-                        Circle()
-                            .stroke(Theme.divider.opacity(0.55), lineWidth: 1)
-                    }
+                    .glassEffect(.regular, in: .circle)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
         }
     }
 
-    private var composerActionRow: some View {
-        HStack(spacing: 10) {
-            FocusEntryButton(count: homeFocusPageCount) {
-                SoundscapeManager.shared.playTodoSound()
-                homeFocusDetent = .fraction(0.3)
-                showHomeFocusSheet = true
-            }
+    private var creatingFilIndicator: some View {
+        HStack(spacing: 8) {
+            CreatingFilBlobView()
+                .frame(width: 20, height: 20)
+            Text(creatingFilIDs.count > 1 ? "creating \(creatingFilIDs.count) fils…" : "creating fil…")
+                .font(Theme.dmSans(12, weight: .medium))
+                .foregroundStyle(Theme.secondaryText)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 36)
+        .glassEffect(.regular, in: .capsule)
+        .contentShape(Capsule())
+    }
 
-            NewFilButton(namespace: composerNamespace) {
-                SoundscapeManager.shared.playTransformRefilSound()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-                    isTextComposerExpanded = true
-                }
-            } onLongPress: {
-                startRecording()
-            }
+    /// Adds a placeholder blob to the grid's top slot and returns its id — used as the
+    /// new fil's `uuid` so the blob can morph into the real card once it's created.
+    private func beginCreatingFil() -> UUID {
+        let id = UUID()
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+            creatingFilIDs.append(id)
+        }
+        return id
+    }
+
+    /// Removes the placeholder, letting its just-created card surface and morph into place.
+    private func finishCreatingFil(_ id: UUID) {
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.82)) {
+            creatingFilIDs.removeAll { $0 == id }
         }
     }
 
-    private func holdTemporaryDraft(from text: String) {
-        temporaryDraftStore.hold(text)
-        temporaryDraft = temporaryDraftStore.draft
-        SoundscapeManager.shared.playOpenFilClick()
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-            textEntryText = ""
-            isTextComposerExpanded = false
+    /// Shared wrapper for every fil-creation path: shows the creating blob, runs the
+    /// build closure (which must insert a note whose `uuid` is the provided id), then
+    /// morphs the blob into the resulting card.
+    @MainActor
+    private func createFil(_ build: (UUID) async throws -> Void) async {
+        let filID = beginCreatingFil()
+        isCreatingTextEntry = true
+        SoundscapeManager.shared.startMeshDuringProcessSound()
+
+        var succeeded = false
+        do {
+            try await build(filID)
+            succeeded = true
+        } catch {
+            recorder.errorMessage = error.localizedDescription
         }
+
+        isCreatingTextEntry = false
+        SoundscapeManager.shared.stopMeshDuringProcessSound()
+
+        // Let the inserted note surface in the query before morphing the blob into it.
+        if succeeded {
+            try? await Task.sleep(for: .milliseconds(300))
+        }
+        finishCreatingFil(filID)
     }
 
     private func handleIncomingURL(_ url: URL) {
@@ -560,8 +584,33 @@ struct ContentView: View {
         temporaryDraftStore.hold(text)
         temporaryDraft = temporaryDraftStore.draft
         SoundscapeManager.shared.playOpenFilClick()
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-            isTextComposerExpanded = false
+    }
+
+    /// Drains content shared into Fil from the Share Extension (via the App Group inbox)
+    /// and turns each item straight into a fil — no intermediate draft state.
+    private func ingestSharedDrafts() {
+        let drafts = SharedDraftInbox.drain()
+        guard !drafts.isEmpty else { return }
+        Task { await createFils(from: drafts) }
+    }
+
+    @MainActor
+    private func createFils(from drafts: [SharedDraftInbox.InboundDraft]) async {
+        for draft in drafts {
+            let caption = draft.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            await createFil { filID in
+                if !draft.images.isEmpty {
+                    try await saveImageFil(
+                        caption: caption.isEmpty ? "Shared photo" : caption,
+                        imageData: draft.images,
+                        filID: filID
+                    )
+                } else if let linkURL = normalizedLinkURL(from: caption) {
+                    saveLinkNote(for: linkURL, filID: filID)
+                } else if !caption.isEmpty {
+                    try await saveGeneratedNote(from: caption, filID: filID)
+                }
+            }
         }
     }
 
@@ -573,21 +622,13 @@ struct ContentView: View {
             return
         }
 
-        isCreatingTextEntry = true
-        SoundscapeManager.shared.startMeshDuringProcessSound()
-        defer {
-            isCreatingTextEntry = false
-            SoundscapeManager.shared.stopMeshDuringProcessSound()
+        withAnimation(.snappy) {
+            temporaryDraftStore.clear()
+            temporaryDraft = nil
         }
 
-        do {
-            try await saveGeneratedNote(from: trimmed)
-            withAnimation(.snappy) {
-                temporaryDraftStore.clear()
-                temporaryDraft = nil
-            }
-        } catch {
-            recorder.errorMessage = error.localizedDescription
+        await createFil { filID in
+            try await saveGeneratedNote(from: trimmed, filID: filID)
         }
     }
 
@@ -595,9 +636,7 @@ struct ContentView: View {
         Task {
             let granted = await recorder.requestPermissions()
             if granted {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                    isTextComposerExpanded = false
-                }
+                isComposerFocused = false
                 await recorder.startRecording()
             } else {
                 showPermissionAlert = true
@@ -678,20 +717,17 @@ struct ContentView: View {
 
     private func processRecording(url: URL, duration: TimeInterval) {
         recorder.isProcessing = true
-        SoundscapeManager.shared.startMeshDuringProcessSound()
         Task {
-            do {
+            await createFil { filID in
                 let transcript = try await recorder.transcribe(url: url)
                 try await saveGeneratedNote(
                     from: transcript,
                     audioFilePath: url.lastPathComponent,
-                    duration: duration
+                    duration: duration,
+                    filID: filID
                 )
-            } catch {
-                recorder.errorMessage = error.localizedDescription
             }
             recorder.isProcessing = false
-            SoundscapeManager.shared.stopMeshDuringProcessSound()
         }
     }
 
@@ -700,26 +736,19 @@ struct ContentView: View {
         guard !trimmed.isEmpty else { return }
 
         let stagedImages = stagedComposerImageData
-        isCreatingTextEntry = true
-        SoundscapeManager.shared.startMeshDuringProcessSound()
-        defer {
-            isCreatingTextEntry = false
-            SoundscapeManager.shared.stopMeshDuringProcessSound()
-        }
+        isComposerFocused = false
+        textEntryText = ""
+        selectedComposerPhotos = []
+        stagedComposerImageData = []
 
-        do {
+        await createFil { filID in
             if !stagedImages.isEmpty {
-                try await saveImageFil(caption: trimmed, imageData: stagedImages)
+                try await saveImageFil(caption: trimmed, imageData: stagedImages, filID: filID)
             } else if let linkURL = normalizedLinkURL(from: trimmed) {
-                saveLinkNote(for: linkURL)
+                saveLinkNote(for: linkURL, filID: filID)
             } else {
-                try await saveGeneratedNote(from: trimmed)
+                try await saveGeneratedNote(from: trimmed, filID: filID)
             }
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                isTextComposerExpanded = false
-            }
-        } catch {
-            recorder.errorMessage = error.localizedDescription
         }
     }
 
@@ -774,7 +803,7 @@ struct ContentView: View {
         return url
     }
 
-    private func saveLinkNote(for url: URL) {
+    private func saveLinkNote(for url: URL, filID: UUID) {
         let gradient = freshGradientPair()
         let fallbackTitle = linkTitleFallback(for: url)
         let note = Note(
@@ -787,6 +816,7 @@ struct ContentView: View {
             sourceURLString: url.absoluteString,
             sourceTitle: fallbackTitle
         )
+        note.uuid = filID
         modelContext.insert(note)
         SoundscapeManager.shared.playArticleMadeSound()
 
@@ -808,7 +838,7 @@ struct ContentView: View {
         return domain
     }
 
-    private func saveImageFil(caption: String, imageData: [Data]) async throws {
+    private func saveImageFil(caption: String, imageData: [Data], filID: UUID) async throws {
         let metadata = try await ArticleGenerationService.shared.generateMetadata(
             from: caption,
             userProfile: activeUserProfile
@@ -823,6 +853,7 @@ struct ContentView: View {
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
+        note.uuid = filID
         note.imageFilImages = imageData.enumerated().map { index, data in
             NoteImage(data: data, order: index, note: note)
         }
@@ -833,7 +864,8 @@ struct ContentView: View {
     private func saveGeneratedNote(
         from transcript: String,
         audioFilePath: String = "",
-        duration: TimeInterval = 0
+        duration: TimeInterval = 0,
+        filID: UUID
     ) async throws {
         let metadata = try await ArticleGenerationService.shared.generateMetadata(
             from: transcript,
@@ -852,6 +884,7 @@ struct ContentView: View {
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
+        note.uuid = filID
         modelContext.insert(note)
         SoundscapeManager.shared.playArticleMadeSound()
     }
@@ -865,75 +898,6 @@ private struct HomeFocusSelection {
     let noteUUID: UUID
 }
 
-struct RecordButton: View {
-    let isRecording: Bool
-    let duration: TimeInterval
-    var namespace: Namespace.ID?
-    let action: () -> Void
-
-    private var beamColors: [Color] {
-        Theme.accentGradientColors
-    }
-
-    var body: some View {
-        Button {
-            action()
-        } label: {
-            buttonLabel
-        }
-    }
-
-    private var buttonLabel: some View {
-        HStack(spacing: 6) {
-            if isRecording {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Theme.primaryText)
-                    .frame(width: 10, height: 10)
-            } else {
-                Circle()
-                    .fill(Theme.primaryText)
-                    .frame(width: 10, height: 10)
-            }
-
-            if isRecording {
-                Text(formattedDuration)
-                    .font(Theme.dmMono(13))
-                    .foregroundStyle(Theme.primaryText)
-                    .monospacedDigit()
-            } else {
-                Text("new fil")
-                    .font(Theme.dmSans(13, weight: .semibold))
-                    .foregroundStyle(Theme.primaryText)
-            }
-        }
-        .padding(.horizontal, 20)
-        .frame(height: 40)
-        .borderBeam(
-            border: Theme.primaryText,
-            beam: beamColors,
-            beamBlur: 12,
-            cornerRadius: 20,
-            isEnabled: isRecording
-        )
-        .background {
-            Capsule()
-                .fill(Theme.background)
-                .modifier(OptionalMatchedGeometry(id: "composerPill", namespace: namespace))
-        }
-        .overlay {
-            Capsule()
-                .stroke(Theme.divider.opacity(0.55), lineWidth: 1)
-                .modifier(OptionalMatchedGeometry(id: "composerBorder", namespace: namespace))
-        }
-    }
-
-    private var formattedDuration: String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-}
-
 private struct FocusEntryButton: View {
     let count: Int
     let action: () -> Void
@@ -944,149 +908,14 @@ private struct FocusEntryButton: View {
                 .font(Theme.dmSans(14, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
                 .frame(width: 40, height: 40)
-                .background {
-                    Circle()
-                        .fill(Theme.background)
-                }
-                .overlay {
-                    Circle()
-                        .stroke(Theme.divider.opacity(0.55), lineWidth: 1)
-                }
+                .glassEffect(.regular, in: .circle)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
     }
 
     private var displayCount: String {
         count > 99 ? "99+" : "\(count)"
-    }
-}
-
-private struct NewFilButton: View {
-    var namespace: Namespace.ID?
-    let onTap: () -> Void
-    let onLongPress: () -> Void
-
-    private let holdDuration: TimeInterval = 0.4
-
-    @State private var isHolding = false
-    @State private var holdProgress: CGFloat = 0
-    @State private var holdTriggered = false
-    @State private var holdTimer: Task<Void, Never>?
-    @State private var pressStart: Date?
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Text("tap to write, hold to speak")
-                .font(Theme.dmSans(13, weight: .semibold))
-                .foregroundStyle(Theme.primaryText)
-                .blur(radius: isHolding ? 4 : 0)
-                .opacity(isHolding ? 0.5 : 1)
-        }
-        .padding(.horizontal, 20)
-        .frame(height: 40)
-        .background {
-            Capsule()
-                .fill(Theme.background)
-                .modifier(OptionalMatchedGeometry(id: "composerPill", namespace: namespace))
-        }
-        .overlay {
-            Capsule()
-                .stroke(Theme.divider.opacity(0.55), lineWidth: 1)
-                .modifier(OptionalMatchedGeometry(id: "composerBorder", namespace: namespace))
-        }
-        .overlay {
-            GeometryReader { proxy in
-                Capsule()
-                    .fill(Theme.divider.opacity(0.22))
-                    .frame(height: proxy.size.height * holdProgress)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                    .clipShape(Capsule())
-                    .animation(.linear(duration: holdDuration), value: holdProgress)
-            }
-        }
-        .contentShape(Capsule())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    guard !isHolding else { return }
-                    beginHold()
-                }
-                .onEnded { _ in
-                    endHold()
-                }
-        )
-    }
-
-    private func beginHold() {
-        isHolding = true
-        holdTriggered = false
-        pressStart = Date()
-
-        impactFeedback(style: .light)
-
-        withAnimation(.linear(duration: holdDuration)) {
-            holdProgress = 1
-        }
-
-        holdTimer = Task {
-            try? await Task.sleep(for: .milliseconds(Int(holdDuration * 1000)))
-            guard !Task.isCancelled else { return }
-            holdTriggered = true
-            impactFeedback(style: .medium)
-            onLongPress()
-        }
-    }
-
-    private func impactFeedback(style: ImpactFeedbackStyle) {
-        #if canImport(UIKit)
-        let generator = UIImpactFeedbackGenerator(style: style.uiImpactFeedbackStyle)
-        generator.impactOccurred()
-        #endif
-    }
-
-    private func endHold() {
-        let wasTap = !holdTriggered && (pressStart.map { Date().timeIntervalSince($0) < holdDuration } ?? true)
-
-        holdTimer?.cancel()
-        holdTimer = nil
-
-        withAnimation(.easeOut(duration: 0.2)) {
-            isHolding = false
-            holdProgress = 0
-        }
-
-        if wasTap && !holdTriggered {
-            onTap()
-        }
-    }
-}
-
-private enum ImpactFeedbackStyle {
-    case light
-    case medium
-
-    #if canImport(UIKit)
-    var uiImpactFeedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle {
-        switch self {
-        case .light:
-            return .light
-        case .medium:
-            return .medium
-        }
-    }
-    #endif
-}
-
-private struct OptionalMatchedGeometry: ViewModifier {
-    let id: String
-    var namespace: Namespace.ID?
-
-    func body(content: Content) -> some View {
-        if let namespace {
-            content.matchedGeometryEffect(id: id, in: namespace)
-        } else {
-            content
-        }
     }
 }
 

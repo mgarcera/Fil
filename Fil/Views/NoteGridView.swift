@@ -8,6 +8,8 @@ struct NoteGridView: View {
     var isSelectionMode = false
     var collapseCommandID = 0
     var collapseCommandStage = 0
+    var creatingFilIDs: [UUID] = []
+    var creationNamespace: Namespace.ID? = nil
     var onSelectNote: ((Note) -> Void)? = nil
     var onToggleSelection: (Note) -> Void = { _ in }
     var onBeginSelection: (Note) -> Void = { _ in }
@@ -19,17 +21,19 @@ struct NoteGridView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(groupedNotes, id: \.key) { date, notesInGroup in
+            ForEach(sections, id: \.key) { section in
                 DaySectionView(
-                    date: date,
-                    notesInGroup: notesInGroup,
+                    date: section.key,
+                    notesInGroup: section.notes,
+                    placeholderIDs: section.placeholderIDs,
                     columnCount: columnCount,
-                    initialCollapseStage: collapseStage(for: date),
+                    initialCollapseStage: collapseStage(for: section.key),
                     selectedNoteIDs: selectedNoteIDs,
                     landfillingNoteIDs: landfillingNoteIDs,
                     isSelectionMode: isSelectionMode,
                     collapseCommandID: collapseCommandID,
                     collapseCommandStage: collapseCommandStage,
+                    creationNamespace: creationNamespace,
                     onSelectNote: { note in
                         if let onSelectNote {
                             onSelectNote(note)
@@ -38,7 +42,7 @@ struct NoteGridView: View {
                         }
                     },
                     onCollapseStageChange: { stage in
-                        updateCollapseStage(stage, for: date)
+                        updateCollapseStage(stage, for: section.key)
                     },
                     onToggleSelection: onToggleSelection,
                     onBeginSelection: onBeginSelection,
@@ -53,12 +57,30 @@ struct NoteGridView: View {
         .padding(.horizontal, 16)
     }
 
-    private var groupedNotes: [(key: Date, value: [Note])] {
+    /// Day sections for the grid. In-flight creations are dropped from their day's notes
+    /// and surfaced as placeholder blobs at the front of today's section — the exact slot
+    /// the finished card lands in — so the blob morphs into place without moving.
+    private var sections: [(key: Date, notes: [Note], placeholderIDs: [UUID])] {
+        let inFlight = Set(creatingFilIDs)
+        let visibleNotes = notes.filter { !inFlight.contains($0.uuid) }
         let dayPartition = FilDayPartition()
-        let grouped = Dictionary(grouping: notes) { note in
+        let grouped = Dictionary(grouping: visibleNotes) { note in
             dayPartition.dayStart(for: note.timestamp)
         }
-        return grouped.sorted { $0.key > $1.key }
+
+        var result = grouped
+            .sorted { $0.key > $1.key }
+            .map { (key: $0.key, notes: $0.value, placeholderIDs: [UUID]()) }
+
+        guard !creatingFilIDs.isEmpty else { return result }
+
+        let todayStart = dayPartition.dayStart(for: Date())
+        if let index = result.firstIndex(where: { $0.key == todayStart }) {
+            result[index].placeholderIDs = creatingFilIDs
+        } else {
+            result.insert((key: todayStart, notes: [], placeholderIDs: creatingFilIDs), at: 0)
+        }
+        return result
     }
 
     private var storedCollapseStages: [String: Int] {
@@ -111,6 +133,7 @@ struct NoteGridView: View {
 private struct DaySectionView: View {
     let date: Date
     let notesInGroup: [Note]
+    let placeholderIDs: [UUID]
     let columnCount: Int
     let initialCollapseStage: Int
     let onSelectNote: (Note) -> Void
@@ -120,6 +143,7 @@ private struct DaySectionView: View {
     let isSelectionMode: Bool
     let collapseCommandID: Int
     let collapseCommandStage: Int
+    let creationNamespace: Namespace.ID?
     let onToggleSelection: (Note) -> Void
     let onBeginSelection: (Note) -> Void
     let onToggleSectionSelection: ([Note]) -> Void
@@ -132,6 +156,7 @@ private struct DaySectionView: View {
     init(
         date: Date,
         notesInGroup: [Note],
+        placeholderIDs: [UUID],
         columnCount: Int,
         initialCollapseStage: Int,
         selectedNoteIDs: Set<UUID>,
@@ -139,6 +164,7 @@ private struct DaySectionView: View {
         isSelectionMode: Bool,
         collapseCommandID: Int,
         collapseCommandStage: Int,
+        creationNamespace: Namespace.ID?,
         onSelectNote: @escaping (Note) -> Void,
         onCollapseStageChange: @escaping (Int) -> Void,
         onToggleSelection: @escaping (Note) -> Void,
@@ -148,6 +174,7 @@ private struct DaySectionView: View {
     ) {
         self.date = date
         self.notesInGroup = notesInGroup
+        self.placeholderIDs = placeholderIDs
         self.columnCount = columnCount
         self.initialCollapseStage = initialCollapseStage
         self.selectedNoteIDs = selectedNoteIDs
@@ -155,6 +182,7 @@ private struct DaySectionView: View {
         self.isSelectionMode = isSelectionMode
         self.collapseCommandID = collapseCommandID
         self.collapseCommandStage = collapseCommandStage
+        self.creationNamespace = creationNamespace
         self.onSelectNote = onSelectNote
         self.onCollapseStageChange = onCollapseStageChange
         self.onToggleSelection = onToggleSelection
@@ -220,6 +248,13 @@ private struct DaySectionView: View {
     private var liveSectionContent: some View {
         ZStack(alignment: .leading) {
             LazyVGrid(columns: activeColumns, spacing: gridSpacing) {
+                ForEach(placeholderIDs, id: \.self) { id in
+                    CreatingFilBlobView()
+                        .frame(height: 98)
+                        .filCreationMorph(id: id, in: creationNamespace)
+                        .transition(.opacity)
+                }
+
                 ForEach(notesInGroup, id: \.uuid) { note in
                     DeletableNoteCard(
                         note: note,
@@ -240,6 +275,7 @@ private struct DaySectionView: View {
                             onLandfil(note)
                         }
                     )
+                    .filCreationMorph(id: note.uuid, in: creationNamespace)
                     .transition(.blurReplace)
                 }
             }
@@ -556,7 +592,7 @@ private struct DeletableNoteCard: View {
                 selectionStrokeLineWidth: isSelected ? 3 : 1.5,
                 selectionStrokeShadowOpacity: isSelected ? 0.28 : 0
             )
-            .overlay(alignment: .topTrailing) {
+            .overlay {
                 selectionCheckmark
             }
         }
@@ -609,10 +645,9 @@ private struct DeletableNoteCard: View {
     private var selectionCheckmark: some View {
         if isSelectionMode {
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(isSelected ? .white : Theme.primaryText.opacity(0.7))
-                .shadow(color: .black.opacity(isSelected ? 0.45 : 0), radius: 5, x: 0, y: 2)
-                .padding(6)
+                .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(isSelected ? .white : Theme.primaryText.opacity(0.8))
+                .shadow(color: .black.opacity(0.45), radius: 5, x: 0, y: 2)
         }
     }
 

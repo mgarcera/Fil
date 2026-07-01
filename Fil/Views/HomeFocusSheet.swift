@@ -398,7 +398,7 @@ struct GooeySummaryLoadingView: View {
     }
 }
 
-private struct BlobShape: Shape {
+struct BlobShape: Shape {
     let points: Int
     let deformation: CGFloat
     let time: CGFloat

@@ -28,6 +28,8 @@ struct ArticleView: View {
     @Query(sort: [SortDescriptor(\UserProfile.createdAt, order: .reverse)]) private var userProfiles: [UserProfile]
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
     @State private var player = AudioPlayerViewModel()
+    private let pinnedFilStore = PinnedFilStore.shared
+    @State private var pinnedFil: PinnedFilSnapshot? = PinnedFilStore.shared.pinnedFil
     @State private var linkBrowserURL: URL?
     @State private var backlinkSheetDetent = PresentationDetent.fraction(0.6)
     @State private var backlinkNoteToOpen: Note?
@@ -77,6 +79,10 @@ struct ArticleView: View {
     private var isTranscriptEdited: Bool {
         guard let originalTranscript = note.originalTranscript else { return false }
         return originalTranscript != note.transcript
+    }
+
+    private var isCurrentFilPinned: Bool {
+        pinnedFil?.id == note.uuid
     }
 
     private var transcriptBinding: Binding<String> {
@@ -164,6 +170,17 @@ struct ArticleView: View {
                         Image(systemName: "xmark")
                     }
                     .accessibilityLabel("Close fil")
+                }
+            }
+
+            if !note.isLinkFil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        togglePinnedFil()
+                    } label: {
+                        Image(systemName: isCurrentFilPinned ? "pin.fill" : "pin")
+                    }
+                    .accessibilityLabel(isCurrentFilPinned ? "Unpin fil" : "Pin fil")
                 }
             }
         }
@@ -586,6 +603,26 @@ struct ArticleView: View {
         }
         .font(Theme.dmMono(12))
         .foregroundStyle(Theme.secondaryText)
+    }
+
+    private func togglePinnedFil() {
+        SoundscapeManager.shared.playTabSound()
+
+        if isCurrentFilPinned {
+            pinnedFilStore.unpin()
+            Task {
+                await PinnedFilLiveActivityController.unpin()
+            }
+        } else {
+            let snapshot = pinnedFilStore.pin(note)
+            Task {
+                await PinnedFilLiveActivityController.pin(snapshot)
+            }
+        }
+
+        withAnimation(.snappy(duration: 0.18)) {
+            pinnedFil = pinnedFilStore.pinnedFil
+        }
     }
 
     @ViewBuilder

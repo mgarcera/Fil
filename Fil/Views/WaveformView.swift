@@ -3,20 +3,27 @@ import SwiftUI
 struct WaveformView: View {
     let duration: TimeInterval
     var isAnimating: Bool = false
+    var fillsWidth: Bool = false
     private let barCount = 24
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 10) {
             Text(formatDuration(duration))
-                .font(Theme.dmMono(11))
+                .font(Theme.dmMono(13))
                 .foregroundStyle(Theme.secondaryText)
+                .monospacedDigit()
 
-            HStack(alignment: .center, spacing: 1.5) {
+            HStack(alignment: .center, spacing: fillsWidth ? 0 : 1.5) {
                 ForEach(0..<barCount, id: \.self) { index in
                     WaveformBar(isAnimating: isAnimating, index: index)
+                    if fillsWidth && index < barCount - 1 {
+                        Spacer(minLength: 0)
+                    }
                 }
             }
+            .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
         }
+        .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
