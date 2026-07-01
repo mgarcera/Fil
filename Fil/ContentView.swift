@@ -37,7 +37,7 @@ struct ContentView: View {
     @State private var pendingPinnedNoteID: UUID?
     @State private var sectionCollapseCommandID = 0
     @State private var sectionCollapseCommandStage = 0
-    @State private var isScreensaverActive = false
+    @State private var activeScreensaverMode: FilScreensaverView.Mode?
     @AppStorage("collapsedDaySectionKeys") private var collapsedDaySectionKeysRaw = ""
 
     var body: some View {
@@ -88,10 +88,10 @@ struct ContentView: View {
             // Only opacity/scale transition inside it — the Canvas is full-screen from
             // its first frame, so the centered blob block never repositions on open/close.
             ZStack {
-                if isScreensaverActive {
-                    FilScreensaverView(notes: notes) {
+                if let mode = activeScreensaverMode {
+                    FilScreensaverView(notes: notes, initialMode: mode) {
                         withAnimation(.easeInOut(duration: 0.4)) {
-                            isScreensaverActive = false
+                            activeScreensaverMode = nil
                         }
                     }
                     .transition(.scale(scale: 0.92).combined(with: .opacity))
@@ -214,18 +214,10 @@ struct ContentView: View {
 
     private var header: some View {
         HStack {
-            Button {
-                guard !notes.isEmpty else { return }
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
-                    isScreensaverActive = true
-                }
-            } label: {
-                Image("FilLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 32)
-            }
-            .buttonStyle(.plain)
+            Image("FilLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 32)
             Spacer()
             HStack(spacing: 14) {
                 Button {
@@ -236,6 +228,28 @@ struct ContentView: View {
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(Theme.primaryText)
                 }
+
+                Menu {
+                    Section("Screensavers") {
+                        Button {
+                            launchScreensaver(.liquid)
+                        } label: {
+                            Label("filosophy", systemImage: "drop.fill")
+                        }
+                        Button {
+                            launchScreensaver(.wave)
+                        } label: {
+                            Label("filiform", systemImage: "water.waves")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "zzz")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Theme.primaryText)
+                }
+                .disabled(notes.isEmpty)
+                .opacity(notes.isEmpty ? 0.45 : 1)
+                .accessibilityLabel("Screensaver")
 
                 Button {
                     SoundscapeManager.shared.playLightModeSound()
@@ -261,6 +275,13 @@ struct ContentView: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 4)
+    }
+
+    private func launchScreensaver(_ mode: FilScreensaverView.Mode) {
+        guard !notes.isEmpty else { return }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+            activeScreensaverMode = mode
+        }
     }
 
     private var activeUserProfile: UserProfile? {
