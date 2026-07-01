@@ -34,6 +34,7 @@ struct ContentView: View {
     @State private var landfillingNoteIDs = Set<UUID>()
     @State private var showBulkLandfilConfirmation = false
     @State private var pendingHomeFocusSelection: HomeFocusSelection?
+    @State private var pendingPinnedNoteID: UUID?
     @State private var sectionCollapseCommandID = 0
     @State private var sectionCollapseCommandStage = 0
     @AppStorage("collapsedDaySectionKeys") private var collapsedDaySectionKeysRaw = ""
@@ -140,6 +141,10 @@ struct ContentView: View {
             let currentNoteIDs = Set(noteIDs)
             selectedNoteIDs.formIntersection(currentNoteIDs)
             landfillingNoteIDs.formIntersection(currentNoteIDs)
+
+            if let pendingPinnedNoteID, currentNoteIDs.contains(pendingPinnedNoteID) {
+                openFil(with: pendingPinnedNoteID)
+            }
         }
         .onChange(of: showHomeFocusSheet) { _, isPresented in
             guard !isPresented, let pendingHomeFocusSelection else { return }
@@ -579,11 +584,44 @@ struct ContentView: View {
     }
 
     private func handleIncomingURL(_ url: URL) {
+        if let pinnedNoteID = pinnedNoteID(from: url) {
+            openFil(with: pinnedNoteID)
+            return
+        }
+
         guard let text = TemporaryFilDraftIntake.text(from: url) else { return }
 
         temporaryDraftStore.hold(text)
         temporaryDraft = temporaryDraftStore.draft
         SoundscapeManager.shared.playOpenFilClick()
+    }
+
+    /// Parses `fil://pinned?id=<uuid>` (from the pinned-fil Live Activity / widget).
+    private func pinnedNoteID(from url: URL) -> UUID? {
+        guard url.scheme?.lowercased() == "fil" else { return nil }
+
+        let host = url.host()?.lowercased()
+        let path = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")).lowercased()
+        guard host == "pinned" || path == "pinned" else { return nil }
+
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        guard let idValue = components?.queryItems?.first(where: { $0.name == "id" })?.value else {
+            return nil
+        }
+        return UUID(uuidString: idValue)
+    }
+
+    private func openFil(with id: UUID) {
+        guard let note = notes.first(where: { $0.uuid == id }) else {
+            // The query may not have loaded yet on a cold launch; retry when notes populate.
+            pendingPinnedNoteID = id
+            return
+        }
+        pendingPinnedNoteID = nil
+        SoundscapeManager.shared.playOpenFilClick()
+        selectedNoteDetent = initialSelectedNoteDetent(for: note)
+        filSheetPath.removeAll()
+        selectedNote = note
     }
 
     /// Drains content shared into Fil from the Share Extension (via the App Group inbox)

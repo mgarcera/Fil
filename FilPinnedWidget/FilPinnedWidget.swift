@@ -8,50 +8,132 @@
 import WidgetKit
 import SwiftUI
 
-struct Provider: AppIntentTimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
-    }
+private let appGroupIdentifier = "group.com.masongarcera.Fil"
+private let pinnedFilKey = "pinnedFilSnapshot"
 
-    func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
-    }
-    
-    func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        var entries: [SimpleEntry] = []
+/// Mirrors the app's `PinnedFilSnapshot`, decoded from the shared App Group container.
+struct PinnedFilWidgetSnapshot: Codable {
+    var id: UUID
+    var title: String
+    var previewText: String
+    var keyword: String
+    var gradientStartHex: String
+    var gradientEndHex: String
+    var updatedAt: Date
 
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
-        }
-
-        return Timeline(entries: entries, policy: .atEnd)
-    }
-
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
+    static let sample = PinnedFilWidgetSnapshot(
+        id: UUID(),
+        title: "Follow up with Jordan",
+        previewText: "Draft the intake summary and check whether the PDF attachment made it into the case note.",
+        keyword: "todo",
+        gradientStartHex: "#33BF99",
+        gradientEndHex: "#408CD9",
+        updatedAt: Date()
+    )
 }
 
-struct SimpleEntry: TimelineEntry {
+struct PinnedFilEntry: TimelineEntry {
     let date: Date
-    let configuration: ConfigurationAppIntent
+    let snapshot: PinnedFilWidgetSnapshot?
 }
 
-struct FilPinnedWidgetEntryView : View {
+struct Provider: TimelineProvider {
+    func placeholder(in context: Context) -> PinnedFilEntry {
+        PinnedFilEntry(date: Date(), snapshot: .sample)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (PinnedFilEntry) -> Void) {
+        completion(PinnedFilEntry(date: Date(), snapshot: loadSnapshot() ?? (context.isPreview ? .sample : nil)))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedFilEntry>) -> Void) {
+        let entry = PinnedFilEntry(date: Date(), snapshot: loadSnapshot())
+        completion(Timeline(entries: [entry], policy: .never))
+    }
+
+    private func loadSnapshot() -> PinnedFilWidgetSnapshot? {
+        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
+              let data = defaults.data(forKey: pinnedFilKey) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(PinnedFilWidgetSnapshot.self, from: data)
+    }
+}
+
+struct FilPinnedWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
     var entry: Provider.Entry
 
     var body: some View {
-        VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+        Group {
+            if let snapshot = entry.snapshot {
+                pinnedContent(snapshot)
+            } else {
+                emptyState
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(destinationURL)
+    }
+
+    private var destinationURL: URL? {
+        if let snapshot = entry.snapshot {
+            return URL(string: "fil://pinned?id=\(snapshot.id.uuidString)")
+        }
+        return URL(string: "fil://draft")
+    }
+
+    private func pinnedContent(_ snapshot: PinnedFilWidgetSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FilBlobMark(
+                size: family == .systemSmall ? 30 : 34,
+                startHex: snapshot.gradientStartHex,
+                endHex: snapshot.gradientEndHex
+            )
+
+            Spacer(minLength: 0)
+
+            Text(displayTitle(snapshot))
+                .font(.system(size: family == .systemSmall ? 15 : 17, weight: .semibold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.leading)
+                .lineLimit(family == .systemSmall ? 3 : 2)
+
+            if family != .systemSmall {
+                Text(displayPreview(snapshot))
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.72))
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(3)
+            }
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            FilBlobMark(size: 30, startHex: "#33BF99", endHex: "#408CD9")
+                .opacity(0.5)
+
+            Spacer(minLength: 0)
+
+            Text("no pinned fil")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+
+            Text("pin a fil to see it here")
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(.white.opacity(0.6))
+        }
+    }
+
+    private func displayTitle(_ snapshot: PinnedFilWidgetSnapshot) -> String {
+        let title = snapshot.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? "pinned fil" : title
+    }
+
+    private func displayPreview(_ snapshot: PinnedFilWidgetSnapshot) -> String {
+        let preview = snapshot.previewText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return preview.isEmpty ? "open Fil to continue" : preview
     }
 }
 
@@ -59,30 +141,35 @@ struct FilPinnedWidget: Widget {
     let kind: String = "FilPinnedWidget"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
             FilPinnedWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
+                .containerBackground(for: .widget) {
+                    ZStack {
+                        Color(red: 0.06, green: 0.06, blue: 0.07)
+                        if let snapshot = entry.snapshot {
+                            FilLiveActivityBottomGlow(
+                                startHex: snapshot.gradientStartHex,
+                                endHex: snapshot.gradientEndHex
+                            )
+                        }
+                    }
+                }
         }
-    }
-}
-
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
+        .configurationDisplayName("Pinned Fil")
+        .description("Your pinned fil at a glance.")
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
 #Preview(as: .systemSmall) {
     FilPinnedWidget()
 } timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
+    PinnedFilEntry(date: .now, snapshot: .sample)
+    PinnedFilEntry(date: .now, snapshot: nil)
+}
+
+#Preview(as: .systemMedium) {
+    FilPinnedWidget()
+} timeline: {
+    PinnedFilEntry(date: .now, snapshot: .sample)
 }

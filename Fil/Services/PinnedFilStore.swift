@@ -1,4 +1,5 @@
 import Foundation
+import WidgetKit
 
 struct PinnedFilSnapshot: Codable, Equatable, Identifiable {
     var id: UUID
@@ -31,12 +32,15 @@ struct PinnedFilSnapshot: Codable, Equatable, Identifiable {
 final class PinnedFilStore {
     static let shared = PinnedFilStore()
 
+    static let appGroupIdentifier = "group.com.masongarcera.Fil"
+    static let widgetKind = "FilPinnedWidget"
+
     private let defaults: UserDefaults
     private let pinnedFilKey = "pinnedFilSnapshot"
 
     private(set) var pinnedFil: PinnedFilSnapshot?
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = UserDefaults(suiteName: PinnedFilStore.appGroupIdentifier) ?? .standard) {
         self.defaults = defaults
         self.pinnedFil = Self.loadPinnedFil(from: defaults, key: pinnedFilKey)
     }
@@ -62,6 +66,7 @@ final class PinnedFilStore {
     func unpin() {
         pinnedFil = nil
         defaults.removeObject(forKey: pinnedFilKey)
+        WidgetCenter.shared.reloadTimelines(ofKind: Self.widgetKind)
     }
 
     func isPinned(_ note: Note) -> Bool {
@@ -73,6 +78,7 @@ final class PinnedFilStore {
 
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         defaults.set(data, forKey: pinnedFilKey)
+        WidgetCenter.shared.reloadTimelines(ofKind: Self.widgetKind)
     }
 
     private static func loadPinnedFil(from defaults: UserDefaults, key: String) -> PinnedFilSnapshot? {

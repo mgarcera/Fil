@@ -21,23 +21,25 @@ struct FilPinnedWidgetLiveActivity: Widget {
             PinnedFilLockScreenView(state: context.state)
                 .activityBackgroundTint(Color(red: 0.05, green: 0.05, blue: 0.06))
                 .activitySystemActionForegroundColor(.white)
+                .widgetURL(URL(string: "fil://pinned?id=\(context.attributes.noteID.uuidString)"))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.bottom) {
                     PinnedFilExpandedContent(state: context.state)
                 }
             } compactLeading: {
-                FilLogoMark(size: 15)
+                FilBlobMark(size: 16, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
             } compactTrailing: {
                 Text(compactTitle(context.state))
                     .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(.white.opacity(0.72))
                     .lineLimit(1)
             } minimal: {
-                FilLogoMark(size: 13)
+                FilBlobMark(size: 14, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
             }
             .widgetURL(URL(string: "fil://pinned?id=\(context.attributes.noteID.uuidString)"))
             .keylineTint(Color(red: 0.2, green: 0.75, blue: 0.6))
+            .contentMargins(.all, 0, for: .expanded)
         }
     }
 
@@ -56,7 +58,7 @@ private struct PinnedFilLockScreenView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            FilLogoMark(size: 24)
+            FilBlobMark(size: 26, startHex: state.gradientStartHex, endHex: state.gradientEndHex)
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -78,7 +80,9 @@ private struct PinnedFilLockScreenView: View {
         .padding(.vertical, 14)
         .frame(minHeight: 124, alignment: .center)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(FilLiveActivityGradient(startHex: state.gradientStartHex, endHex: state.gradientEndHex))
+        .background(alignment: .bottom) {
+            FilLiveActivityBottomGlow(startHex: state.gradientStartHex, endHex: state.gradientEndHex)
+        }
     }
 
     private var displayTitle: String {
@@ -94,31 +98,28 @@ private struct PinnedFilExpandedContent: View {
     let state: PinnedFilLiveActivityAttributes.ContentState
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            FilLogoMark(size: 18)
-                .padding(.top, 1)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(displayTitle)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+                .multilineTextAlignment(.leading)
+                .lineLimit(1)
+                .truncationMode(.tail)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(displayTitle)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-
-                Text(displayPreview)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(4)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            Text(displayPreview)
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(.white.opacity(0.72))
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .truncationMode(.tail)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.top, 5)
-        .padding(.bottom, 7)
-        .background(FilLiveActivityGradient(startHex: state.gradientStartHex, endHex: state.gradientEndHex).opacity(0.9))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, 32)
+        .padding(.top, 8)
+        .padding(.bottom, 16)
+        .background(alignment: .bottom) {
+            FilLiveActivityBottomGlow(startHex: state.gradientStartHex, endHex: state.gradientEndHex)
+        }
     }
 
     private var displayTitle: String {
@@ -130,37 +131,137 @@ private struct PinnedFilExpandedContent: View {
     }
 }
 
-private struct FilLogoMark: View {
+/// A small gradient blob (matching the note-card blobs) used in place of the logo.
+struct FilBlobMark: View {
     let size: CGFloat
+    let startHex: String
+    let endHex: String
+
+    private var seed: Double {
+        let scalars = (startHex + endHex).unicodeScalars
+        let hash = scalars.reduce(UInt32(2166136261)) { partial, scalar in
+            (partial ^ scalar.value) &* 16777619
+        }
+        return Double(hash % 10_000) / 10_000
+    }
 
     var body: some View {
-        Image("FilLogo")
-            .resizable()
-            .renderingMode(.original)
-            .scaledToFit()
+        LiveActivityBlobShape(seed: seed)
+            .fill(
+                LinearGradient(
+                    colors: [Color(hex: startHex), Color(hex: endHex)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
 }
 
-private struct FilLiveActivityGradient: View {
+/// A soft gradient glow pooled at the bottom of the card, echoing the article view.
+/// Fills whatever space it's given; the glow circles are centered just below the bottom
+/// edge so only their soft upper falloff shows — no hard-clipped arcs.
+struct FilLiveActivityBottomGlow: View {
     let startHex: String
     let endHex: String
 
     var body: some View {
-        LinearGradient(
-            colors: [
-                Color(hex: startHex),
-                Color(hex: endHex)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .overlay(Color.white.opacity(0.18))
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+
+            ZStack {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.35),
+                        .init(color: Color(hex: startHex).opacity(0.32), location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                Circle()
+                    .fill(Color(hex: startHex).opacity(0.6))
+                    .frame(width: 150, height: 150)
+                    .blur(radius: 38)
+                    .position(x: width * 0.28, y: height + 26)
+
+                Circle()
+                    .fill(Color(hex: endHex).opacity(0.6))
+                    .frame(width: 160, height: 160)
+                    .blur(radius: 40)
+                    .position(x: width * 0.78, y: height + 30)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
-private extension Color {
+struct LiveActivityBlobShape: Shape {
+    let seed: Double
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let points = 5 + Int(seed * 4.999)
+        let amplitude = CGFloat(0.055 + (seed * 0.055))
+        let secondaryFrequency = CGFloat(2 + Int(Self.unitNoise(seed, salt: 17) * 4))
+        let tertiaryFrequency = CGFloat(3 + Int(Self.unitNoise(seed, salt: 23) * 4))
+        let phaseA = CGFloat(seed * .pi * 2)
+        let phaseB = CGFloat((1 - seed) * .pi * 2)
+        let rotation = CGFloat((Self.unitNoise(seed, salt: 29) - 0.5) * 0.7)
+        let asymmetryPhase = CGFloat(Self.unitNoise(seed, salt: 37) * .pi * 2)
+        let asymmetryStrength = CGFloat((Self.unitNoise(seed, salt: 41) - 0.5) * 0.18)
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radiusX = rect.width * 0.46
+        let radiusY = rect.height * 0.42
+        let blobPoints = (0..<points).map { index -> CGPoint in
+            let angle = (CGFloat(index) / CGFloat(points) * .pi * 2) + rotation
+            let pointOffset = CGFloat((Self.unitNoise(seed, salt: Double(index) + 101) - 0.5) * 0.22)
+            let waveOffset = (
+                sin(angle * secondaryFrequency + phaseA) * 0.65
+                + sin(angle * tertiaryFrequency + phaseB) * 0.45
+            ) * amplitude
+            let asymmetryOffset = cos(angle + asymmetryPhase) * asymmetryStrength
+            let radiusMultiplier = max(0.72, 1 + pointOffset + waveOffset + asymmetryOffset)
+            return CGPoint(
+                x: center.x + cos(angle) * radiusX * radiusMultiplier,
+                y: center.y + sin(angle) * radiusY * radiusMultiplier
+            )
+        }
+
+        guard let firstPoint = blobPoints.first else { return path }
+        path.move(to: firstPoint)
+
+        for index in 0..<points {
+            let current = blobPoints[index]
+            let next = blobPoints[(index + 1) % points]
+            let previous = blobPoints[(index - 1 + points) % points]
+            let following = blobPoints[(index + 2) % points]
+            path.addCurve(
+                to: next,
+                control1: CGPoint(
+                    x: current.x + (next.x - previous.x) * 0.2,
+                    y: current.y + (next.y - previous.y) * 0.2
+                ),
+                control2: CGPoint(
+                    x: next.x - (following.x - current.x) * 0.2,
+                    y: next.y - (following.y - current.y) * 0.2
+                )
+            )
+        }
+
+        path.closeSubpath()
+        return path
+    }
+
+    private static func unitNoise(_ seed: Double, salt: Double) -> Double {
+        let value = sin((seed + 0.137) * (salt + 12.9898) * 78.233) * 43758.5453
+        return value - floor(value)
+    }
+}
+
+extension Color {
     init(hex: String) {
         let cleanedHex = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
         let scanner = Scanner(string: cleanedHex)
