@@ -884,7 +884,7 @@ struct ContentView: View {
 
         let gradient = freshGradientPair()
         let note = Note(
-            title: "",
+            title: metadata.keyword,
             transcript: caption,
             articleBody: "",
             keyword: metadata.keyword,
@@ -912,7 +912,7 @@ struct ContentView: View {
 
         let gradient = freshGradientPair()
         let note = Note(
-            title: metadata.title,
+            title: metadata.keyword,
             transcript: transcript,
             articleBody: "",
             audioFilePath: audioFilePath,

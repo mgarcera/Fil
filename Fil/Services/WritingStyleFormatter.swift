@@ -12,8 +12,4 @@ enum WritingStyleFormatter {
 
         return styled
     }
-
-    static func applyTitleStyle(to text: String) -> String {
-        text.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
 }

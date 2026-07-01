@@ -108,7 +108,8 @@ final class Note {
             return sourceDomainBadge ?? "link"
         }
 
-        return keyword
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedTitle.isEmpty ? keyword : trimmedTitle
     }
 
     private var sourceDomainBadge: String? {

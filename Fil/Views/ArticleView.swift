@@ -719,6 +719,7 @@ struct ArticleView: View {
             )
             let previousTodoStates = Dictionary(uniqueKeysWithValues: zip(note.todos, note.completedTodos))
             note.keyword = metadata.keyword
+            note.title = metadata.keyword
             note.todos = metadata.todos
             note.completedTodos = metadata.todos.map { previousTodoStates[$0] ?? false }
             try? modelContext.save()
