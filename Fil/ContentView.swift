@@ -74,14 +74,18 @@ struct ContentView: View {
                         .onTapGesture { isComposerFocused = false }
                 }
             }
-            .overlay(alignment: .top) {
-                header
-            }
             .overlay(alignment: .bottom) {
                 bottomComposer
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
                 .zIndex(1)
+            }
+
+            // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
+            // glass controls reliably receive taps while content scrolls beneath it.
+            VStack(spacing: 0) {
+                header
+                Spacer(minLength: 0)
             }
         }
         .overlay {
@@ -221,25 +225,24 @@ struct ContentView: View {
     private var header: some View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                Image("FilLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-                    .padding(11)
-                    .glassEffect(in: .circle)
+                Button {
+                    SoundscapeManager.shared.playSettingsSound()
+                    showFilSetup = true
+                } label: {
+                    Image("FilLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .frame(width: 46, height: 46)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .glassEffect(in: .circle)
+                .accessibilityLabel("Settings")
 
                 Spacer()
 
-                HStack(spacing: 18) {
-                    Button {
-                        SoundscapeManager.shared.playSettingsSound()
-                        showFilSetup = true
-                    } label: {
-                        Image(systemName: "slider.horizontal.3")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(Theme.primaryText)
-                    }
-
+                HStack(spacing: 4) {
                     Menu {
                         Section("Screensavers") {
                             Button {
@@ -257,6 +260,8 @@ struct ContentView: View {
                         Image(systemName: "zzz")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundStyle(Theme.primaryText)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .disabled(notes.isEmpty)
                     .opacity(notes.isEmpty ? 0.45 : 1)
@@ -269,10 +274,12 @@ struct ContentView: View {
                         Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
                             .font(.system(size: 18))
                             .foregroundStyle(Theme.primaryText)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 11)
+                .padding(.horizontal, 6)
                 .glassEffect()
             }
         }
