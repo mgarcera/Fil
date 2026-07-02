@@ -288,7 +288,7 @@ private struct AuroraLeavesScreensaverLayer: View {
         let blobSize = min(size.width, size.height) * 0.12
         let margin = 0.12
         let freq = 1.3              // spatial scale of the current (low = broad, coherent)
-        let timeScale = 0.09        // how fast the current evolves
+        let timeScale = 0.15        // how fast the current evolves
         let ampX = Double(size.width) * 0.26
         let ampY = Double(size.height) * 0.22
 

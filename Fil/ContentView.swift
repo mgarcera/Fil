@@ -263,17 +263,17 @@ struct ContentView: View {
                             Button {
                                 launchScreensaver(.wave)
                             } label: {
-                                Label("filash", systemImage: "light.overhead.left")
+                                Label("filharmonic", systemImage: "light.overhead.left")
                             }
                             Button {
                                 launchScreensaver(.auroraLeaves)
                             } label: {
-                                Label("filow", systemImage: "water.waves")
+                                Label("filanthropy", systemImage: "water.waves")
                             }
                             Button {
                                 launchScreensaver(.auroraRibbons)
                             } label: {
-                                Label("filight", systemImage: "rainbow")
+                                Label("chlorofil", systemImage: "rainbow")
                             }
                             Button {
                                 launchKoiPond()
