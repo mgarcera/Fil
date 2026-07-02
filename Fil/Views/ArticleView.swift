@@ -121,6 +121,12 @@ struct ArticleView: View {
                 .ignoresSafeArea()
             }
 
+            FilrTopEdgeGlow(
+                startColor: Color(hex: note.gradientStartHex),
+                endColor: Color(hex: note.gradientEndHex)
+            )
+            .ignoresSafeArea()
+
             if note.isLinkFil {
                 linkFilContentView
                     .padding(.horizontal, 16)

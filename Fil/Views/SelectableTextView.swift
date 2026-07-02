@@ -107,7 +107,7 @@ struct SelectableTextView: UIViewRepresentable {
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
             guard range.length > 0 else { return UIMenu(children: suggestedActions) }
 
-            let attachAction = UIAction(title: "fil'ament", image: UIImage(systemName: "paperclip")) { [weak self] _ in
+            let attachAction = UIAction(title: "filament", image: UIImage(systemName: "paperclip")) { [weak self] _ in
                 guard let self else { return }
                 let nsText = textView.text as NSString
                 let selectedText = nsText.substring(with: range)
@@ -250,7 +250,7 @@ final class FilSelectableNSTextView: NSTextView {
         }
 
         menu.insertItem(
-            withTitle: "fil'ament",
+            withTitle: "filament",
             action: #selector(attachSelectedText(_:)),
             keyEquivalent: "",
             at: 0
