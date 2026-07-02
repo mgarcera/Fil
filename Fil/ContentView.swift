@@ -109,7 +109,7 @@ struct ContentView: View {
                 }
 
                 if showKoiPond {
-                    KoiPondView(blobs: FilScreensaverView.buildBlobs(from: notes)) {
+                    AquariumView(blobs: FilScreensaverView.buildBlobs(from: notes)) {
                         withAnimation(.easeInOut(duration: 0.4)) {
                             showKoiPond = false
                         }
@@ -263,24 +263,22 @@ struct ContentView: View {
                             Button {
                                 launchScreensaver(.wave)
                             } label: {
-                                Label("filiform", systemImage: "water.waves")
+                                Label("filash", systemImage: "light.overhead.left")
                             }
                             Button {
                                 launchScreensaver(.auroraLeaves)
                             } label: {
-                                Label("filow", systemImage: "wind")
+                                Label("filow", systemImage: "water.waves")
                             }
                             Button {
                                 launchScreensaver(.auroraRibbons)
                             } label: {
-                                Label("filight", systemImage: "sparkles")
+                                Label("filight", systemImage: "rainbow")
                             }
-                        }
-                        Section("Aquarium") {
                             Button {
                                 launchKoiPond()
                             } label: {
-                                Label("filtank", systemImage: "fish.fill")
+                                Label("fillet", systemImage: "fish.fill")
                             }
                         }
                     } label: {

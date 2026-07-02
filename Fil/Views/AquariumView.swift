@@ -9,7 +9,7 @@ import UIKit
 /// left/right (flipping to face their heading) and hunt for food; the food is your fils —
 /// blob-shaped gradient pellets that sink from where you tap. A reef of coral, anemone,
 /// starfish, crabs and shells lines the floor, with a jellyfish and seahorse drifting.
-struct KoiPondView: View {
+struct AquariumView: View {
     var onExit: () -> Void
     @State private var scene: AquariumScene
 
@@ -29,7 +29,7 @@ struct KoiPondView: View {
         }
         .ignoresSafeArea()
         // Tap feeds the fish, so exit is an explicit (subtle) control rather than a tap.
-        .overlay(alignment: .topTrailing) {
+        .overlay(alignment: .topLeading) {
             Button(action: onExit) {
                 Image(systemName: "xmark")
                     .font(.system(size: 15, weight: .semibold))
@@ -39,8 +39,8 @@ struct KoiPondView: View {
             }
             .buttonStyle(.plain)
             .glassEffect(in: .circle)
-            .padding(.top, 8)
-            .padding(.trailing, 16)
+            .padding(.top, 100)
+            .padding(.leading, 16)
         }
         .onAppear { setIdleTimer(disabled: true) }
         .onDisappear { setIdleTimer(disabled: false) }
@@ -130,7 +130,9 @@ final class AquariumScene: SKScene {
     }
 
     private func addReef() {
-        let floorDecor = ["coral1", "coral2", "anemone", "seashell", "hermitcrab"]
+        let floorDecor = ["coral1", "coral2",
+                          "coral_1", "coral_2", "coral_3", "coral_4", "coral_5",
+                          "coral_6", "coral_7", "coral_8", "coral_9"]
         var x: CGFloat = CGFloat.random(in: 20...60)
         while x < size.width - 20 {
             let name = floorDecor.randomElement()!
@@ -427,18 +429,22 @@ final class AquariumScene: SKScene {
 
     // MARK: - Texture helpers
 
-    static func loadTexture(_ name: String) -> SKTexture? {
-        #if canImport(UIKit)
-        var image = UIImage(named: name)
-        if image == nil {
-            for sub in [nil, "Aquarium", "Resources/Aquarium"] {
-                if let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: sub) {
-                    image = UIImage(contentsOfFile: url.path)
-                    if image != nil { break }
-                }
+    #if canImport(UIKit)
+    static func loadUIImage(_ name: String) -> UIImage? {
+        if let image = UIImage(named: name) { return image }
+        for sub in [nil, "Aquarium", "Resources/Aquarium"] {
+            if let url = Bundle.main.url(forResource: name, withExtension: "png", subdirectory: sub),
+               let image = UIImage(contentsOfFile: url.path) {
+                return image
             }
         }
-        guard let image else { return nil }
+        return nil
+    }
+    #endif
+
+    static func loadTexture(_ name: String) -> SKTexture? {
+        #if canImport(UIKit)
+        guard let image = loadUIImage(name) else { return nil }
         let texture = SKTexture(image: image)
         texture.filteringMode = .nearest    // crisp pixel art
         return texture
