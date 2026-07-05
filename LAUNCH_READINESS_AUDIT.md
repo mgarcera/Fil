@@ -352,7 +352,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 *Ordered for a sensible execution flow: unblock the build, then the binary/config, then submission metadata, then reliability/accessibility, then growth/monetization, then future.*
 
 **Phase 1 — Hard build/submission blockers (do first)**
-1. [ ] Guard FoundationModels with `SystemLanguageModel.default.availability` + `keywordFallback()`; move the throwing call so notes always insert — `apple-skills:apple-intelligence`
+1. [x] Guard FoundationModels with `SystemLanguageModel.default.availability` + `keywordFallback()`; move the throwing call so notes always insert — `apple-skills:apple-intelligence`
 2. [ ] Trim `SUPPORTED_PLATFORMS`/`TARGETED_DEVICE_FAMILY`/`SDKROOT`, delete XROS/MACOSX targets + Mac runpath, drop iPad orientation key + Mac AppIcon idioms — `apple-skills:ios`
 3. [ ] Unify `IPHONEOS_DEPLOYMENT_TARGET` across app, widget, and share extension — `apple-skills:ios`
 4. [ ] Add `ITSAppUsesNonExemptEncryption = NO` — `apple-skills:release-review`

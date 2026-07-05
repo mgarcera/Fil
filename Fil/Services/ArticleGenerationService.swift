@@ -42,6 +42,25 @@ final class ArticleGenerationService {
         return content
     }
 
+    /// Always returns a usable title without throwing. Gates on the on-device model's
+    /// availability and degrades to the local text fallback when Apple Intelligence is
+    /// unavailable (Simulator, unsupported device, model still downloading) or when
+    /// generation fails — so note creation can never be blocked or lose data on the AI step.
+    func generateTitle(from text: String) async -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        if SystemLanguageModel.default.isAvailable {
+            do {
+                return try await generateMetadata(from: text).keyword
+            } catch {
+                // Fall through to the on-device text fallback below.
+            }
+        }
+
+        return shortLabel(from: keywordFallback(from: text))
+    }
+
     /// Shapes a generated label into a short, natural title — the unified
     /// title/badge shown throughout the app. Caps the length, trims trailing
     /// connective words so it never ends on a preposition, and capitalizes the

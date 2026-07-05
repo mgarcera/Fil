@@ -1147,7 +1147,7 @@ struct ContentView: View {
     private func saveImageFil(caption: String, imageData: [Data], todos: [String] = [], filID: UUID) async throws {
         let title = caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             ? (todos.first ?? "")
-            : try await ArticleGenerationService.shared.generateMetadata(from: caption).keyword
+            : await ArticleGenerationService.shared.generateTitle(from: caption)
 
         let gradient = freshGradientPair()
         let note = Note(
@@ -1179,7 +1179,7 @@ struct ContentView: View {
         if transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             title = todos.first ?? ""
         } else {
-            title = try await ArticleGenerationService.shared.generateMetadata(from: transcript).keyword
+            title = await ArticleGenerationService.shared.generateTitle(from: transcript)
         }
 
         let gradient = freshGradientPair()
