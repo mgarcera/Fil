@@ -72,3 +72,14 @@ file's hunks into two commits needs interactive `git add -p`, which isn't availa
   trailing space; clearer wording).
 - Verified: grep shows all three keys correct in both Debug and Release.
 
+### #5 — Privacy manifests (audit #5) ✅
+- Added `PrivacyInfo.xcprivacy` to all three targets: `Fil/`, `FilPinnedWidget/`,
+  `FilShareExtension/`. Each declares `NSPrivacyTracking=false`, empty tracking-domains, empty
+  collected-data-types, and one `NSPrivacyAccessedAPICategoryUserDefaults` entry with reasons
+  `CA92.1` (app-group access) + `1C8F.1` (app-internal access) — the superset that covers both
+  the app-group snapshot suite (PinnedFilStore) and @AppStorage/standard UserDefaults use.
+- No pbxproj edit needed: the project uses PBXFileSystemSynchronizedRootGroups mapping 1:1 to the
+  three target folders (only `Info.plist` is excepted), so each manifest is auto-added to its
+  target as a bundled resource. Verified by reading the synchronized-group + exception sections.
+- Phase-end build will confirm the manifests copy into each bundle cleanly.
+
