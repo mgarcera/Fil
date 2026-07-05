@@ -60,6 +60,12 @@ final class VoiceRecorderViewModel {
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.shouldReportPartialResults = false
 
+        // Keep transcription on-device whenever the recognizer supports it, so voice audio
+        // never leaves the phone — matching Fil's local-first privacy promise.
+        if recognizer.supportsOnDeviceRecognition {
+            request.requiresOnDeviceRecognition = true
+        }
+
         return try await withCheckedThrowingContinuation { continuation in
             recognizer.recognitionTask(with: request) { result, error in
                 if let error {

@@ -357,7 +357,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 3. [ ] Unify `IPHONEOS_DEPLOYMENT_TARGET` across app, widget, and share extension — `apple-skills:ios`
 4. [ ] Add `ITSAppUsesNonExemptEncryption = NO` — `apple-skills:release-review`
 5. [ ] Add `PrivacyInfo.xcprivacy` (app + extensions) with UserDefaults `CA92.1`/`1C8F.1` and empty collection/tracking — `apple-skills:legal`
-6. [ ] Set `requiresOnDeviceRecognition = true` (gated on `supportsOnDeviceRecognition`) OR reconcile all on-device claims — `apple-skills:apple-intelligence`
+6. [x] Set `requiresOnDeviceRecognition = true` (gated on `supportsOnDeviceRecognition`) OR reconcile all on-device claims — `apple-skills:apple-intelligence` *(code done; privacy-policy wording for no-on-device-support devices tracked in Phase 2 #9)*
 7. [ ] Fix the Speech usage string (and camera trailing space) — `apple-skills:release-review`
 8. [ ] Make `Theme.dmSans/dmMono` Dynamic-Type-aware + `UIFontMetrics` for `SelectableTextView`; convert inline sites — `xcode-integration:accessibility-dynamic-type-specialist`
 

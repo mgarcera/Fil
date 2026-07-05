@@ -31,3 +31,13 @@ validate everything together.
   in ArticleView already had its own do/catch and operates on an already-saved note, so left as-is.
 - Verified: live diagnostics clean on both files.
 
+### #6 — Force on-device speech recognition (audit #6) ✅
+- In `VoiceRecorderViewModel.transcribe(url:)`, set `request.requiresOnDeviceRecognition = true`
+  gated on `recognizer.supportsOnDeviceRecognition`, so voice audio stays on the device wherever
+  the recognizer supports it. This makes the in-app "processed locally" claim literally true on
+  supported hardware.
+- Follow-up for Phase 2 (legal): on the rare devices without on-device speech support, transcription
+  still falls back to Apple's service — the privacy policy wording must disclose that edge, and no
+  absolute "100% on-device" listing claim ships until then. Tracked under audit #6/legal.
+- Verified: live diagnostics clean.
+
