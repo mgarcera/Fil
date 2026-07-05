@@ -13,8 +13,12 @@ final class AudioPlayerViewModel {
     func load(path: String) {
         guard let url = Self.audioFileURL(for: path) else { return }
         do {
+            // Note: no `prepareToPlay()` here. It activates the audio session, and
+            // `load` runs on the main thread (from the view's `onAppear`), which
+            // triggers the AVAudioSession "UI unresponsiveness" fault. `duration` is
+            // available straight after init, and playback activates the session
+            // off the main thread via `configurePlayback()` before `play()`.
             player = try AVAudioPlayer(contentsOf: url)
-            player?.prepareToPlay()
             duration = player?.duration ?? 0
         } catch {
             player = nil

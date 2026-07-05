@@ -9,7 +9,7 @@ import WidgetKit
 import SwiftUI
 
 private let appGroupIdentifier = "group.com.masongarcera.Fil"
-private let pinnedFilKey = "pinnedFilSnapshot"
+private let pinnedFilFileName = "pinnedFilSnapshot.json"
 
 /// Mirrors the app's `PinnedFilSnapshot`, decoded from the shared App Group container.
 struct PinnedFilWidgetSnapshot: Codable {
@@ -48,12 +48,18 @@ struct Provider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedFilEntry>) -> Void) {
         let entry = PinnedFilEntry(date: Date(), snapshot: loadSnapshot())
-        completion(Timeline(entries: [entry], policy: .never))
+        // Self-heal: re-read the shared file periodically so the widget converges
+        // on the current pin even if an explicit WidgetCenter reload is dropped
+        // (or a stale timeline was restored when the widget was re-added).
+        let nextRefresh = Date().addingTimeInterval(15 * 60)
+        completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
     }
 
     private func loadSnapshot() -> PinnedFilWidgetSnapshot? {
-        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
-              let data = defaults.data(forKey: pinnedFilKey) else {
+        guard let url = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
+            .appendingPathComponent(pinnedFilFileName),
+            let data = try? Data(contentsOf: url) else {
             return nil
         }
         return try? JSONDecoder().decode(PinnedFilWidgetSnapshot.self, from: data)
@@ -93,19 +99,11 @@ struct FilPinnedWidgetEntryView: View {
 
             Spacer(minLength: 0)
 
-            Text(displayTitle(snapshot))
-                .font(.system(size: family == .systemSmall ? 15 : 17, weight: .semibold))
+            Text(displayPreview(snapshot))
+                .font(.system(size: family == .systemSmall ? 14 : 15, weight: .regular))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.leading)
-                .lineLimit(family == .systemSmall ? 3 : 2)
-
-            if family != .systemSmall {
-                Text(displayPreview(snapshot))
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(3)
-            }
+                .lineLimit(family == .systemSmall ? 4 : 4)
         }
     }
 
@@ -124,11 +122,6 @@ struct FilPinnedWidgetEntryView: View {
                 .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(.white.opacity(0.6))
         }
-    }
-
-    private func displayTitle(_ snapshot: PinnedFilWidgetSnapshot) -> String {
-        let title = snapshot.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return title.isEmpty ? "pinned fil" : title
     }
 
     private func displayPreview(_ snapshot: PinnedFilWidgetSnapshot) -> String {
@@ -157,7 +150,7 @@ struct FilPinnedWidget: Widget {
         }
         .configurationDisplayName("Pinned Fil")
         .description("Your pinned fil at a glance.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall])
     }
 }
 
@@ -166,10 +159,4 @@ struct FilPinnedWidget: Widget {
 } timeline: {
     PinnedFilEntry(date: .now, snapshot: .sample)
     PinnedFilEntry(date: .now, snapshot: nil)
-}
-
-#Preview(as: .systemMedium) {
-    FilPinnedWidget()
-} timeline: {
-    PinnedFilEntry(date: .now, snapshot: .sample)
 }

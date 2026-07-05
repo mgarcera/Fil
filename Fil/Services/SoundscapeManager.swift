@@ -39,79 +39,54 @@ final class SoundscapeManager {
     }
 
     func playOpenFilClick() {
-        guard let clickPlayer else { return }
-
-        configureAmbientSession()
-        clickPlayer.currentTime = 0
-        clickPlayer.play()
+        play(clickPlayer)
     }
 
     func playTabSound() {
-        guard let tabPlayer else { return }
-
-        configureAmbientSession()
-        tabPlayer.currentTime = 0
-        tabPlayer.play()
+        play(tabPlayer)
     }
 
     func playTransformRefilSound() {
-        guard let transformPlayer else { return }
-
-        configureAmbientSession()
-        transformPlayer.currentTime = 0
-        transformPlayer.play()
+        play(transformPlayer)
     }
 
     func playGridSound() {
-        guard let gridPlayer else { return }
-
-        configureAmbientSession()
-        gridPlayer.currentTime = 0
-        gridPlayer.play()
+        play(gridPlayer)
     }
 
     func playTapToWriteSound() {
-        guard let tapToWritePlayer else { return }
-
-        configureAmbientSession()
-        tapToWritePlayer.currentTime = 0
-        tapToWritePlayer.play()
+        play(tapToWritePlayer)
     }
 
     func playLandfilSound() {
-        guard let landfilPlayer else { return }
-
-        configureAmbientSession()
-        landfilPlayer.currentTime = 0
-        landfilPlayer.play()
+        play(landfilPlayer)
     }
 
     func playArticleMadeSound() {
-        guard let articleMadePlayer else { return }
-
-        configureAmbientSession()
-        articleMadePlayer.currentTime = 0
-        articleMadePlayer.play()
+        play(articleMadePlayer)
     }
 
     func startMeshDuringProcessSound() {
         guard let meshDuringProcessPlayer else { return }
 
-        configureAmbientSession()
-        guard !meshDuringProcessPlayer.isPlaying else { return }
-        meshDuringProcessPlayer.currentTime = 0
-        meshDuringProcessPlayer.numberOfLoops = 0
-        meshDuringProcessPlayer.volume = 0
-        meshDuringProcessPlayer.play()
-        meshDuringProcessPlayer.setVolume(0.34, fadeDuration: 0.25)
+        AudioSessionCoordinator.performMixingAmbient {
+            guard !meshDuringProcessPlayer.isPlaying else { return }
+            meshDuringProcessPlayer.currentTime = 0
+            meshDuringProcessPlayer.numberOfLoops = 0
+            meshDuringProcessPlayer.volume = 0
+            meshDuringProcessPlayer.play()
+            meshDuringProcessPlayer.setVolume(0.34, fadeDuration: 0.25)
+        }
     }
 
     func stopMeshDuringProcessSound() {
-        guard let meshDuringProcessPlayer, meshDuringProcessPlayer.isPlaying else { return }
+        guard let meshDuringProcessPlayer else { return }
 
-        meshDuringProcessPlayer.setVolume(0, fadeDuration: 0.2)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) { [weak self] in
-            guard let self, let meshDuringProcessPlayer = self.meshDuringProcessPlayer else { return }
+        AudioSessionCoordinator.perform {
+            guard meshDuringProcessPlayer.isPlaying else { return }
+            meshDuringProcessPlayer.setVolume(0, fadeDuration: 0.2)
+        }
+        AudioSessionCoordinator.perform(after: 0.22) {
             guard meshDuringProcessPlayer.volume == 0 else { return }
             meshDuringProcessPlayer.stop()
             meshDuringProcessPlayer.currentTime = 0
@@ -119,51 +94,47 @@ final class SoundscapeManager {
     }
 
     func playLightModeSound() {
-        guard let lightModePlayer else { return }
-
-        configureAmbientSession()
-        lightModePlayer.currentTime = 0
-        lightModePlayer.play()
+        play(lightModePlayer)
     }
 
     func playTodoSound() {
-        guard let todoSoundPlayer else { return }
-
-        configureAmbientSession()
-        todoSoundPlayer.currentTime = 0
-        todoSoundPlayer.play()
+        play(todoSoundPlayer)
     }
 
     func playTodoArticleToggleSound() {
-        guard let todoArticleTogglePlayer else { return }
-
-        configureAmbientSession()
-        todoArticleTogglePlayer.currentTime = 0
-        todoArticleTogglePlayer.play()
+        play(todoArticleTogglePlayer)
     }
 
     func playSettingsSound() {
-        guard let settingsPlayer else { return }
-
-        configureAmbientSession()
-        settingsPlayer.currentTime = 0
-        settingsPlayer.play()
+        play(settingsPlayer)
     }
 
     func playCollapsingSound() {
-        guard let collapsingPlayer else { return }
-
-        configureAmbientSession()
-        collapsingPlayer.currentTime = 0
-        collapsingPlayer.play()
+        play(collapsingPlayer)
     }
 
     func playCollapsePartTwoSound() {
-        guard let collapsingPartTwoPlayer else { return }
+        play(collapsingPartTwoPlayer)
+    }
 
-        configureAmbientSession()
-        collapsingPartTwoPlayer.currentTime = 0
-        collapsingPartTwoPlayer.play()
+    /// Plays a one-shot effect entirely on the audio queue. `AVAudioPlayer.play()`
+    /// implicitly activates the shared session, so keeping it off the main thread
+    /// is what avoids the audio-session UI-unresponsiveness fault.
+    /// Global mute, controlled by the Sound toggle in Settings. Defaults to on when the
+    /// key has never been set (`bool(forKey:)` returns false for a missing key, so the
+    /// absence check preserves "sound on" for existing users).
+    private var isSoundEnabled: Bool {
+        let defaults = UserDefaults.standard
+        return defaults.object(forKey: "soundEnabled") == nil || defaults.bool(forKey: "soundEnabled")
+    }
+
+    private func play(_ player: AVAudioPlayer?) {
+        guard isSoundEnabled, let player else { return }
+
+        AudioSessionCoordinator.performMixingAmbient {
+            player.currentTime = 0
+            player.play()
+        }
     }
 
     private func makePlayer(named name: String, fileExtension: String, volume: Float) -> AVAudioPlayer? {

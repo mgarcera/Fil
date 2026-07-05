@@ -17,7 +17,6 @@ final class Note {
     @Attribute(.unique) var uuid: UUID = UUID()
     var title: String
     var transcript: String
-    var articleBody: String
     var audioFilePath: String
     var timestamp: Date
     var duration: TimeInterval
@@ -42,7 +41,6 @@ final class Note {
     init(
         title: String = "",
         transcript: String = "",
-        articleBody: String = "",
         audioFilePath: String = "",
         timestamp: Date = .now,
         duration: TimeInterval = 0,
@@ -62,7 +60,6 @@ final class Note {
     ) {
         self.title = title
         self.transcript = transcript
-        self.articleBody = articleBody
         self.audioFilePath = audioFilePath
         self.timestamp = timestamp
         self.duration = duration
@@ -79,6 +76,37 @@ final class Note {
         self.sourceTitle = sourceTitle
         self.sourceFaviconData = sourceFaviconData
         self.imageData = imageData
+    }
+
+    /// Appends a manually-created to-do, keeping `completedTodos` in sync. Ignores blank
+    /// text and exact (case-insensitive) duplicates so the same action isn't added twice.
+    func addTodo(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        normalizeCompletedTodos()
+        guard !todos.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
+        todos.append(trimmed)
+        completedTodos.append(false)
+    }
+
+    /// Removes the to-do at `index`, keeping `completedTodos` in sync.
+    func removeTodo(at index: Int) {
+        normalizeCompletedTodos()
+        guard todos.indices.contains(index) else { return }
+        todos.remove(at: index)
+        if completedTodos.indices.contains(index) {
+            completedTodos.remove(at: index)
+        }
+    }
+
+    /// Keeps `completedTodos` the same length as `todos` (padding with `false`,
+    /// truncating any excess) so the two parallel arrays never drift out of sync.
+    func normalizeCompletedTodos() {
+        if completedTodos.count < todos.count {
+            completedTodos.append(contentsOf: Array(repeating: false, count: todos.count - completedTodos.count))
+        } else if completedTodos.count > todos.count {
+            completedTodos = Array(completedTodos.prefix(todos.count))
+        }
     }
 
     var isImageFil: Bool {

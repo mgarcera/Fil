@@ -35,12 +35,13 @@ struct WaveformView: View {
 
 struct CompactWaveformView: View {
     let duration: TimeInterval
+    var color: Color = Theme.secondaryText
     private let barCount = 12
 
     var body: some View {
         HStack(alignment: .center, spacing: 1.5) {
             ForEach(0..<barCount, id: \.self) { index in
-                WaveformBar(isAnimating: false, index: index)
+                WaveformBar(isAnimating: false, index: index, color: color)
             }
         }
     }
@@ -93,12 +94,13 @@ struct PlaybackWaveformView: View {
 private struct WaveformBar: View {
     let isAnimating: Bool
     let index: Int
+    var color: Color = Theme.secondaryText
 
     @State private var height: CGFloat = 0.3
 
     var body: some View {
         RoundedRectangle(cornerRadius: 1)
-            .fill(Theme.secondaryText)
+            .fill(color)
             .frame(width: 2, height: 4 + height * 12)
             .onAppear {
                 if isAnimating {

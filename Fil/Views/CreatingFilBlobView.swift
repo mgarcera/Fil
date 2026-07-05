@@ -46,6 +46,65 @@ struct CreatingFilBlobView: View {
     }
 }
 
+/// A smoothly wobbling blob outline whose points drift over `time` — used for the
+/// gooey fil-creation animation above.
+struct BlobShape: Shape {
+    let points: Int
+    let deformation: CGFloat
+    let time: CGFloat
+
+    init(points: Int = 6, amplitude: CGFloat = 4, time: CGFloat = 0) {
+        self.points = max(3, min(points, 32))
+        self.deformation = amplitude
+        self.time = time
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+
+        var blobPoints: [CGPoint] = []
+        for index in 0..<points {
+            let angle = CGFloat(index) / CGFloat(points) * .pi * 2
+            let s1 = sin(angle * 5.0 - time + 512.0) * 2.0
+            let s2 = sin(angle * 2.0 + time * 1.8 + 21.0) * 2.0
+            let noise = (s1 + s2) * deformation
+            let dynamicRadius = radius + noise
+            let x = center.x + cos(angle) * dynamicRadius
+            let y = center.y + sin(angle) * dynamicRadius
+            blobPoints.append(CGPoint(x: x, y: y))
+        }
+
+        guard let firstPoint = blobPoints.first else {
+            return path
+        }
+
+        path.move(to: firstPoint)
+
+        for index in 0..<points {
+            let currentPoint = blobPoints[index]
+            let nextPoint = blobPoints[(index + 1) % points]
+            let previousPoint = blobPoints[(index - 1 + points) % points]
+
+            let control1 = CGPoint(
+                x: currentPoint.x + (nextPoint.x - previousPoint.x) * 0.2,
+                y: currentPoint.y + (nextPoint.y - previousPoint.y) * 0.2
+            )
+
+            let control2 = CGPoint(
+                x: nextPoint.x - (blobPoints[(index + 2) % points].x - currentPoint.x) * 0.2,
+                y: nextPoint.y - (blobPoints[(index + 2) % points].y - currentPoint.y) * 0.2
+            )
+
+            path.addCurve(to: nextPoint, control1: control1, control2: control2)
+        }
+
+        path.closeSubpath()
+        return path
+    }
+}
+
 /// Applies `matchedGeometryEffect` only when a namespace is available, so views can
 /// opt into the fil-creation morph without every call site owning a `@Namespace`.
 private struct FilCreationMatchedGeometry: ViewModifier {

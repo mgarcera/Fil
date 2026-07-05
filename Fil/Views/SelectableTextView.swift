@@ -9,6 +9,7 @@ struct SelectableTextView: UIViewRepresentable {
     let gradientEndHex: String
     var onSelectText: (String, CGRect) -> Void
     var onTapHighlight: ((String) -> Void)?
+    var onMakeTodo: ((String) -> Void)?
     @Binding var height: CGFloat
 
     private var lighterHex: String {
@@ -123,7 +124,15 @@ struct SelectableTextView: UIViewRepresentable {
                 textView.selectedTextRange = nil
             }
 
-            return UIMenu(children: [attachAction] + suggestedActions)
+            let todoAction = UIAction(title: "make to-do", image: UIImage(systemName: "checkmark.circle")) { [weak self] _ in
+                guard let self else { return }
+                let selectedText = (textView.text as NSString).substring(with: range)
+                guard !selectedText.isEmpty else { return }
+                self.parent.onMakeTodo?(selectedText)
+                textView.selectedTextRange = nil
+            }
+
+            return UIMenu(children: [attachAction, todoAction] + suggestedActions)
         }
     }
 }
@@ -137,6 +146,7 @@ struct SelectableTextView: NSViewRepresentable {
     let gradientEndHex: String
     var onSelectText: (String, CGRect) -> Void
     var onTapHighlight: ((String) -> Void)?
+    var onMakeTodo: ((String) -> Void)?
     @Binding var height: CGFloat
 
     private var lighterHex: String {
@@ -256,11 +266,26 @@ final class FilSelectableNSTextView: NSTextView {
             at: 0
         )
         menu.item(at: 0)?.target = self
+        menu.insertItem(
+            withTitle: "make to-do",
+            action: #selector(makeTodoFromSelection(_:)),
+            keyEquivalent: "",
+            at: 1
+        )
+        menu.item(at: 1)?.target = self
         representedParent = parent
         return menu
     }
 
     private var representedParent: SelectableTextView?
+
+    @objc private func makeTodoFromSelection(_ sender: Any?) {
+        guard let parent = representedParent,
+              selectedRange().length > 0,
+              let selectedText = string.nsStringSafeSubstring(with: selectedRange()) else { return }
+        parent.onMakeTodo?(selectedText)
+        setSelectedRange(NSRange(location: 0, length: 0))
+    }
 
     @objc private func attachSelectedText(_ sender: Any?) {
         guard let parent = representedParent,

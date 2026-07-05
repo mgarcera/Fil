@@ -68,18 +68,33 @@ enum Theme {
             "#E0C27A",  // faded gold
             "#EAD5A3",  // pollen
         ],
+        [
+            // Vivid & cool accents, filling the pink/violet/cyan/lime gaps. Pairs freely
+            // with the bright and earthy palettes above (all combos are cross-palette).
+            "#E85B9C",  // rose
+            "#B5379E",  // fuchsia
+            "#8A4FD9",  // violet
+            "#33B5D9",  // sky
+            "#A8CC33",  // chartreuse
+            "#6E4B6E",  // plum
+            "#2E4FB3",  // royal blue
+            "#B9A5E6",  // lavender
+            "#26C2C2",  // teal-cyan
+            "#9E2B6E",  // deep magenta
+        ],
     ]
 
     static func randomGradientPair(
         avoidingRecentPairs recentPairs: Set<String> = [],
         avoidingRecentColors recentColors: Set<String> = []
     ) -> (start: String, end: String) {
-        let candidates = filGradientPalettes.flatMap { palette in
-            palette.indices.flatMap { i in
-                palette.indices.compactMap { j -> (start: String, end: String)? in
-                    guard i != j else { return nil }
-                    return (start: palette[i], end: palette[j])
-                }
+        // Pairs are drawn from ALL palette colors, including cross-palette combos
+        // (bright ↔ earthy), which more than doubles the available gradients.
+        let allColors = filGradientPalettes.flatMap { $0 }
+        let candidates = allColors.indices.flatMap { i in
+            allColors.indices.compactMap { j -> (start: String, end: String)? in
+                guard i != j else { return nil }
+                return (start: allColors[i], end: allColors[j])
             }
         }
         guard !candidates.isEmpty else { return (start: "#408CD9", end: "#6659CC") }
@@ -97,13 +112,26 @@ enum Theme {
         "\(pair.start)|\(pair.end)"
     }
 
-    static func gradient(startHex: String, endHex: String) -> LinearGradient {
+    static func gradient(startHex: String, endHex: String, seed: Double? = nil) -> LinearGradient {
         let startColor = Color(hex: startHex)
         let endColor = Color(hex: endHex)
+        let points = seed.map(gradientUnitPoints(seed:))
         return LinearGradient(
             gradient: Gradient(stops: smoothGradientStops(from: startColor, to: endColor)),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
+            startPoint: points?.start ?? .topLeading,
+            endPoint: points?.end ?? .bottomTrailing
+        )
+    }
+
+    /// A per-fil gradient direction derived from its seed, so blobs aren't all lit on
+    /// the same diagonal. Returns unit-space (0...1) endpoints for a line through center.
+    nonisolated static func gradientUnitPoints(seed: Double) -> (start: UnitPoint, end: UnitPoint) {
+        let angle = seed * 2 * .pi
+        let dx = CGFloat(cos(angle)) * 0.5
+        let dy = CGFloat(sin(angle)) * 0.5
+        return (
+            start: UnitPoint(x: 0.5 - dx, y: 0.5 - dy),
+            end: UnitPoint(x: 0.5 + dx, y: 0.5 + dy)
         )
     }
 

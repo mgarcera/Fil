@@ -30,7 +30,7 @@ struct FilPinnedWidgetLiveActivity: Widget {
             } compactLeading: {
                 FilBlobMark(size: 16, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
             } compactTrailing: {
-                Text(compactTitle(context.state))
+                Text(compactText(context.state))
                     .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(.white.opacity(0.72))
                     .lineLimit(1)
@@ -43,13 +43,9 @@ struct FilPinnedWidgetLiveActivity: Widget {
         }
     }
 
-    private func displayTitle(_ state: PinnedFilLiveActivityAttributes.ContentState) -> String {
-        let title = state.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return title.isEmpty ? "pinned fil" : title
-    }
-
-    private func compactTitle(_ state: PinnedFilLiveActivityAttributes.ContentState) -> String {
-        String(displayTitle(state).prefix(6))
+    private func compactText(_ state: PinnedFilLiveActivityAttributes.ContentState) -> String {
+        let preview = state.previewText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return String((preview.isEmpty ? "fil" : preview).prefix(10))
     }
 }
 
@@ -57,20 +53,13 @@ private struct PinnedFilLockScreenView: View {
     let state: PinnedFilLiveActivityAttributes.ContentState
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             FilBlobMark(size: 26, startHex: state.gradientStartHex, endHex: state.gradientEndHex)
-                .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(displayTitle)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
-
                 Text(displayPreview)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
                     .lineLimit(5)
             }
@@ -78,15 +67,10 @@ private struct PinnedFilLockScreenView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .frame(minHeight: 124, alignment: .center)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(alignment: .bottom) {
             FilLiveActivityBottomGlow(startHex: state.gradientStartHex, endHex: state.gradientEndHex)
         }
-    }
-
-    private var displayTitle: String {
-        state.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "pinned fil" : state.title
     }
 
     private var displayPreview: String {
@@ -99,18 +83,11 @@ private struct PinnedFilExpandedContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(displayTitle)
-                .font(.system(size: 13, weight: .semibold))
+            Text(displayPreview)
+                .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(.white)
                 .multilineTextAlignment(.leading)
-                .lineLimit(1)
-                .truncationMode(.tail)
-
-            Text(displayPreview)
-                .font(.system(size: 12, weight: .regular))
-                .foregroundStyle(.white.opacity(0.72))
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
+                .lineLimit(3)
                 .truncationMode(.tail)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,10 +97,6 @@ private struct PinnedFilExpandedContent: View {
         .background(alignment: .bottom) {
             FilLiveActivityBottomGlow(startHex: state.gradientStartHex, endHex: state.gradientEndHex)
         }
-    }
-
-    private var displayTitle: String {
-        state.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "pinned fil" : state.title
     }
 
     private var displayPreview: String {

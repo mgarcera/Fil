@@ -1,0 +1,263 @@
+import SwiftUI
+import SwiftData
+
+/// The app's settings, reached from the home header. Reuses the onboarding aesthetic —
+/// a capsule tab bar over an animated ambient gradient, with a glass card below — but
+/// each tab is a real settings section and every control applies live (no save step).
+struct SettingsView: View {
+    @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
+    @AppStorage("soundEnabled") private var soundEnabled = true
+    @AppStorage("prefersLowercase") private var prefersLowercase = false
+
+    @State private var section: SettingsSection = .writing
+    @State private var showFromMason = false
+    @State private var contentVisible = false
+
+    var body: some View {
+        ZStack {
+            ambientBackground
+                .ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    header
+                    sectionTabs
+                    sectionCard
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 24)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .task {
+            withAnimation(.smooth(duration: 0.7, extraBounce: 0)) {
+                contentVisible = true
+            }
+        }
+        .sheet(isPresented: $showFromMason) {
+            FromMasonFilCard()
+                .presentationDetents([.large])
+                .presentationBackground(Theme.background)
+        }
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack {
+            Text("fil")
+                .font(Theme.dmSans(18, weight: .bold))
+                .foregroundStyle(.white)
+
+            Spacer()
+
+            Text("settings")
+                .font(Theme.dmMono(12))
+                .foregroundStyle(.white.opacity(0.7))
+        }
+        .blurOpacityEffect(contentVisible)
+    }
+
+    // MARK: - Tabs
+
+    private var sectionTabs: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 10) {
+                ForEach(SettingsSection.allCases) { tab in
+                    Button {
+                        guard section != tab else { return }
+                        SoundscapeManager.shared.playTabSound()
+                        withAnimation(.snappy) { section = tab }
+                    } label: {
+                        let isSelected = section == tab
+                        Text(tab.title)
+                            .font(Theme.dmSans(15, weight: .semibold))
+                            .foregroundStyle(isSelected ? Color.black : .white)
+                            .padding(.horizontal, 18)
+                            .frame(height: 44)
+                            .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
+                            .overlay {
+                                Capsule()
+                                    .stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
+        .blurOpacityEffect(contentVisible)
+    }
+
+    // MARK: - Section card
+
+    private var sectionCard: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            switch section {
+            case .writing:
+                settingToggle(
+                    "use lowercase",
+                    description: "fil renders titles and transcripts in lowercase for a more casual voice.",
+                    isOn: $prefersLowercase
+                )
+
+            case .sound:
+                settingToggle(
+                    "sound effects",
+                    description: "play clicks, chimes, and transitions. turn off for silence.",
+                    isOn: $soundEnabled
+                )
+
+            case .screensaver:
+                settingToggle(
+                    "auto screensaver",
+                    description: "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery. unlocks after at least 10 fils.",
+                    isOn: $autoScreensaverEnabled
+                )
+
+            case .about:
+                aboutContent
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(22)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(Color.white.opacity(0.1))
+                .background(
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
+                        .fill(.ultraThinMaterial.opacity(0.45))
+                )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+        }
+        .blurOpacityEffect(contentVisible)
+    }
+
+    private func settingToggle(_ title: String, description: String, isOn: Binding<Bool>) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle(isOn: isOn) {
+                Text(title)
+                    .font(Theme.dmSans(16, weight: .medium))
+                    .foregroundStyle(.white)
+            }
+            .tint(section.backgroundColors[0])
+
+            Text(description)
+                .font(Theme.dmSans(13))
+                .foregroundStyle(.white.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var aboutContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Button {
+                showFromMason = true
+            } label: {
+                HStack(spacing: 14) {
+                    Text("from mason")
+                        .font(Theme.dmSans(16, weight: .medium))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.72))
+                }
+            }
+            .buttonStyle(.plain)
+
+            Divider().overlay(Color.white.opacity(0.14))
+
+            Text("version \(appVersion)")
+                .font(Theme.dmMono(12))
+                .foregroundStyle(.white.opacity(0.5))
+        }
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+        return build.map { "\(version) (\($0))" } ?? version
+    }
+
+    // MARK: - Background
+
+    private var ambientBackground: some View {
+        let colors = section.backgroundColors
+
+        return ZStack {
+            LinearGradient(
+                colors: [Color.black, Color.black.opacity(0.96), Color.black.opacity(0.92)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            Circle()
+                .fill(colors[0])
+                .frame(width: 300, height: 300)
+                .blur(radius: 80)
+                .offset(x: -110, y: -210)
+
+            Circle()
+                .fill(colors[1])
+                .frame(width: 280, height: 280)
+                .blur(radius: 85)
+                .offset(x: 120, y: -80)
+
+            Circle()
+                .fill(colors[2])
+                .frame(width: 260, height: 260)
+                .blur(radius: 95)
+                .offset(x: 20, y: 240)
+
+            Rectangle()
+                .fill(.black.opacity(0.45))
+        }
+        .animation(.easeInOut(duration: 0.8), value: section)
+    }
+}
+
+private enum SettingsSection: String, CaseIterable, Identifiable {
+    case writing
+    case sound
+    case screensaver
+    case about
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .writing: "Writing"
+        case .sound: "Sound"
+        case .screensaver: "Screensaver"
+        case .about: "About"
+        }
+    }
+
+    /// Reuses the four ambient gradient palettes so each section has its own mood.
+    var backgroundColors: [Color] {
+        switch self {
+        case .writing:
+            [Color(hex: "#6366F1"), Color(hex: "#EC4899"), Color(hex: "#0EA5E9")]
+        case .sound:
+            [Color(hex: "#4F46E5"), Color(hex: "#7C3AED"), Color(hex: "#2563EB")]
+        case .screensaver:
+            [Color(hex: "#0EA5E9"), Color(hex: "#14B8A6"), Color(hex: "#22C55E")]
+        case .about:
+            [Color(hex: "#F59E0B"), Color(hex: "#F97316"), Color(hex: "#EAB308")]
+        }
+    }
+}
+
+private extension View {
+    func blurOpacityEffect(_ show: Bool) -> some View {
+        self
+            .blur(radius: show ? 0 : 8)
+            .opacity(show ? 1 : 0)
+            .offset(y: show ? 0 : 12)
+    }
+}

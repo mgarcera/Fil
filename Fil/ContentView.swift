@@ -7,7 +7,6 @@ import UIKit
 
 struct ContentView: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
-    @Query(sort: [SortDescriptor(\UserProfile.createdAt, order: .reverse)]) private var userProfiles: [UserProfile]
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedNote: Note?
@@ -15,7 +14,9 @@ struct ContentView: View {
     @State private var showPermissionAlert = false
     @State private var showFilSetup = false
     @FocusState private var isComposerFocused: Bool
+    @FocusState private var isSearchFieldFocused: Bool
     @State private var textEntryText = ""
+    @State private var pendingComposerTodos: [ComposerTodo] = []
     @State private var selectedComposerPhotos: [PhotosPickerItem] = []
     @State private var stagedComposerImageData: [Data] = []
     @State private var isCreatingTextEntry = false
@@ -26,21 +27,34 @@ struct ContentView: View {
     @Namespace private var filCreationNamespace
     @State private var creatingFilIDs: [UUID] = []
     @State private var visibleTip = emptyStateTip
-    @State private var showHomeFocusSheet = false
-    @State private var selectedNoteDetent = PresentationDetent.fraction(0.6)
     @State private var filSheetPath: [FilSheetRoute] = []
-    @State private var homeFocusDetent = PresentationDetent.fraction(0.3)
     @State private var selectedNoteIDs = Set<UUID>()
     @State private var landfillingNoteIDs = Set<UUID>()
     @State private var showBulkLandfilConfirmation = false
-    @State private var pendingHomeFocusSelection: HomeFocusSelection?
     @State private var pendingPinnedNoteID: UUID?
-    @State private var sectionCollapseCommandID = 0
-    @State private var sectionCollapseCommandStage = 0
     @State private var activeScreensaverMode: FilScreensaverView.Mode?
     @State private var showKoiPond = false
+    @State private var isSearching = false
+    @State private var searchText = ""
     @AppStorage("lastScreensaverMode") private var lastScreensaverModeRaw = FilScreensaverView.Mode.liquid.rawValue
+    @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
     @AppStorage("collapsedDaySectionKeys") private var collapsedDaySectionKeysRaw = ""
+    /// Live, animatable set of collapsed day-section keys. @AppStorage above is the
+    /// persistence mirror (seeded in init, written on change) — this is what drives the
+    /// animation, because @AppStorage changes don't tween under withAnimation.
+    @State private var collapsedDayKeys: Set<String> = []
+
+    init() {
+        // Seed the live set from persisted storage so collapsed sections are correct on the
+        // very first render (no expand→collapse flash on launch).
+        let raw = UserDefaults.standard.string(forKey: "collapsedDaySectionKeys") ?? ""
+        let keys = raw.split(separator: "\n").compactMap { line -> String? in
+            let key = line.split(separator: "|", maxSplits: 1).first.map(String.init)
+            guard let key, !key.isEmpty else { return nil }
+            return key
+        }
+        _collapsedDayKeys = State(initialValue: Set(keys))
+    }
 
     var body: some View {
         ZStack {
@@ -76,10 +90,13 @@ struct ContentView: View {
                 }
             }
             .overlay(alignment: .bottom) {
-                bottomComposer
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
-                .zIndex(1)
+                if !isSearching {
+                    bottomComposer
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+                        .zIndex(1)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
@@ -120,30 +137,13 @@ struct ContentView: View {
             .ignoresSafeArea()
         }
         .sheet(item: $selectedNote, onDismiss: handleArticleDismissed) { note in
-            NavigationStack(path: $filSheetPath) {
-                ArticleView(
-                    note: note,
-                    ignoresTopSafeArea: false,
-                    showsCloseButton: true,
-                    filSheetPath: $filSheetPath,
-                    selectedPresentationDetent: $selectedNoteDetent
-                )
-                    .navigationDestination(for: FilSheetRoute.self) { route in
-                        filSheetDestination(route)
-                    }
+            FilSheetContent(note: note, filSheetPath: $filSheetPath) { route in
+                filSheetDestination(route)
             }
-            .presentationDetents(selectedNotePresentationDetents(for: note), selection: $selectedNoteDetent)
-            .presentationBackground(Theme.background)
-        }
-        .sheet(isPresented: $showHomeFocusSheet) {
-            HomeFocusSheet(notes: notes, userProfile: activeUserProfile) { note in
-                pendingHomeFocusSelection = HomeFocusSelection(noteUUID: note.uuid)
-            }
-            .presentationDetents([.fraction(0.3)], selection: $homeFocusDetent)
-            .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showFilSetup) {
-            OnboardingView(existingProfile: activeUserProfile, showsSkipControl: false)
+            SettingsView()
+                .presentationDetents([.fraction(0.6)])
                 .presentationBackground(Theme.background)
         }
         .alert("Permissions Required", isPresented: $showPermissionAlert) {
@@ -151,13 +151,13 @@ struct ContentView: View {
         } message: {
             Text("Microphone and speech recognition access are needed to record notes.")
         }
-        .alert("move selected fils to landfil?", isPresented: $showBulkLandfilConfirmation) {
+        .alert("move to landfil?", isPresented: $showBulkLandfilConfirmation) {
             Button("landfil", role: .destructive) {
                 landfilSelectedNotes()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("\(selectedNoteIDs.count) selected. this cannot be undone.")
+            Text("\(selectedNoteIDs.count) about to be deleted. this cannot be undone.")
         }
         .alert("Error", isPresented: .init(
             get: { recorder.errorMessage != nil },
@@ -184,26 +184,16 @@ struct ContentView: View {
                 openFil(with: pendingPinnedNoteID)
             }
         }
-        .onChange(of: showHomeFocusSheet) { _, isPresented in
-            guard !isPresented, let pendingHomeFocusSelection else { return }
-            guard let note = notes.first(where: { $0.uuid == pendingHomeFocusSelection.noteUUID }) else {
-                self.pendingHomeFocusSelection = nil
-                return
-            }
-            self.pendingHomeFocusSelection = nil
-            DispatchQueue.main.async {
-                SoundscapeManager.shared.playOpenFilClick()
-                selectedNoteDetent = .fraction(0.6)
-                filSheetPath.removeAll()
-                selectedNote = note
-            }
-        }
         .onOpenURL(perform: handleIncomingURL)
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 ingestSharedDrafts()
             }
         }
+        .background(autoScreensaverDetector)
+        .onAppear { applyScreenAwake() }
+        .onChange(of: shouldKeepScreenAwake) { _, _ in applyScreenAwake() }
+        .onChange(of: collapsedDayKeys) { _, _ in persistCollapsedDayKeys() }
         .task {
             ingestSharedDrafts()
         }
@@ -234,6 +224,9 @@ struct ContentView: View {
 
     private var header: some View {
         GlassEffectContainer(spacing: 12) {
+            if isSearching {
+                searchBar
+            } else {
             HStack(spacing: 12) {
                 Button {
                     SoundscapeManager.shared.playSettingsSound()
@@ -253,33 +246,42 @@ struct ContentView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                            isSearching = true
+                        }
+                        isSearchFieldFocused = true
+                    } label: {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(notes.isEmpty)
+                    .opacity(notes.isEmpty ? 0.45 : 1)
+                    .accessibilityLabel("Search")
+
                     Menu {
                         Section("Screensavers") {
+                            screensaverMenuButton("filosophy", systemImage: "camera.filters", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) }
+                            screensaverMenuButton("filharmonic", systemImage: "wave.3.left", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) }
+                            screensaverMenuButton("filanthropy", systemImage: "wind", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) }
+                            screensaverMenuButton("chlorofil", systemImage: "rainbow", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) }
+                            screensaverMenuButton("fillet", systemImage: "fish.fill", unlockAt: koiPondUnlockThreshold) { launchKoiPond() }
+                        }
+                        Section {
                             Button {
-                                launchScreensaver(.liquid)
+                                autoScreensaverEnabled.toggle()
                             } label: {
-                                Label("filosophy", systemImage: "camera.filters")
+                                Text(autoScreensaverEnabled ? "auto is on" : "auto is off")
+                                Text("start after 60 seconds idle. keeps your screen awake.")
+                                if autoScreensaverEnabled {
+                                    Image(systemName: "power")
+                                }
                             }
-                            Button {
-                                launchScreensaver(.wave)
-                            } label: {
-                                Label("filharmonic", systemImage: "light.overhead.left")
-                            }
-                            Button {
-                                launchScreensaver(.auroraLeaves)
-                            } label: {
-                                Label("filanthropy", systemImage: "water.waves")
-                            }
-                            Button {
-                                launchScreensaver(.auroraRibbons)
-                            } label: {
-                                Label("chlorofil", systemImage: "rainbow")
-                            }
-                            Button {
-                                launchKoiPond()
-                            } label: {
-                                Label("fillet", systemImage: "fish.fill")
-                            }
+                            .disabled(notes.count < koiPondUnlockThreshold)
                         }
                     } label: {
                         Image(systemName: "zzz")
@@ -307,14 +309,104 @@ struct ContentView: View {
                 .padding(.horizontal, 6)
                 .glassEffect()
             }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 4)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isSearching)
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Theme.secondaryText)
+
+                TextField("search fils", text: $searchText)
+                    .font(Theme.dmSans(15))
+                    .foregroundStyle(Theme.primaryText)
+                    .focused($isSearchFieldFocused)
+                    .submitLabel(.search)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                        isSearchFieldFocused = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(Theme.tertiaryText)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 46)
+            .glassEffect(in: .rect(cornerRadius: 23))
+
+            Button {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    isSearching = false
+                }
+                searchText = ""
+                isSearchFieldFocused = false
+            } label: {
+                Text("cancel")
+                    .font(Theme.dmSans(15))
+                    .foregroundStyle(Theme.primaryText)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var trimmedSearch: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Live, in-memory search across a fil's body, title/keyword, and keyword
+    /// attachments. Case-insensitive substring match; empty query shows everything.
+    private var filteredNotes: [Note] {
+        let query = trimmedSearch.lowercased()
+        guard !query.isEmpty else { return notes }
+        return notes.filter { note in
+            note.transcript.lowercased().contains(query)
+                || note.title.lowercased().contains(query)
+                || note.keyword.lowercased().contains(query)
+                || note.attachments.contains { $0.keyword.lowercased().contains(query) }
+        }
+    }
+
+    /// How many fils each screensaver needs before it unlocks. Denser modes (the wave
+    /// lattice, the drifting leaves field) ask for more so they don't open sparse.
+    private func screensaverUnlockThreshold(for mode: FilScreensaverView.Mode) -> Int {
+        switch mode {
+        case .wave: return 33
+        case .auroraLeaves: return 25
+        case .liquid, .auroraRibbons: return 10
+        }
+    }
+
+    private let koiPondUnlockThreshold = 10
+
+    /// A screensaver entry in the menu. Locked below its threshold: disabled, with a
+    /// lock icon and the "· N fils" requirement appended to its title.
+    @ViewBuilder
+    private func screensaverMenuButton(_ title: String, systemImage: String, unlockAt: Int, action: @escaping () -> Void) -> some View {
+        let unlocked = notes.count >= unlockAt
+        Button(action: action) {
+            Label(unlocked ? title : "\(title) · \(unlockAt) fils", systemImage: unlocked ? systemImage : "lock.fill")
+        }
+        .disabled(!unlocked)
     }
 
     private func launchScreensaver(_ mode: FilScreensaverView.Mode) {
-        guard !notes.isEmpty else { return }
+        guard notes.count >= screensaverUnlockThreshold(for: mode) else { return }
         lastScreensaverModeRaw = mode.rawValue
         SoundscapeManager.shared.playTransformRefilSound()
         withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
@@ -323,27 +415,59 @@ struct ContentView: View {
     }
 
     private func launchKoiPond() {
-        guard !notes.isEmpty else { return }
+        guard notes.count >= koiPondUnlockThreshold else { return }
         SoundscapeManager.shared.playTransformRefilSound()
         withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
             showKoiPond = true
         }
     }
 
-    private var activeUserProfile: UserProfile? {
-        userProfiles.first
+    /// After a minute untouched, auto-launch a screensaver. Only while the feature is on,
+    /// the library is unlocked, the app is foreground, and nothing is already covering the
+    /// screen or mid-interaction (recording, keyboard, a sheet, a confirmation).
+    private var autoScreensaverIdleActive: Bool {
+        autoScreensaverEnabled
+            && notes.count >= koiPondUnlockThreshold
+            && scenePhase == .active
+            && activeScreensaverMode == nil
+            && !showKoiPond
+            && !recorder.isRecording
+            && !isComposerFocused
+            && selectedNote == nil
+            && !showFilSetup
+            && !showBulkLandfilConfirmation
     }
 
-    private func initialSelectedNoteDetent(for note: Note) -> PresentationDetent {
-        note.isLinkFil ? .fraction(0.2) : .fraction(0.6)
+    /// The single source of truth for the display-sleep override: keep the screen awake
+    /// while the idle feature is armed (so the screensaver can appear and persist) and
+    /// while any screensaver is already showing.
+    private var shouldKeepScreenAwake: Bool {
+        (autoScreensaverEnabled && notes.count >= koiPondUnlockThreshold && scenePhase == .active)
+            || activeScreensaverMode != nil
+            || showKoiPond
     }
 
-    private func selectedNotePresentationDetents(for note: Note) -> Set<PresentationDetent> {
-        if note.isLinkFil {
-            return [.fraction(0.2)]
+    @ViewBuilder
+    private var autoScreensaverDetector: some View {
+        #if canImport(UIKit)
+        IdleScreensaverDetector(isActive: autoScreensaverIdleActive, idleDelay: 60) {
+            autoLaunchScreensaver()
         }
+        #endif
+    }
 
-        return note.isImageFil ? [.fraction(0.6), .large] : [.fraction(0.6)]
+    private func applyScreenAwake() {
+        #if canImport(UIKit)
+        UIApplication.shared.isIdleTimerDisabled = shouldKeepScreenAwake
+        #endif
+    }
+
+    /// Launches the last-used mode if it's unlocked, otherwise the base (liquid) mode.
+    private func autoLaunchScreensaver() {
+        guard autoScreensaverIdleActive else { return }
+        let last = FilScreensaverView.Mode(rawValue: lastScreensaverModeRaw) ?? .liquid
+        let mode = notes.count >= screensaverUnlockThreshold(for: last) ? last : .liquid
+        launchScreensaver(mode)
     }
 
     private var allDaySectionKeys: [String] {
@@ -354,40 +478,44 @@ struct ContentView: View {
         return keys.sorted()
     }
 
-    private var storedCollapseStages: [String: Int] {
-        Dictionary(
-            uniqueKeysWithValues: collapsedDaySectionKeysRaw
-                .split(separator: "\n")
-                .compactMap { line in
-                    let parts = line.split(separator: "|", maxSplits: 1).map(String.init)
-                    guard let key = parts.first, !key.isEmpty else { return nil }
-                    return (key, parts.count > 1 ? Int(parts[1]) ?? 1 : 1)
-                }
-        )
-    }
-
     private var areAllDaySectionsCollapsed: Bool {
         let keys = allDaySectionKeys
         guard !keys.isEmpty else { return false }
-        return keys.allSatisfy { (storedCollapseStages[$0] ?? 0) > 0 }
+        return keys.allSatisfy { collapsedDayKeys.contains($0) }
+    }
+
+    /// Mirrors the live @State back to @AppStorage for persistence. Kept separate from the
+    /// animation driver: @AppStorage changes don't participate in withAnimation, so driving
+    /// the animation off it makes the collapse snap instead of tween.
+    private func persistCollapsedDayKeys() {
+        collapsedDaySectionKeysRaw = collapsedDayKeys
+            .sorted()
+            .map { "\($0)|2" }
+            .joined(separator: "\n")
+    }
+
+    private func toggleCollapsedDayKey(_ key: String) {
+        if collapsedDayKeys.contains(key) {
+            collapsedDayKeys.remove(key)
+        } else {
+            collapsedDayKeys.insert(key)
+        }
     }
 
     private func toggleAllDaySections() {
         let shouldCollapse = !areAllDaySectionsCollapsed
-        let nextStage = shouldCollapse ? 2 : 0
         if shouldCollapse {
             SoundscapeManager.shared.playCollapsePartTwoSound()
-            collapsedDaySectionKeysRaw = allDaySectionKeys
-                .map { "\($0)|2" }
-                .joined(separator: "\n")
         } else {
             SoundscapeManager.shared.playCollapsingSound()
-            collapsedDaySectionKeysRaw = ""
         }
 
+        // Mutate the animatable @State Set inside withAnimation. Every DaySectionView reads
+        // its collapsed state from this Set in body, so this single change animates all
+        // sections together via Core Animation — the same one-transaction path that makes
+        // the search (forceExpanded) collapse smooth. Persistence happens via onChange.
         withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
-            sectionCollapseCommandStage = nextStage
-            sectionCollapseCommandID += 1
+            collapsedDayKeys = shouldCollapse ? Set(allDaySectionKeys) : []
         }
     }
 
@@ -440,7 +568,7 @@ struct ContentView: View {
     /// (Apple Maps style), sharing the composer's glass container. Hidden when there's
     /// nothing to collapse or while recording / bulk-selecting so it never crowds it.
     private var showsSectionToggleFAB: Bool {
-        !allDaySectionKeys.isEmpty && !isSelectingNotes && !recorder.isRecording
+        !allDaySectionKeys.isEmpty && !isSelectingNotes && !recorder.isRecording && !isSearching
     }
 
     private var sectionToggleFAB: some View {
@@ -453,6 +581,9 @@ struct ContentView: View {
                 .frame(width: 44, height: 44)
         }
         .glassEffect(.regular.interactive(), in: .circle)
+        // Nudge left so the icon lines up with the composer's mic/send icon (inset by
+        // the composer's 14pt padding + half the 36pt button) rather than the bar edge.
+        .padding(.trailing, 10)
         .accessibilityLabel(areAllDaySectionsCollapsed ? "Expand all sections" : "Collapse all sections")
     }
 
@@ -485,6 +616,7 @@ struct ContentView: View {
     private var composerBar: some View {
         ComposerBar(
             text: $textEntryText,
+            todos: $pendingComposerTodos,
             selectedPhotos: $selectedComposerPhotos,
             stagedImageData: stagedComposerImageData,
             isRecording: recorder.isRecording,
@@ -512,6 +644,15 @@ struct ContentView: View {
     happy fil'ng. and have fun :) mason
     """
 
+    private var searchEmptyState: some View {
+        Text("no fils match “\(trimmedSearch)”")
+            .font(Theme.dmSans(15, weight: .medium))
+            .foregroundStyle(Theme.secondaryText)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+    }
+
     private var emptyState: some View {
         FromMasonFilCard()
             .padding(.horizontal, 16)
@@ -522,29 +663,31 @@ struct ContentView: View {
     private var notesSection: some View {
         if notes.isEmpty && creatingFilIDs.isEmpty {
             emptyState
+        } else if isSearching && !trimmedSearch.isEmpty && filteredNotes.isEmpty {
+            searchEmptyState
         } else {
             NoteGridView(
-                notes: notes,
+                notes: filteredNotes,
                 selectedNote: $selectedNote,
                 selectedNoteIDs: selectedNoteIDs,
                 landfillingNoteIDs: landfillingNoteIDs,
                 isSelectionMode: isSelectingNotes,
-                collapseCommandID: sectionCollapseCommandID,
-                collapseCommandStage: sectionCollapseCommandStage,
+                forceExpanded: isSearching,
                 creatingFilIDs: creatingFilIDs,
                 creationNamespace: filCreationNamespace,
+                collapsedDayKeys: collapsedDayKeys,
+                onToggleCollapse: { date in
+                    toggleCollapsedDayKey(Self.daySectionKeyFormatter.string(from: date))
+                },
                 onSelectNote: { note in
                     SoundscapeManager.shared.playOpenFilClick()
-                    selectedNoteDetent = initialSelectedNoteDetent(for: note)
                     filSheetPath.removeAll()
                     selectedNote = note
                 },
                 onToggleSelection: toggleNoteSelection,
                 onBeginSelection: beginNoteSelection,
                 onToggleSectionSelection: toggleSectionSelection
-            ) { note in
-                landfilNote(note)
-            }
+            )
         }
     }
 
@@ -742,7 +885,6 @@ struct ContentView: View {
         }
         pendingPinnedNoteID = nil
         SoundscapeManager.shared.playOpenFilClick()
-        selectedNoteDetent = initialSelectedNoteDetent(for: note)
         filSheetPath.removeAll()
         selectedNote = note
     }
@@ -808,12 +950,6 @@ struct ContentView: View {
     private func stopRecording() {
         guard let result = recorder.stopRecording() else { return }
         processRecording(url: result.url, duration: result.duration)
-    }
-
-    private func landfilNote(_ note: Note) {
-        deleteNoteResources(note)
-        modelContext.delete(note)
-        selectedNoteIDs.remove(note.uuid)
     }
 
     private func landfilSelectedNotes() {
@@ -894,21 +1030,31 @@ struct ContentView: View {
 
     private func createTextEntry(from text: String) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        // Collapse the editable pills into clean to-do strings: trim, drop blanks, dedupe.
+        var seenTodos: Set<String> = []
+        let todos = pendingComposerTodos.compactMap { pill -> String? in
+            let t = pill.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !t.isEmpty, seenTodos.insert(t.lowercased()).inserted else { return nil }
+            return t
+        }
+        // A fil always needs contextual content — a thought or an image. To-dos ride along
+        // with it, never on their own.
+        guard !trimmed.isEmpty || !stagedComposerImageData.isEmpty else { return }
 
         let stagedImages = stagedComposerImageData
         isComposerFocused = false
         textEntryText = ""
+        pendingComposerTodos = []
         selectedComposerPhotos = []
         stagedComposerImageData = []
 
         await createFil { filID in
             if !stagedImages.isEmpty {
-                try await saveImageFil(caption: trimmed, imageData: stagedImages, filID: filID)
-            } else if let linkURL = normalizedLinkURL(from: trimmed) {
+                try await saveImageFil(caption: trimmed, imageData: stagedImages, todos: todos, filID: filID)
+            } else if todos.isEmpty, let linkURL = normalizedLinkURL(from: trimmed) {
                 saveLinkNote(for: linkURL, filID: filID)
             } else {
-                try await saveGeneratedNote(from: trimmed, filID: filID)
+                try await saveGeneratedNote(from: trimmed, todos: todos, filID: filID)
             }
         }
     }
@@ -970,7 +1116,6 @@ struct ContentView: View {
         let note = Note(
             title: fallbackTitle,
             transcript: url.absoluteString,
-            articleBody: "",
             keyword: "link",
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end,
@@ -999,18 +1144,17 @@ struct ContentView: View {
         return domain
     }
 
-    private func saveImageFil(caption: String, imageData: [Data], filID: UUID) async throws {
-        let metadata = try await ArticleGenerationService.shared.generateMetadata(
-            from: caption,
-            userProfile: activeUserProfile
-        )
+    private func saveImageFil(caption: String, imageData: [Data], todos: [String] = [], filID: UUID) async throws {
+        let title = caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? (todos.first ?? "")
+            : try await ArticleGenerationService.shared.generateMetadata(from: caption).keyword
 
         let gradient = freshGradientPair()
         let note = Note(
-            title: metadata.keyword,
+            title: title,
             transcript: caption,
-            articleBody: "",
-            keyword: metadata.keyword,
+            todos: todos,
+            keyword: title,
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
@@ -1026,22 +1170,26 @@ struct ContentView: View {
         from transcript: String,
         audioFilePath: String = "",
         duration: TimeInterval = 0,
+        todos: [String] = [],
         filID: UUID
     ) async throws {
-        let metadata = try await ArticleGenerationService.shared.generateMetadata(
-            from: transcript,
-            userProfile: activeUserProfile
-        )
+        // A title is generated from the thought. When there's no thought (a to-do-only fil),
+        // fall back to the first to-do so the card still reads meaningfully.
+        let title: String
+        if transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            title = todos.first ?? ""
+        } else {
+            title = try await ArticleGenerationService.shared.generateMetadata(from: transcript).keyword
+        }
 
         let gradient = freshGradientPair()
         let note = Note(
-            title: metadata.keyword,
+            title: title,
             transcript: transcript,
-            articleBody: "",
             audioFilePath: audioFilePath,
             duration: duration,
-            todos: metadata.todos,
-            keyword: metadata.keyword,
+            todos: todos,
+            keyword: title,
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
@@ -1055,9 +1203,51 @@ struct ContentView: View {
     }
 }
 
-private struct HomeFocusSelection {
-    let noteUUID: UUID
+
+/// The content of the fil sheet. Crucially, it *owns* the presentation-detent selection
+/// as local `@State` instead of ContentView. Dragging between detents therefore only
+/// re-evaluates this small view (and ArticleView) — not ContentView's body, which would
+/// otherwise rebuild the entire home grid (re-grouping every note) on each drag update.
+private struct FilSheetContent<Destination: View>: View {
+    let note: Note
+    @Binding var filSheetPath: [FilSheetRoute]
+    @ViewBuilder let destination: (FilSheetRoute) -> Destination
+
+    @State private var detent: PresentationDetent
+
+    init(
+        note: Note,
+        filSheetPath: Binding<[FilSheetRoute]>,
+        @ViewBuilder destination: @escaping (FilSheetRoute) -> Destination
+    ) {
+        self.note = note
+        self._filSheetPath = filSheetPath
+        self.destination = destination
+        _detent = State(initialValue: note.isLinkFil ? .fraction(0.2) : .fraction(0.6))
+    }
+
+    private var availableDetents: Set<PresentationDetent> {
+        note.isLinkFil ? [.fraction(0.2)] : [.fraction(0.6), .large]
+    }
+
+    var body: some View {
+        NavigationStack(path: $filSheetPath) {
+            ArticleView(
+                note: note,
+                ignoresTopSafeArea: false,
+                showsCloseButton: true,
+                filSheetPath: $filSheetPath,
+                selectedPresentationDetent: $detent
+            )
+            .navigationDestination(for: FilSheetRoute.self) { route in
+                destination(route)
+            }
+        }
+        .presentationDetents(availableDetents, selection: $detent)
+        .presentationBackground(Theme.background)
+    }
 }
+
 
 private struct FocusEntryButton: View {
     let count: Int

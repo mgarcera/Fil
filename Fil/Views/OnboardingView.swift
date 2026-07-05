@@ -24,7 +24,7 @@ struct OnboardingView: View {
     @AppStorage("didSkipSetup") private var didSkipSetup = false
 
     @State private var selectedScope = SummaryScope.thisWeek
-    @State private var prefersLowercase = false
+    @AppStorage("prefersLowercase") private var prefersLowercase = false
     @State private var showSkipConfirmation = false
     @State private var showFromMason = false
     @State private var titleProgress: CGFloat = 0
@@ -38,7 +38,6 @@ struct OnboardingView: View {
         self.existingProfile = existingProfile
         self.showsSkipControl = showsSkipControl
         self.onFinish = onFinish
-        _prefersLowercase = State(initialValue: existingProfile?.prefersLowercase ?? false)
     }
 
     var body: some View {
@@ -328,13 +327,9 @@ struct OnboardingView: View {
 
     private func saveProfile() {
         if let existingProfile {
-            existingProfile.prefersLowercase = prefersLowercase
             existingProfile.updatedAt = .now
         } else {
-            let profile = UserProfile(
-                prefersLowercase: prefersLowercase
-            )
-            modelContext.insert(profile)
+            modelContext.insert(UserProfile())
         }
         try? modelContext.save()
         didSkipSetup = false

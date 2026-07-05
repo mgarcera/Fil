@@ -33,16 +33,16 @@ final class PinnedFilStore {
     static let shared = PinnedFilStore()
 
     static let appGroupIdentifier = "group.com.masongarcera.Fil"
-    static let widgetKind = "FilPinnedWidget"
-
-    private let defaults: UserDefaults
-    private let pinnedFilKey = "pinnedFilSnapshot"
+    /// Name of the JSON payload in the shared App Group container. A file is used
+    /// instead of UserDefaults because a warm widget-extension process caches its
+    /// App Group UserDefaults instance and can serve a stale snapshot after the
+    /// app writes a new pin; reading a file from disk is always current.
+    private static let pinnedFilFileName = "pinnedFilSnapshot.json"
 
     private(set) var pinnedFil: PinnedFilSnapshot?
 
-    init(defaults: UserDefaults = UserDefaults(suiteName: PinnedFilStore.appGroupIdentifier) ?? .standard) {
-        self.defaults = defaults
-        self.pinnedFil = Self.loadPinnedFil(from: defaults, key: pinnedFilKey)
+    init() {
+        self.pinnedFil = Self.loadPinnedFil()
     }
 
     @discardableResult
@@ -65,8 +65,10 @@ final class PinnedFilStore {
 
     func unpin() {
         pinnedFil = nil
-        defaults.removeObject(forKey: pinnedFilKey)
-        WidgetCenter.shared.reloadTimelines(ofKind: Self.widgetKind)
+        if let url = Self.fileURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+        reloadWidget()
     }
 
     func isPinned(_ note: Note) -> Bool {
@@ -76,13 +78,36 @@ final class PinnedFilStore {
     private func save(_ snapshot: PinnedFilSnapshot) {
         pinnedFil = snapshot
 
-        guard let data = try? JSONEncoder().encode(snapshot) else { return }
-        defaults.set(data, forKey: pinnedFilKey)
-        WidgetCenter.shared.reloadTimelines(ofKind: Self.widgetKind)
+        guard let url = Self.fileURL,
+              let data = try? JSONEncoder().encode(snapshot) else { return }
+        try? data.write(to: url, options: .atomic)
+        reloadWidget()
     }
 
-    private static func loadPinnedFil(from defaults: UserDefaults, key: String) -> PinnedFilSnapshot? {
-        guard let data = defaults.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(PinnedFilSnapshot.self, from: data)
+    private func reloadWidget() {
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    static var fileURL: URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
+            .appendingPathComponent(pinnedFilFileName)
+    }
+
+    private static func loadPinnedFil() -> PinnedFilSnapshot? {
+        if let url = fileURL, let data = try? Data(contentsOf: url) {
+            return try? JSONDecoder().decode(PinnedFilSnapshot.self, from: data)
+        }
+
+        // One-time migration from the previous UserDefaults-backed storage.
+        guard let defaults = UserDefaults(suiteName: appGroupIdentifier),
+              let data = defaults.data(forKey: "pinnedFilSnapshot"),
+              let snapshot = try? JSONDecoder().decode(PinnedFilSnapshot.self, from: data) else {
+            return nil
+        }
+        if let url = fileURL {
+            try? data.write(to: url, options: .atomic)
+        }
+        return snapshot
     }
 }

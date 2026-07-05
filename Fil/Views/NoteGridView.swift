@@ -6,18 +6,21 @@ struct NoteGridView: View {
     var selectedNoteIDs: Set<UUID> = []
     var landfillingNoteIDs: Set<UUID> = []
     var isSelectionMode = false
-    var collapseCommandID = 0
-    var collapseCommandStage = 0
+    /// When true (e.g. during an active search), sections render expanded regardless of
+    /// their saved collapse state, which is left untouched so it restores afterward.
+    var forceExpanded = false
     var creatingFilIDs: [UUID] = []
     var creationNamespace: Namespace.ID? = nil
+    /// Day-section keys (yyyy-MM-dd) that are currently collapsed. Owned as animatable
+    /// @State by ContentView so the FAB and header taps animate through one coordinated
+    /// Core Animation transaction — the same path as search's `forceExpanded`.
+    var collapsedDayKeys: Set<String> = []
+    var onToggleCollapse: (Date) -> Void = { _ in }
     var onSelectNote: ((Note) -> Void)? = nil
     var onToggleSelection: (Note) -> Void = { _ in }
     var onBeginSelection: (Note) -> Void = { _ in }
     var onToggleSectionSelection: ([Note]) -> Void = { _ in }
-    var onLandfil: ((Note) -> Void)?
     private let columnCount = 3
-    @AppStorage("collapsedDaySectionKeys")
-    private var collapsedDaySectionKeysRaw = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -27,12 +30,11 @@ struct NoteGridView: View {
                     notesInGroup: section.notes,
                     placeholderIDs: section.placeholderIDs,
                     columnCount: columnCount,
-                    initialCollapseStage: collapseStage(for: section.key),
+                    isCollapsed: collapsedDayKeys.contains(dayKey(for: section.key)),
                     selectedNoteIDs: selectedNoteIDs,
                     landfillingNoteIDs: landfillingNoteIDs,
                     isSelectionMode: isSelectionMode,
-                    collapseCommandID: collapseCommandID,
-                    collapseCommandStage: collapseCommandStage,
+                    forceExpanded: forceExpanded,
                     creationNamespace: creationNamespace,
                     onSelectNote: { note in
                         if let onSelectNote {
@@ -41,15 +43,12 @@ struct NoteGridView: View {
                             selectedNote = note
                         }
                     },
-                    onCollapseStageChange: { stage in
-                        updateCollapseStage(stage, for: section.key)
+                    onToggle: {
+                        onToggleCollapse(section.key)
                     },
                     onToggleSelection: onToggleSelection,
                     onBeginSelection: onBeginSelection,
-                    onToggleSectionSelection: onToggleSectionSelection,
-                    onLandfil: { note in
-                        onLandfil?(note)
-                    }
+                    onToggleSectionSelection: onToggleSectionSelection
                 )
             }
         }
@@ -83,41 +82,8 @@ struct NoteGridView: View {
         return result
     }
 
-    private var storedCollapseStages: [String: Int] {
-        Dictionary(
-            uniqueKeysWithValues: collapsedDaySectionKeysRaw
-                .split(separator: "\n")
-                .compactMap { line in
-                    let parts = line.split(separator: "|", maxSplits: 1).map(String.init)
-                    guard let key = parts.first, !key.isEmpty else { return nil }
-                    if parts.count == 1 {
-                        return (key, 1)
-                    }
-                    return (key, Int(parts[1]) ?? 1)
-                }
-        )
-    }
-
     private func dayKey(for date: Date) -> String {
         Self.dayKeyFormatter.string(from: date)
-    }
-
-    private func collapseStage(for date: Date) -> Int {
-        storedCollapseStages[dayKey(for: date)] ?? 0
-    }
-
-    private func updateCollapseStage(_ stage: Int, for date: Date) {
-        let key = dayKey(for: date)
-        var stages = storedCollapseStages
-        if stage > 0 {
-            stages[key] = stage
-        } else {
-            stages.removeValue(forKey: key)
-        }
-        collapsedDaySectionKeysRaw = stages
-            .sorted { $0.key < $1.key }
-            .map { "\($0.key)|\($0.value)" }
-            .joined(separator: "\n")
     }
 
     private static let dayKeyFormatter: DateFormatter = {
@@ -135,63 +101,25 @@ private struct DaySectionView: View {
     let notesInGroup: [Note]
     let placeholderIDs: [UUID]
     let columnCount: Int
-    let initialCollapseStage: Int
-    let onSelectNote: (Note) -> Void
-    let onCollapseStageChange: (Int) -> Void
+    /// Collapsed state is passed in (read in body), derived from an animatable Set<String>
+    /// of collapsed day keys owned by ContentView — never local @State. Both the FAB and
+    /// header taps mutate that Set inside a single `withAnimation`, so every section's leaf
+    /// modifiers (scale/opacity/frame/offset) tween via Core Animation in one coordinated
+    /// pass — the same path as search's `forceExpanded`.
+    let isCollapsed: Bool
     let selectedNoteIDs: Set<UUID>
     let landfillingNoteIDs: Set<UUID>
     let isSelectionMode: Bool
-    let collapseCommandID: Int
-    let collapseCommandStage: Int
+    let forceExpanded: Bool
     let creationNamespace: Namespace.ID?
+    let onSelectNote: (Note) -> Void
+    let onToggle: () -> Void
     let onToggleSelection: (Note) -> Void
     let onBeginSelection: (Note) -> Void
     let onToggleSectionSelection: ([Note]) -> Void
-    let onLandfil: (Note) -> Void
 
-    @State private var settledProgress: CGFloat = 0
     @State private var expandedContentHeight: CGFloat = 0
     @State private var dotContentHeight: CGFloat = 0
-
-    init(
-        date: Date,
-        notesInGroup: [Note],
-        placeholderIDs: [UUID],
-        columnCount: Int,
-        initialCollapseStage: Int,
-        selectedNoteIDs: Set<UUID>,
-        landfillingNoteIDs: Set<UUID>,
-        isSelectionMode: Bool,
-        collapseCommandID: Int,
-        collapseCommandStage: Int,
-        creationNamespace: Namespace.ID?,
-        onSelectNote: @escaping (Note) -> Void,
-        onCollapseStageChange: @escaping (Int) -> Void,
-        onToggleSelection: @escaping (Note) -> Void,
-        onBeginSelection: @escaping (Note) -> Void,
-        onToggleSectionSelection: @escaping ([Note]) -> Void,
-        onLandfil: @escaping (Note) -> Void
-    ) {
-        self.date = date
-        self.notesInGroup = notesInGroup
-        self.placeholderIDs = placeholderIDs
-        self.columnCount = columnCount
-        self.initialCollapseStage = initialCollapseStage
-        self.selectedNoteIDs = selectedNoteIDs
-        self.landfillingNoteIDs = landfillingNoteIDs
-        self.isSelectionMode = isSelectionMode
-        self.collapseCommandID = collapseCommandID
-        self.collapseCommandStage = collapseCommandStage
-        self.creationNamespace = creationNamespace
-        self.onSelectNote = onSelectNote
-        self.onCollapseStageChange = onCollapseStageChange
-        self.onToggleSelection = onToggleSelection
-        self.onBeginSelection = onBeginSelection
-        self.onToggleSectionSelection = onToggleSectionSelection
-        self.onLandfil = onLandfil
-        let normalizedInitialStage = initialCollapseStage > 0 ? 2 : 0
-        _settledProgress = State(initialValue: CGFloat(normalizedInitialStage))
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -207,13 +135,10 @@ private struct DaySectionView: View {
             }
             .buttonStyle(.plain)
             .padding(.top, sectionSpacing)
-            .padding(.bottom, sectionSpacing)
+            .padding(.bottom, sectionSpacing + headerToContentGap)
 
             liveSectionContent
                 .padding(.bottom, sectionSpacing)
-        }
-        .onChange(of: collapseCommandID) { _, _ in
-            applyCollapseCommand()
         }
     }
 
@@ -237,12 +162,24 @@ private struct DaySectionView: View {
         1 - Double(deepCollapseProgress)
     }
 
+    /// Collapse amount used for layout. Forced to 0 (fully expanded) during search,
+    /// without disturbing the persisted collapse state, so it restores afterward.
+    ///
+    /// This is a *discrete* driver (0 or 2), never a continuously animated CGFloat. When the
+    /// passed-in `isCollapsed` changes inside a `withAnimation`, SwiftUI evaluates this view's
+    /// body once and lets Core Animation tween the leaf modifiers (scale, opacity, frame
+    /// height, offset) between the two endpoints. Animating a CGFloat directly would instead
+    /// re-run body every frame for every section — the FAB/tap jank we chased down.
+    private var effectiveProgress: CGFloat {
+        (forceExpanded || !isCollapsed) ? 0 : 2
+    }
+
     private var collapseProgress: CGFloat {
-        min(settledProgress, 1)
+        min(effectiveProgress, 1)
     }
 
     private var deepCollapseProgress: CGFloat {
-        max(0, min(1, settledProgress - 1))
+        max(0, min(1, effectiveProgress - 1))
     }
 
     private var liveSectionContent: some View {
@@ -270,9 +207,6 @@ private struct DaySectionView: View {
                         },
                         onLongPress: {
                             onBeginSelection(note)
-                        },
-                        onLandfil: {
-                            onLandfil(note)
                         }
                     )
                     .filCreationMorph(id: note.uuid, in: creationNamespace)
@@ -303,11 +237,19 @@ private struct DaySectionView: View {
             VStack(alignment: .leading, spacing: 0) {
                 FlowLayout(spacing: 10, lineSpacing: 10) {
                     let collapsedNotes = collapsedTokenNotes
+                    // A miniature of the same fil-creation blob used in the expanded grid, so
+                    // in-flight creations still show in the collapsed row. No matched-geometry
+                    // here — that stays on the expanded grid placeholder (a single source).
+                    ForEach(placeholderIDs, id: \.self) { _ in
+                        CreatingFilBlobView()
+                            .frame(width: 24, height: 24)
+                            .transition(.opacity)
+                    }
                     ForEach(collapsedNotes) { note in
                         let isSelected = selectedNoteIDs.contains(note.uuid)
                         let isLandfilling = landfillingNoteIDs.contains(note.uuid)
                         CollapsedBlobDotShape(seed: note.blobDotSeed)
-                            .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex))
+                            .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                             .frame(width: 24, height: 24)
                             .overlay {
                                 if isSelected {
@@ -320,7 +262,7 @@ private struct DaySectionView: View {
                             .opacity(isLandfilling ? 0 : 1)
                             .animation(.easeOut(duration: 0.45), value: isLandfilling)
                     }
-                    if collapsedNotes.isEmpty {
+                    if collapsedNotes.isEmpty && placeholderIDs.isEmpty {
                         CollapsedBlobDotShape(seed: 0.4)
                             .fill(Theme.inactiveTabText.opacity(0.6))
                             .frame(width: 24, height: 24)
@@ -351,7 +293,7 @@ private struct DaySectionView: View {
     }
 
     private var dotCollapseProgress: CGFloat {
-        max(0, min(1, settledProgress / 2))
+        max(0, min(1, effectiveProgress / 2))
     }
 
     private var pulseEnvelope: CGFloat {
@@ -362,13 +304,24 @@ private struct DaySectionView: View {
         12 - (8 * previewReveal) - (2 * deepCollapseProgress)
     }
 
+    /// Extra gap between the date header and the top row of fils, present only when the
+    /// section is expanded — fades to 0 as it collapses so the collapsed (dots) spacing
+    /// stays tight, as before.
+    private var headerToContentGap: CGFloat {
+        14 * (1 - collapseProgress)
+    }
+
+    // Kept constant through the collapse so the LazyVGrid isn't forced to re-lay-out
+    // every card each animation frame. The visual shrink is carried by the scaleEffect,
+    // opacity, and height interpolation below — interpolating spacing too only added
+    // per-frame layout churn (and re-computed every blob path) with no visible benefit.
     private var gridSpacing: CGFloat {
-        12 * (1 - collapseProgress)
+        18
     }
 
     private var activeColumns: [GridItem] {
         Array(
-            repeating: GridItem(.flexible(), spacing: 16 * (1 - collapseProgress)),
+            repeating: GridItem(.flexible(), spacing: 16),
             count: columnCount
         )
     }
@@ -381,36 +334,28 @@ private struct DaySectionView: View {
         return expanded + ((dots - expanded) * dotCollapseProgress)
     }
 
-    private func applyCollapseCommand() {
-        let targetStage = collapseCommandStage > 0 ? 2 : 0
-        guard settledProgress != CGFloat(targetStage) else { return }
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
-            settledProgress = CGFloat(targetStage)
-        }
-        onCollapseStageChange(targetStage)
-    }
-
+    // Both toggle paths animate by mutating ContentView's collapsed-keys Set *inside*
+    // withAnimation (via onToggle). The new isCollapsed value flows back down and Core
+    // Animation tweens the leaf modifiers — one coordinated transaction, exactly like the
+    // search/forceExpanded path.
     private func expandSection() {
         SoundscapeManager.shared.playCollapsingSound()
         withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
-            settledProgress = 0
+            onToggle()
         }
-        onCollapseStageChange(0)
     }
 
     private func toggleSection() {
         guard canCollapse else { return }
-        let nextStage = settledProgress > 0 ? 0 : 2
-        if nextStage == 0 {
+        if isCollapsed {
             SoundscapeManager.shared.playCollapsingSound()
         } else {
             SoundscapeManager.shared.playCollapsePartTwoSound()
         }
 
         withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
-            settledProgress = CGFloat(nextStage)
+            onToggle()
         }
-        onCollapseStageChange(nextStage)
     }
 
     private static let headerDateFormatter: DateFormatter = {
@@ -580,9 +525,6 @@ private struct DeletableNoteCard: View {
     let isSelectionMode: Bool
     let onTap: () -> Void
     let onLongPress: () -> Void
-    let onLandfil: () -> Void
-    @State private var isDeleting = false
-    @State private var showLandfilConfirmation = false
 
     var body: some View {
         Button(action: onTap) {
@@ -600,40 +542,20 @@ private struct DeletableNoteCard: View {
         .scaleEffect(showsLandfilAnimation ? 0.01 : (isSelected ? 0.94 : 1))
         .blur(radius: showsLandfilAnimation ? 8 : 0)
         .opacity(showsLandfilAnimation ? 0 : (isSelectionMode && !isSelected ? 0.52 : 1))
+        // Long-press goes straight to selection mode. We intentionally have no context menu:
+        // its dismiss animation briefly clipped the badge (which floats above the card via
+        // .offset), and landfil is handled from selection mode instead.
         .highPriorityGesture(
             LongPressGesture(minimumDuration: 0.35)
                 .onEnded { _ in onLongPress() }
         )
-        .contextMenu {
-            if !isSelectionMode {
-                Button {
-                    onLongPress()
-                } label: {
-                    Label("select", systemImage: "checkmark.circle")
-                }
-
-                Button(role: .destructive) {
-                    showLandfilConfirmation = true
-                } label: {
-                    Label("landfil", systemImage: "trash")
-                }
-            }
-        }
-        .alert("move to landfil?", isPresented: $showLandfilConfirmation) {
-            Button("landfil", role: .destructive) {
-                confirmLandfil()
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("this cannot be undone.")
-        }
         .animation(.easeOut(duration: 0.45), value: showsLandfilAnimation)
         .animation(.snappy(duration: 0.18), value: isSelected)
         .animation(.snappy(duration: 0.18), value: isSelectionMode)
     }
 
     private var showsLandfilAnimation: Bool {
-        isDeleting || isLandfilling
+        isLandfilling
     }
 
     private var selectionStrokeColor: Color? {
@@ -651,13 +573,4 @@ private struct DeletableNoteCard: View {
         }
     }
 
-    private func confirmLandfil() {
-        SoundscapeManager.shared.playLandfilSound()
-        isDeleting = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            withAnimation(.easeOut(duration: 0.45)) {
-                onLandfil()
-            }
-        }
-    }
 }

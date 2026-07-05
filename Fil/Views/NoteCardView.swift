@@ -7,6 +7,8 @@ struct NoteCardView: View {
     var selectionStrokeLineWidth: CGFloat = 0
     var selectionStrokeShadowOpacity: Double = 0
 
+    @AppStorage("prefersLowercase") private var prefersLowercase = false
+
     var body: some View {
         ZStack {
             if note.isImageFil {
@@ -43,18 +45,19 @@ struct NoteCardView: View {
                 } else if note.isLinkFil {
                     linkBlobIcon
                 } else if note.audioFilePath.isEmpty {
-                    Text(blobPreviewText)
-                        .font(Theme.dmMono(8))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .minimumScaleFactor(0.7)
-                        .padding(.horizontal, 12)
+                    // Mirrors the audio fil: the word count is the prominent content
+                    // (like the waveform) with the DM Mono unit underneath (like the duration).
+                    Text("\(blobWordCount)")
+                        .font(Theme.dmMono(12, weight: .bold))
+                        .foregroundStyle(blobTextColor.opacity(0.95))
+                    Text(blobWordCount == 1 ? "word" : "words")
+                        .font(Theme.dmMono(10))
+                        .foregroundStyle(blobTextColor.opacity(0.75))
                 } else {
-                    CompactWaveformView(duration: note.duration)
+                    CompactWaveformView(duration: note.duration, color: blobTextColor)
                     Text(formatDuration(note.duration))
                         .font(Theme.dmMono(10))
-                        .foregroundStyle(.white.opacity(0.9))
+                        .foregroundStyle(blobTextColor.opacity(0.9))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -63,18 +66,21 @@ struct NoteCardView: View {
         .frame(height: 98)
         .overlay(selectionStroke)
         .overlay(alignment: .topTrailing) {
-            let badgeText = note.displayBadgeText
+            let badgeText = prefersLowercase ? note.displayBadgeText.lowercased() : note.displayBadgeText
             let linkBadgeColor = Color(hex: "#408CD9")
             if showsKeywordBadge, !badgeText.isEmpty {
-                Text(badgeText)
-                    .font(Theme.dmSans(9, weight: .semibold))
-                    .foregroundStyle(note.isLinkFil ? .white : .black)
+                KeywordBadgeLabel(
+                    text: badgeText,
+                    textColor: note.isLinkFil ? .white : .black,
+                    isRegenerating: !note.isLinkFil && TitleRegenerationTracker.shared.isRegenerating(note.uuid)
+                )
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(note.isLinkFil ? linkBadgeColor : .white, in: Capsule())
                     .overlay(Capsule().stroke(note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5), lineWidth: 1.5))
-                    .shadow(color: .black.opacity(0.6), radius: 6, x: 0, y: 4)
+                    .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
                     .padding(.trailing, 8)
+                    .offset(y: -10)
             }
         }
     }
@@ -104,16 +110,27 @@ struct NoteCardView: View {
         }
     }
 
-    private var blobPreviewText: String {
+    /// Words of the note's text content (transcript preferred, else title), used for
+    /// both the snippet and the word-count metric so the two always agree.
+    private var blobSourceWords: [String] {
         let source = [note.transcript, note.title]
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .first { !$0.isEmpty } ?? "fil"
-        let words = source
+        return source
             .split(whereSeparator: { $0.isWhitespace })
             .map(String.init)
-        let preview = words.prefix(4).joined(separator: " ")
-        guard words.count > 4 || preview.count < source.count else { return preview }
-        return "\(preview)..."
+    }
+
+    private var blobWordCount: Int {
+        blobSourceWords.count
+    }
+
+    /// Near-black on light blobs, white on dark ones, so the word count stays legible
+    /// across every gradient. Averages the two gradient stops' luminance.
+    private var blobTextColor: Color {
+        let start = Color(hex: note.gradientStartHex).luminance
+        let end = Color(hex: note.gradientEndHex).luminance
+        return (start + end) / 2 > 0.55 ? .black : .white
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
@@ -123,18 +140,77 @@ struct NoteCardView: View {
     }
 }
 
+/// The fil's title/keyword badge. When the title changes (e.g. after an edit
+/// regenerates it), the old text dissolves away in accent colors while the new title
+/// gradient-reveals in — the same effect as sending a fil from the composer. A looping
+/// shimmer plays while regeneration is still in flight.
+private struct KeywordBadgeLabel: View {
+    let text: String
+    let textColor: Color
+    let isRegenerating: Bool
+
+    @State private var isRevealing = false
+    /// Pulsing blur applied to the old title while it's being regenerated.
+    @State private var blurRadius: CGFloat = 0
+
+    var body: some View {
+        Group {
+            if isRevealing {
+                // The new title sharpens out of blur (the reveal renderer starts each
+                // glyph blurred), so it emerges seamlessly from the "thinking" blur.
+                AnimatedGradientRevealText(text: text, maxDuration: 1.1)
+                    .foregroundStyle(textColor)
+            } else if isRegenerating {
+                // "Thinking": the current title softens into a pulsing blur.
+                Text(text)
+                    .foregroundStyle(textColor)
+                    .blur(radius: blurRadius)
+                    .opacity(0.7)
+            } else {
+                Text(text)
+                    .foregroundStyle(textColor)
+            }
+        }
+        .font(Theme.dmSans(9, weight: .semibold))
+        // Capsule eases between the old and new title widths as the new one reveals,
+        // rather than snapping. One motion — no intermediate resize step.
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: text)
+        .onChange(of: isRegenerating) { _, nowRegenerating in
+            if nowRegenerating {
+                blurRadius = 2
+                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
+                    blurRadius = 5
+                }
+            } else {
+                withAnimation(.easeOut(duration: 0.2)) { blurRadius = 0 }
+            }
+        }
+        // Driven by the actual title change (a persisted, observed property), so it
+        // fires reliably. Guard against the first assignment and scroll reuse.
+        .onChange(of: text) { oldValue, newValue in
+            guard oldValue != newValue, !oldValue.isEmpty else { return }
+            isRevealing = true
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1.1))
+                isRevealing = false
+            }
+        }
+    }
+}
+
 private struct NoteBlobBackground: View {
     let startColor: Color
     let endColor: Color
     let seed: Double
 
     var body: some View {
+        let points = Theme.gradientUnitPoints(seed: seed)
         NoteBlobShape(seed: seed)
             .fill(
                 LinearGradient(
                     colors: [startColor, endColor],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
+                    startPoint: points.start,
+                    endPoint: points.end
                 )
             )
     }
@@ -162,8 +238,8 @@ struct NoteBlobShape: Shape {
         let asymmetryPhase = CGFloat(Self.unitNoise(seed, salt: 37) * .pi * 2)
         let asymmetryStrength = CGFloat((Self.unitNoise(seed, salt: 41) - 0.5) * 0.18)
         let center = CGPoint(x: squareRect.midX, y: squareRect.midY)
-        let radiusX = squareRect.width * 0.46
-        let radiusY = squareRect.height * 0.42
+        let radiusX = squareRect.width * 0.50
+        let radiusY = squareRect.height * 0.46
         let blobPoints = (0..<points).map { index in
             let angle = (CGFloat(index) / CGFloat(points) * .pi * 2) + rotation
             let pointOffset = CGFloat((Self.unitNoise(seed, salt: Double(index) + 101) - 0.5) * 0.22)

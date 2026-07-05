@@ -25,8 +25,8 @@ struct ArticleView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: [SortDescriptor(\UserProfile.createdAt, order: .reverse)]) private var userProfiles: [UserProfile]
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
+    @AppStorage("prefersLowercase") private var prefersLowercase = false
     @State private var player = AudioPlayerViewModel()
     private let pinnedFilStore = PinnedFilStore.shared
     @State private var pinnedFil: PinnedFilSnapshot? = PinnedFilStore.shared.pinnedFil
@@ -35,8 +35,11 @@ struct ArticleView: View {
     @State private var backlinkNoteToOpen: Note?
     @State private var transcriptTextHeight: CGFloat = 100
     @State private var isEditingTranscript = false
-    @State private var isDateMetadataExpanded = false
-    @State private var titleDraftBaseline = ""
+    @State private var isAddingTodo = false
+    @State private var newTodoText = ""
+    @FocusState private var isTodoFieldFocused: Bool
+    @State private var pinToastMessage: String?
+    @State private var pinToastDismissTask: Task<Void, Never>?
     @State private var transcriptDraftBaseline = ""
     @State private var selectedImageFilIndex = 0
     @State private var imagePreviewURL: URL?
@@ -72,10 +75,6 @@ struct ArticleView: View {
         AudioPlayerViewModel.hasAudioFile(for: note.audioFilePath)
     }
 
-    private var activeUserProfile: UserProfile? {
-        userProfiles.first
-    }
-
     private var isTranscriptEdited: Bool {
         guard let originalTranscript = note.originalTranscript else { return false }
         return originalTranscript != note.transcript
@@ -92,13 +91,6 @@ struct ArticleView: View {
         )
     }
 
-    private var titleBinding: Binding<String> {
-        Binding(
-            get: { note.title },
-            set: updateTitle
-        )
-    }
-
     private var threadContextTitle: String? {
         threadContextKeyword?.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
     }
@@ -112,19 +104,27 @@ struct ArticleView: View {
             Theme.background
                 .ignoresSafeArea()
 
-            if note.imageData == nil {
-                CalibrateSheetBackground(
-                    startColor: Color(hex: note.gradientStartHex),
-                    endColor: Color(hex: note.gradientEndHex),
-                    isLightMode: colorScheme == .light
-                )
-                .ignoresSafeArea()
-            }
+            // The blurred backdrop (~18 circles) and top-edge glow (3 blurred strokes) each
+            // take part in layout on every frame of the detent resize — the lag we isolated.
+            // Rasterizing them to a single static image once, then stretching that one image
+            // as the sheet grows, collapses them to a single cheap layer. The heavy blur
+            // hides the stretch, so the look is preserved.
+            StaticBlurBackdrop(colorScheme: colorScheme) {
+                ZStack {
+                    if note.imageData == nil {
+                        CalibrateSheetBackground(
+                            startColor: Color(hex: note.gradientStartHex),
+                            endColor: Color(hex: note.gradientEndHex),
+                            isLightMode: colorScheme == .light
+                        )
+                    }
 
-            FilrTopEdgeGlow(
-                startColor: Color(hex: note.gradientStartHex),
-                endColor: Color(hex: note.gradientEndHex)
-            )
+                    FilrTopEdgeGlow(
+                        startColor: Color(hex: note.gradientStartHex),
+                        endColor: Color(hex: note.gradientEndHex)
+                    )
+                }
+            }
             .ignoresSafeArea()
 
             if note.isLinkFil {
@@ -143,7 +143,8 @@ struct ArticleView: View {
 
                         VStack(alignment: .leading, spacing: 16) {
                             if !note.isImageFil || selectedPresentationDetent == .large {
-                                dateMetadata
+                                sourceTypeIndicator
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
 
                             if note.isImageFil {
@@ -159,6 +160,9 @@ struct ArticleView: View {
 
         }
         .ignoresSafeArea(edges: ignoresTopSafeArea ? .top : [])
+        .overlay(alignment: .topTrailing) {
+            pinToast
+        }
         .toolbar(note.isLinkFil ? .hidden : .automatic, for: .navigationBar)
         .onAppear {
             normalizeTodoCompletionStates()
@@ -180,13 +184,30 @@ struct ArticleView: View {
             }
 
             if !note.isLinkFil {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Menu {
+                        Section("Created") {
+                            Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
+                                .font(Theme.dmMono(12))
+                        }
+                    } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel("Fil info")
+
                     Button {
                         togglePinnedFil()
                     } label: {
                         Image(systemName: isCurrentFilPinned ? "pin.fill" : "pin")
                     }
                     .accessibilityLabel(isCurrentFilPinned ? "Unpin fil" : "Pin fil")
+
+                    Button {
+                        toggleEditing()
+                    } label: {
+                        Image(systemName: isEditingTranscript ? "checkmark" : "pencil")
+                    }
+                    .accessibilityLabel(isEditingTranscript ? "Finish editing" : "Edit fil")
                 }
             }
         }
@@ -226,47 +247,24 @@ struct ArticleView: View {
     }
 
     @ViewBuilder
-    private var dateMetadata: some View {
-        Group {
-            if isDateMetadataExpanded {
-                VStack(alignment: .leading, spacing: 6) {
-                    Button {
-                        SoundscapeManager.shared.playTabSound()
-                        withAnimation(.snappy(duration: 0.18)) {
-                            isDateMetadataExpanded = false
-                        }
-                    } label: {
-                        Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
-                            .font(Theme.dmMono(12))
-                            .foregroundStyle(Theme.tertiaryText)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Hide date metadata")
-
-                    sourceTypeIndicator
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            } else {
-                Button {
-                    SoundscapeManager.shared.playTabSound()
-                    withAnimation(.snappy(duration: 0.18)) {
-                        isDateMetadataExpanded = true
-                    }
-                } label: {
-                    Image(systemName: "info.circle")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Theme.tertiaryText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Show date metadata")
+    private var pinToast: some View {
+        if let pinToastMessage {
+            HStack(spacing: 8) {
+                Image(systemName: "pin.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.secondaryText)
+                Text(pinToastMessage)
+                    .font(Theme.dmSans(12, weight: .medium))
+                    .foregroundStyle(Theme.secondaryText)
             }
+            .padding(.horizontal, 14)
+            .frame(height: 36)
+            .glassEffect(.regular, in: .capsule)
+            .contentShape(Capsule())
+            .padding(.top, 8)
+            .padding(.trailing, 16)
+            .transition(.move(edge: .top).combined(with: .opacity))
         }
-        .transition(.blurReplace)
-        .animation(.snappy(duration: 0.18), value: isDateMetadataExpanded)
     }
 
     private var heroImage: some View {
@@ -330,6 +328,20 @@ struct ArticleView: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+            // To-dos (and the add control) surface only at the full detent, so the compact
+            // image view stays clean.
+            if selectedPresentationDetent == .large {
+                Divider()
+                    .overlay(Theme.divider)
+                    .padding(.top, 4)
+
+                if !note.todos.isEmpty {
+                    todoQuoteList
+                }
+
+                addTodoControl
             }
         }
     }
@@ -428,23 +440,19 @@ struct ArticleView: View {
 
     private var articleContentView: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                titleView
-
-                Spacer(minLength: 12)
-
-                articleEditButton
-            }
+            titleView
 
             transcriptSection
 
-            if !note.todos.isEmpty {
-                Divider()
-                    .overlay(Theme.divider)
-                    .padding(.top, 4)
+            Divider()
+                .overlay(Theme.divider)
+                .padding(.top, 4)
 
+            if !note.todos.isEmpty {
                 todoQuoteList
             }
+
+            addTodoControl
 
             if showsThreadedFilRows, backlinkParentNote != nil {
                 Divider()
@@ -458,23 +466,11 @@ struct ArticleView: View {
 
     @ViewBuilder
     private var titleView: some View {
+        // The card badge is the fil's title/identity and is generated from the
+        // transcript — it isn't directly editable. Only threaded fils show a
+        // header here (their parent context).
         if threadContextTitle != nil {
             threadContextHeader
-                .transition(.blurReplace)
-        } else if isEditingTranscript {
-            TextField("title", text: titleBinding, axis: .vertical)
-                .font(Theme.dmMono(13))
-                .foregroundStyle(Theme.primaryText)
-                .textFieldStyle(.plain)
-                .lineLimit(1...3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .transition(.blurReplace)
-        } else if !note.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            Text(note.title)
-                .font(Theme.dmSans(22, weight: .semibold))
-                .foregroundStyle(Theme.primaryText)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .transition(.blurReplace)
         }
     }
@@ -496,6 +492,13 @@ struct ArticleView: View {
         }
     }
 
+    // When editing, let the text area grow to fill the larger detent. Derived
+    // from the discrete detent (not per-frame geometry) so it doesn't re-evaluate
+    // this shader-heavy body during the sheet's resize animation.
+    private var editingTranscriptMinHeight: CGFloat {
+        selectedPresentationDetent == .large ? 560 : 220
+    }
+
     private var transcriptSection: some View {
         Group {
             if isEditingTranscript {
@@ -503,10 +506,10 @@ struct ArticleView: View {
                     .font(Theme.dmMono(13))
                     .foregroundStyle(Theme.secondaryText)
                     .scrollContentBackground(.hidden)
-                    .frame(minHeight: 220, alignment: .topLeading)
+                    .frame(minHeight: editingTranscriptMinHeight, alignment: .topLeading)
             } else {
                 SelectableTextView(
-                    text: note.transcript,
+                    text: prefersLowercase ? note.transcript.lowercased() : note.transcript,
                     highlightedKeywords: note.attachments.map(\.keyword),
                     gradientStartHex: note.gradientStartHex,
                     gradientEndHex: note.gradientEndHex,
@@ -515,6 +518,9 @@ struct ArticleView: View {
                     },
                     onTapHighlight: { keyword in
                         filSheetPath.append(.keyword(noteID: note.uuid, keyword: keyword))
+                    },
+                    onMakeTodo: { selectedText in
+                        makeTodo(from: selectedText)
                     },
                     height: $transcriptTextHeight
                 )
@@ -560,16 +566,7 @@ struct ArticleView: View {
 
     @ViewBuilder
     private var sourceTypeIndicator: some View {
-        if note.audioFilePath.isEmpty {
-            HStack(spacing: 8) {
-                Image(systemName: "character.cursor.ibeam")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(Theme.tertiaryText)
-                Text("typed entry")
-                    .font(Theme.dmMono(12))
-                    .foregroundStyle(Theme.tertiaryText)
-            }
-        } else {
+        if !note.audioFilePath.isEmpty {
             PlaybackWaveformView(
                 player: player,
                 totalDuration: note.duration,
@@ -578,42 +575,28 @@ struct ArticleView: View {
         }
     }
 
-    private var articleEditButton: some View {
-        Button {
-            SoundscapeManager.shared.playTabSound()
-            if isEditingTranscript {
-                let shouldRefreshMetadata = note.transcript != transcriptDraftBaseline
-                withAnimation(.snappy(duration: 0.18)) {
-                    isEditingTranscript = false
-                }
-                if shouldRefreshMetadata {
-                    Task { await refreshMetadataFromTranscript() }
-                }
-            } else {
-                titleDraftBaseline = note.title
-                transcriptDraftBaseline = note.transcript
-                withAnimation(.snappy(duration: 0.18)) {
-                    isEditingTranscript = true
-                }
+    private func toggleEditing() {
+        SoundscapeManager.shared.playTabSound()
+        if isEditingTranscript {
+            let shouldRefreshMetadata = note.transcript != transcriptDraftBaseline
+            withAnimation(.snappy(duration: 0.18)) {
+                isEditingTranscript = false
             }
-        } label: {
-            Group {
-                if isEditingTranscript {
-                    Text("done")
-                } else {
-                    Text("edit")
-                }
+            if shouldRefreshMetadata {
+                Task { await refreshMetadataFromTranscript() }
             }
-            .transition(.blurReplace)
-            .animation(.snappy(duration: 0.18), value: isEditingTranscript)
+        } else {
+            transcriptDraftBaseline = note.transcript
+            withAnimation(.snappy(duration: 0.18)) {
+                isEditingTranscript = true
+            }
         }
-        .font(Theme.dmMono(12))
-        .foregroundStyle(Theme.secondaryText)
     }
 
     private func togglePinnedFil() {
         SoundscapeManager.shared.playTabSound()
 
+        let willPin = !isCurrentFilPinned
         if isCurrentFilPinned {
             pinnedFilStore.unpin()
             Task {
@@ -628,6 +611,22 @@ struct ArticleView: View {
 
         withAnimation(.snappy(duration: 0.18)) {
             pinnedFil = pinnedFilStore.pinnedFil
+        }
+
+        showPinToast(willPin ? "pinned to live activity" : "unpinned from live activity")
+    }
+
+    private func showPinToast(_ message: String) {
+        pinToastDismissTask?.cancel()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+            pinToastMessage = message
+        }
+        pinToastDismissTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
+                pinToastMessage = nil
+            }
         }
     }
 
@@ -653,10 +652,93 @@ struct ArticleView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            removeTodo(at: index)
+                        } label: {
+                            Label("remove to-do", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .padding(.top, 2)
         }
+    }
+
+    /// The always-available control for adding a to-do to this fil. Shows a compact
+    /// "+ to-do" button that expands into an inline field. Kept low-emphasis — Fil isn't a
+    /// to-do app, action items are just one kind of thought that lands in it.
+    @ViewBuilder
+    private var addTodoControl: some View {
+        if isAddingTodo {
+            HStack(alignment: .center, spacing: 12) {
+                todoStatusCircle(isCompleted: false)
+
+                TextField("to-do", text: $newTodoText)
+                    .font(Theme.dmMono(13))
+                    .foregroundStyle(Theme.secondaryText)
+                    .focused($isTodoFieldFocused)
+                    .submitLabel(.done)
+                    .onSubmit { commitNewTodo() }
+
+                Button(action: commitNewTodo) {
+                    Image(systemName: "return")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 2)
+        } else {
+            Button(action: startAddingTodo) {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("to-do")
+                        .font(Theme.dmMono(12))
+                }
+                .foregroundStyle(Theme.tertiaryText)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+        }
+    }
+
+    private func startAddingTodo() {
+        newTodoText = ""
+        withAnimation(.snappy(duration: 0.18)) { isAddingTodo = true }
+        isTodoFieldFocused = true
+    }
+
+    /// Commits the field as a to-do. A non-empty entry stays in add mode for rapid entry;
+    /// submitting an empty field exits.
+    private func commitNewTodo() {
+        let trimmed = newTodoText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            withAnimation(.snappy(duration: 0.18)) { isAddingTodo = false }
+            isTodoFieldFocused = false
+            return
+        }
+        note.addTodo(trimmed)
+        try? modelContext.save()
+        SoundscapeManager.shared.playTodoArticleToggleSound()
+        newTodoText = ""
+        isTodoFieldFocused = true
+    }
+
+    private func removeTodo(at index: Int) {
+        SoundscapeManager.shared.playTodoArticleToggleSound()
+        note.removeTodo(at: index)
+        try? modelContext.save()
+    }
+
+    /// Promotes arbitrary text (e.g. a selection from the transcript) into a to-do. This is
+    /// how voice fils and anything missed at capture get action items after the fact.
+    private func makeTodo(from text: String) {
+        note.addTodo(text)
+        try? modelContext.save()
+        SoundscapeManager.shared.playTodoArticleToggleSound()
     }
 
     private func todoStatusCircle(isCompleted: Bool) -> some View {
@@ -707,27 +789,20 @@ struct ArticleView: View {
         try? modelContext.save()
     }
 
-    private func updateTitle(_ newValue: String) {
-        guard newValue != note.title else { return }
-        if note.originalTitle == nil {
-            note.originalTitle = note.title
-        }
-        note.title = newValue
-        try? modelContext.save()
-    }
-
     @MainActor
     private func refreshMetadataFromTranscript() async {
+        // Drives the badge's "thinking" blur; cleared once the new title is in place,
+        // which triggers its gradient reveal out of that blur.
+        TitleRegenerationTracker.shared.begin(note.uuid)
+        defer { TitleRegenerationTracker.shared.end(note.uuid) }
         do {
+            // Only the title is regenerated from the edited transcript. To-dos are never
+            // auto-extracted — they're created and edited explicitly by the user.
             let metadata = try await ArticleGenerationService.shared.generateMetadata(
-                from: note.transcript,
-                userProfile: activeUserProfile
+                from: note.transcript
             )
-            let previousTodoStates = Dictionary(uniqueKeysWithValues: zip(note.todos, note.completedTodos))
             note.keyword = metadata.keyword
             note.title = metadata.keyword
-            note.todos = metadata.todos
-            note.completedTodos = metadata.todos.map { previousTodoStates[$0] ?? false }
             try? modelContext.save()
         } catch {
             // Keep transcript edits even if metadata refresh fails.
@@ -844,6 +919,53 @@ private extension Note {
 private extension String {
     var nilIfEmpty: String? {
         isEmpty ? nil : self
+    }
+}
+
+/// Renders an expensive, decorative (static-color) view once into a bitmap and displays
+/// that bitmap stretched to fill. Because the snapshot is a single layer, resizing the
+/// container (e.g. a sheet animating between detents) just stretches one texture instead
+/// of re-laying-out and re-blurring the original view tree every frame. The snapshot is
+/// taken at the first non-zero size and re-taken only if the width changes (rotation).
+private struct StaticBlurBackdrop<Content: View>: View {
+    /// Must be passed explicitly: ImageRenderer does NOT inherit the SwiftUI environment,
+    /// so without this the snapshot renders in light mode (Theme.background → white).
+    let colorScheme: ColorScheme
+    @ViewBuilder let content: () -> Content
+
+    @Environment(\.displayScale) private var displayScale
+    @State private var snapshot: Image?
+    @State private var renderedWidth: CGFloat = 0
+
+    var body: some View {
+        GeometryReader { proxy in
+            Group {
+                if let snapshot {
+                    snapshot.resizable()
+                } else {
+                    Color.clear
+                }
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .task(id: proxy.size.width) {
+                render(size: proxy.size)
+            }
+        }
+    }
+
+    @MainActor
+    private func render(size: CGSize) {
+        guard size.width > 0, size.height > 0, size.width != renderedWidth else { return }
+        let renderer = ImageRenderer(
+            content: content()
+                .frame(width: size.width, height: size.height)
+                .environment(\.colorScheme, colorScheme)
+        )
+        renderer.scale = displayScale
+        if let uiImage = renderer.uiImage {
+            snapshot = Image(uiImage: uiImage)
+            renderedWidth = size.width
+        }
     }
 }
 

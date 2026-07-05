@@ -42,14 +42,6 @@ struct AquariumView: View {
             .padding(.top, 100)
             .padding(.leading, 16)
         }
-        .onAppear { setIdleTimer(disabled: true) }
-        .onDisappear { setIdleTimer(disabled: false) }
-    }
-
-    private func setIdleTimer(disabled: Bool) {
-        #if canImport(UIKit)
-        UIApplication.shared.isIdleTimerDisabled = disabled
-        #endif
     }
 }
 

@@ -68,8 +68,6 @@ struct FilScreensaverView: View {
                     onModeChanged?(mode)
                 }
         )
-        .onAppear { setIdleTimer(disabled: true) }
-        .onDisappear { setIdleTimer(disabled: false) }
     }
 
     // MARK: - Shared blob model
@@ -110,11 +108,6 @@ struct FilScreensaverView: View {
         }
     }
 
-    private func setIdleTimer(disabled: Bool) {
-        #if canImport(UIKit)
-        UIApplication.shared.isIdleTimerDisabled = disabled
-        #endif
-    }
 }
 
 // MARK: - Wave mode
@@ -179,12 +172,13 @@ private struct WaveScreensaverLayer: View {
                 .concatenating(CGAffineTransform(translationX: minX, y: minY))
             let path = blob.unitPath.applying(transform)
 
+            let gradientPoints = Theme.gradientUnitPoints(seed: blob.phase)
             context.fill(
                 path,
                 with: .linearGradient(
                     Gradient(colors: [blob.startColor, blob.endColor]),
-                    startPoint: CGPoint(x: minX, y: minY),
-                    endPoint: CGPoint(x: minX + blobSize, y: minY + blobSize)
+                    startPoint: CGPoint(x: minX + gradientPoints.start.x * blobSize, y: minY + gradientPoints.start.y * blobSize),
+                    endPoint: CGPoint(x: minX + gradientPoints.end.x * blobSize, y: minY + gradientPoints.end.y * blobSize)
                 )
             )
 
@@ -313,12 +307,14 @@ private struct AuroraLeavesScreensaverLayer: View {
                 .concatenating(CGAffineTransform(translationX: CGFloat(minX), y: CGFloat(minY)))
             let path = blob.unitPath.applying(transform)
 
+            let gradientPoints = Theme.gradientUnitPoints(seed: blob.phase)
+            let bs = Double(blobSize)
             context.fill(
                 path,
                 with: .linearGradient(
                     Gradient(colors: [blob.startColor, blob.endColor]),
-                    startPoint: CGPoint(x: minX, y: minY),
-                    endPoint: CGPoint(x: minX + Double(blobSize), y: minY + Double(blobSize))
+                    startPoint: CGPoint(x: minX + Double(gradientPoints.start.x) * bs, y: minY + Double(gradientPoints.start.y) * bs),
+                    endPoint: CGPoint(x: minX + Double(gradientPoints.end.x) * bs, y: minY + Double(gradientPoints.end.y) * bs)
                 )
             )
         }
@@ -336,7 +332,13 @@ private struct AuroraLeavesScreensaverLayer: View {
 private struct AuroraRibbonsScreensaverLayer: View {
     let blobs: [FilScreensaverView.Blob]
 
-    private var colors: [Color] { blobs.map(\.midColor) }
+    /// Up to 6 colors (the shader's band count) sampled evenly across ALL fils —
+    /// chronologically spread so recent, vivid fils appear, not just the 6 oldest.
+    private var colors: [Color] {
+        let mids = blobs.map(\.midColor)
+        guard mids.count > 6 else { return mids }
+        return (0..<6).map { mids[$0 * (mids.count - 1) / 5] }
+    }
 
     var body: some View {
         GeometryReader { geometry in
