@@ -494,9 +494,10 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Fil/Info.plist;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Fil needs camera access to add attachments. ";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Fil needs camera access so you can add photos to your notes.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Fil needs access to your microphone to record voice notes.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Fil needs access to your microphone to record voice notes.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Fil transcribes your voice recordings into text on your device so it can title and save your notes.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -540,9 +541,10 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Fil/Info.plist;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Fil needs camera access to add attachments. ";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Fil needs camera access so you can add photos to your notes.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Fil needs access to your microphone to record voice notes.";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Fil needs access to your microphone to record voice notes.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Fil transcribes your voice recordings into text on your device so it can title and save your notes.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;

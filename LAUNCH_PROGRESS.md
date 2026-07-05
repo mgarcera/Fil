@@ -62,3 +62,13 @@ validate everything together.
 - Watch at phase-end build: if the widget/extension actually call a 26.5/27.0-only API, the build
   will flag it and we bump the shared floor + note the reach tradeoff.
 
+### #4 + #7 — Export-compliance key + usage strings (audit #4, #7) ✅
+*(Committed together: both are `INFOPLIST_KEY_*` edits in the same pbxproj file; splitting one
+file's hunks into two commits needs interactive `git add -p`, which isn't available here.)*
+- #4: added `INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO` on `Fil` (Debug+Release) so App
+  Store Connect builds aren't held for a manual encryption-compliance answer.
+- #7: reworded `NSSpeechRecognitionUsageDescription` to describe on-device transcription (it had
+  been a verbatim copy of the mic string), and fixed the `NSCameraUsageDescription` (removed the
+  trailing space; clearer wording).
+- Verified: grep shows all three keys correct in both Debug and Release.
+

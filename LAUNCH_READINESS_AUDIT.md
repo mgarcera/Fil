@@ -355,10 +355,10 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 1. [x] Guard FoundationModels with `SystemLanguageModel.default.availability` + `keywordFallback()`; move the throwing call so notes always insert — `apple-skills:apple-intelligence`
 2. [x] Trim `SUPPORTED_PLATFORMS`/`TARGETED_DEVICE_FAMILY`/`SDKROOT`, delete XROS/MACOSX targets + Mac runpath, drop iPad orientation key + Mac AppIcon idioms — `apple-skills:ios` *(mac runpath left inert — see worklog)*
 3. [x] Unify `IPHONEOS_DEPLOYMENT_TARGET` across app, widget, and share extension — `apple-skills:ios` *(unified at 26.4)*
-4. [ ] Add `ITSAppUsesNonExemptEncryption = NO` — `apple-skills:release-review`
+4. [x] Add `ITSAppUsesNonExemptEncryption = NO` — `apple-skills:release-review`
 5. [ ] Add `PrivacyInfo.xcprivacy` (app + extensions) with UserDefaults `CA92.1`/`1C8F.1` and empty collection/tracking — `apple-skills:legal`
 6. [x] Set `requiresOnDeviceRecognition = true` (gated on `supportsOnDeviceRecognition`) OR reconcile all on-device claims — `apple-skills:apple-intelligence` *(code done; privacy-policy wording for no-on-device-support devices tracked in Phase 2 #9)*
-7. [ ] Fix the Speech usage string (and camera trailing space) — `apple-skills:release-review`
+7. [x] Fix the Speech usage string (and camera trailing space) — `apple-skills:release-review`
 8. [ ] Make `Theme.dmSans/dmMono` Dynamic-Type-aware + `UIFontMetrics` for `SelectableTextView`; convert inline sites — `xcode-integration:accessibility-dynamic-type-specialist`
 
 **Phase 2 — Submission metadata & App Store Connect**
