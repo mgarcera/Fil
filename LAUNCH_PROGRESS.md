@@ -52,3 +52,13 @@ validate everything together.
   platform. Can be cleaned by hand later if desired.
 - Verified: read back pbxproj — both Debug and Release configs reflect all changes.
 
+### #3 — Unify iOS deployment target (audit #3) ✅
+- Set `IPHONEOS_DEPLOYMENT_TARGET = 26.4` on `FilPinnedWidgetExtension` and `FilShareExtension`
+  to match the host app (was 26.5 and 27.0 respectively). Chose the app's existing 26.4 as the
+  floor for widest device reach rather than raising the app to 27.0.
+- The embedded extension (was 27.0 > app 26.4) no longer exceeds the host, which was failing
+  upload validation.
+- Verified: grep of pbxproj shows all 6 configs (app/widget/extension × Debug/Release) at 26.4.
+- Watch at phase-end build: if the widget/extension actually call a 26.5/27.0-only API, the build
+  will flag it and we bump the shared floor + note the reach tradeoff.
+
