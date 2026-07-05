@@ -41,3 +41,14 @@ validate everything together.
   absolute "100% on-device" listing claim ships until then. Tracked under audit #6/legal.
 - Verified: live diagnostics clean.
 
+### #2 — Trim platforms to iPhone-only (audit #2) ✅
+- Via the Xcode build-settings MCP tool (not hand-editing pbxproj), on target `Fil` for both
+  Debug + Release: `SUPPORTED_PLATFORMS = iphoneos iphonesimulator`, `TARGETED_DEVICE_FAMILY = 1`,
+  `SDKROOT = iphoneos`; deleted `XROS_DEPLOYMENT_TARGET`, `MACOSX_DEPLOYMENT_TARGET`, and
+  `INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad`.
+- Removed the 11 Mac idiom entries from `AppIcon.appiconset/Contents.json` (iOS universal only).
+- Left in place (harmless): `LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]` — the MCP tool can't delete a
+  `[sdk=...]`-conditioned key, and it's now completely inert since macOS is no longer a supported
+  platform. Can be cleaned by hand later if desired.
+- Verified: read back pbxproj — both Debug and Release configs reflect all changes.
+
