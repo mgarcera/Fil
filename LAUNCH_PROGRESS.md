@@ -127,3 +127,26 @@ no-support devices (→ Phase 2 #9); inline `.system(size:)` conversion + fixed-
   still scales to accessibility1.
 - Verified: diagnostics clean + full BuildProject passed. (This is a concrete instance of P2 #23.)
 
+---
+
+## Phase 2 — Submission metadata & App Store Connect
+
+Positioning locked (after a brainstorm grounded in the "from mason" manifesto — Fil is
+explicitly anti-optimization, *not* a productivity/second-brain/journal app):
+- **Name:** `Fil — Let Thoughts Be`   **Subtitle:** `Speak your mind. Let it be.`
+- **Category:** Lifestyle (primary) / Utilities (secondary).
+- ASO strategy: visible name/subtitle carry the soul; the hidden 100-char keyword field + the
+  description carry search terms. "Voice notes" intentionally dropped from the visible name.
+- Legal docs: Privacy Policy **+** Terms of Service. Hosting: placeholder URL constant, one place.
+
+### #12 — In-app Settings links (audit #12) ✅
+- New `Fil/FilLinks.swift` — single source of truth for external URLs (Privacy, Terms, Support,
+  contact mailto, App Store write-review). Three web URLs + the numeric App Store ID are clearly
+  marked `TODO(launch)` placeholders; changing them later is a one-line-each edit.
+- `SettingsView` About now shows tappable rows: from mason · privacy policy · terms of service ·
+  contact & feedback · rate fil, via a shared `aboutRow` helper (reuses the existing row styling;
+  labelled Text so VoiceOver reads them). Opens via `@Environment(\.openURL)`.
+- Verified: diagnostics clean + full BuildProject passed. Links 404/no-op until the pages are
+  hosted and the App Store ID is set (expected; placeholder phase).
+
+

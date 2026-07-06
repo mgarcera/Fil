@@ -13,6 +13,8 @@ struct SettingsView: View {
     @State private var showFromMason = false
     @State private var contentVisible = false
 
+    @Environment(\.openURL) private var openURL
+
     var body: some View {
         ZStack {
             ambientBackground
@@ -155,20 +157,14 @@ struct SettingsView: View {
 
     private var aboutContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Button {
-                showFromMason = true
-            } label: {
-                HStack(spacing: 14) {
-                    Text("from mason")
-                        .font(Theme.dmSans(16, weight: .medium))
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.72))
-                }
-            }
-            .buttonStyle(.plain)
+            aboutRow("from mason") { showFromMason = true }
+
+            Divider().overlay(Color.white.opacity(0.14))
+
+            aboutRow("privacy policy") { openURL(FilLinks.privacyPolicy) }
+            aboutRow("terms of service") { openURL(FilLinks.termsOfService) }
+            aboutRow("contact & feedback") { openURL(FilLinks.contactEmail) }
+            aboutRow("rate fil") { openURL(FilLinks.writeReview) }
 
             Divider().overlay(Color.white.opacity(0.14))
 
@@ -176,6 +172,24 @@ struct SettingsView: View {
                 .font(Theme.dmMono(12))
                 .foregroundStyle(.white.opacity(0.5))
         }
+    }
+
+    /// A tappable About row — a lowercase label with a trailing "open" chevron. Shared by the
+    /// "from mason" sheet and the external Privacy / Terms / Contact / Rate links.
+    private func aboutRow(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Text(title)
+                    .font(Theme.dmSans(16, weight: .medium))
+                    .foregroundStyle(.white)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.72))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var appVersion: String {

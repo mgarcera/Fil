@@ -365,7 +365,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 9. [ ] Write + host the Privacy Policy; enter Privacy Policy URL in ASC — `apple-skills:legal`
 10. [ ] Stand up a Support page; enter Support URL — `apple-skills:growth`
 11. [ ] Complete the App Privacy nutrition label ("Data Not Collected", Tracking = No) consistent with the manifest — `apple-skills:legal`
-12. [ ] Add in-app Settings links: Privacy Policy, Contact/Feedback, Rate Fil — `apple-skills:generators` + `apple-skills:legal`
+12. [x] Add in-app Settings links: Privacy Policy, Contact/Feedback, Rate Fil — `apple-skills:generators` + `apple-skills:legal` *(+ Terms; URLs are placeholders in FilLinks.swift until hosted)*
 13. [ ] Set the App Store name + subtitle + deduped keywords — `apple-skills:app-store`
 14. [ ] Produce the 6-shot 6.9″/6.7″ screenshot set (+ optional preview) — `apple-skills:app-store` + `apple-skills:generators`
 
