@@ -121,14 +121,116 @@ A single note is **a fil**. In-product wordplay (use naturally, don't over-expla
 - **ful·fil·ment** — the feeling Fil hopes to give ("i hope you'll find as much ful*fil*ment and
   fun as i do")
 
-## 9. Visual identity (reference)
+## 9. Visual identity
 
-- **Gradient blobs.** Every fil is an organic, procedurally-shaped blob with a two-color gradient
-  drawn from a warm/earthy/cool palette — the core visual signature.
-- **Glass & light.** Frosted-glass surfaces, soft ambient gradient backdrops, gentle motion.
-- **Calm, spacious, unhurried.** Lots of room; nothing shouts. Motion is smooth and organic, never
-  snappy or gamified.
-- **Lowercase type**, clean sans (DM Sans) with a mono accent (DM Mono).
+*Values below are pulled from the app's `Theme.swift`. Semantic tokens are adaptive (light + dark)
+color sets defined in `Assets.xcassets`, so they have no single fixed hex — use the app as the
+reference, or sample both appearances. The gradient palettes and utility colors are fixed hex.*
+
+### 9a. Color
+
+**Semantic / adaptive tokens** (roles, not fixed hex — light + dark variants live in the asset
+catalog): `Background`, `PrimaryText`, `SecondaryText`, `TertiaryText`, `Divider`,
+`CardBackground`, and the tab colors (`ActiveTabText`, `ActiveTabBackground`, `InactiveTabText`,
+`InactiveTabBackground`). Default appearance is **dark**. For the website, treat these as: near-black
+canvas in dark mode / warm-white in light mode, high-contrast primary text, muted secondary text.
+
+**Fil gradient palettes** — the heart of the identity. Every fil (blob, card, widget) uses a
+two-color linear gradient. Colors are drawn from *all three* palettes below, and cross-palette pairs
+are allowed (bright ↔ earthy ↔ cool), which is what gives the grid its variety.
+
+*Palette 1 — bright*
+
+| Hex | Name |
+|---|---|
+| `#F24D59` | coral red |
+| `#E67333` | burnt orange |
+| `#D9A626` | amber |
+| `#33BF99` | teal |
+| `#408CD9` | ocean blue |
+| `#6659CC` | indigo |
+| `#E8196A` | electric crimson |
+| `#4DB366` | emerald |
+
+*Palette 2 — earthy*
+
+| Hex | Name |
+|---|---|
+| `#5C2318` | mahogany |
+| `#355E3B` | deep leaf |
+| `#B85C38` | burnt sienna |
+| `#1E5265` | deep teal |
+| `#A3B18A` | soft moss |
+| `#4F7C72` | eucalyptus |
+| `#D99A5B` | warm amber |
+| `#E0C27A` | faded gold |
+| `#EAD5A3` | pollen |
+
+*Palette 3 — vivid & cool*
+
+| Hex | Name |
+|---|---|
+| `#E85B9C` | rose |
+| `#B5379E` | fuchsia |
+| `#8A4FD9` | violet |
+| `#33B5D9` | sky |
+| `#A8CC33` | chartreuse |
+| `#6E4B6E` | plum |
+| `#2E4FB3` | royal blue |
+| `#B9A5E6` | lavender |
+| `#26C2C2` | teal-cyan |
+| `#9E2B6E` | deep magenta |
+
+**Utility & anchor colors**
+
+| Hex | Role |
+|---|---|
+| `#408CD9` → `#6659CC` | default fil gradient (ocean blue → indigo) — the safe "hero" pair |
+| `#E63333` | record red (recording state) |
+| accent gradient | `#33BF99` → green → blue → pink → orange → indigo (used for the send/stop border-beam) |
+
+*Web guidance:* lead with one warm, high-craft blob gradient as the hero accent (e.g. coral→indigo
+or teal→violet). Let the gradients be the color; keep surrounding UI near-monochrome (canvas +
+text) so the blobs pop.
+
+### 9b. Typography
+
+- **Brand typefaces:** **DM Sans** (primary) and **DM Mono** (mono accent, used for metadata —
+  word counts, durations, timestamps, "version"). Both are free on Google Fonts — **use these on
+  the website** to match brand intent.
+- *Implementation note:* in-app, `Theme.dmSans` / `Theme.dmMono` currently render via the **system
+  font stack** (SF) at the corresponding sizes/weights; DM Sans/DM Mono are the brand faces and the
+  intended direction. The website should use the real DM Sans/DM Mono.
+- **Casing:** lowercase for Fil's own voice (headings, UI, product copy). Sentence case is fine for
+  long-form web body if readability needs it.
+- **Weights in use:** regular, medium, semibold, bold. Sizes range ~9–22pt in-app (badges small,
+  section titles ~18–22).
+
+### 9c. Shape language
+
+- **The blob** — the signature shape. An organic, procedurally-generated closed curve (5–9 points,
+  sinusoidal wave offsets, a per-fil rotation and slight asymmetry seeded from the note's id), so no
+  two fils are shaped alike. This is *the* brand mark alongside the wordmark — favor it over generic
+  circles/rounded-rects in marketing.
+- **Capsules** — badges (the keyword/title chip) and primary buttons ("enable", tabs).
+- **Circles** — icon buttons (mic, send, photo).
+- **Rounded rectangles** — cards and glass panels. Corner radii in use: **22** (cards), **26**
+  (composer bar), **28** (settings/glass card).
+
+### 9d. Gradient & surface system
+
+- **Gradient:** two-color `LinearGradient`, direction set by a per-fil angle (seeded), rendered with
+  **16 smooth stops using smoothstep easing** so the edge colors hold and the midpoint doesn't turn
+  muddy. Reproduce this on web with a multi-stop CSS gradient rather than a hard 2-stop.
+- **Glass & light:** frosted-glass surfaces (`.ultraThinMaterial`), soft blurred ambient gradient
+  backdrops, subtle mesh gradients. Airy, layered, luminous.
+
+### 9e. Motion & feel
+
+- **Calm, spacious, unhurried.** Lots of room; nothing shouts.
+- **Organic springs**, not snappy pop. Text reveals via a gentle blur→sharp gradient wipe; blobs
+  morph rather than cut. Never gamified, never urgent.
+- On web: prefer slow fades and soft parallax over aggressive scroll-jacking or bouncy animations.
 
 ## 10. Ready-to-use lines
 

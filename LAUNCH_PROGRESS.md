@@ -271,7 +271,15 @@ reliability + performance + a security quick win — self-contained, no design d
   Fil is / is NOT (from the "from mason" manifesto), audience, market fit & differentiation, value
   prop, **voice** (with do/don't), the `-fil-` lexicon, visual identity, and ready-to-use lines.
   First input for the website; everything downstream (press kit, ASO, copy) checks against it.
-- Next in Phase 4 (to discuss): website copy, press kit, share cards (#25), review prompt (#26).
+- Expanded the brand doc's **visual identity** section with real values from `Theme.swift`: the
+  three fil gradient palettes (hex + names), utility/anchor colors (default gradient, record red,
+  accent gradient), DM Sans/DM Mono typography (with the honest note that the app currently renders
+  via the system font), the blob/capsule/circle/rounded-rect shape language + corner radii, the
+  16-stop gradient system, and motion/feel.
+- **Website copy** drafted → `docs/website/website-copy.md`: SEO meta, hero, how-it-works, the
+  "what fil isn't" turn, features, privacy, "from mason", footer — plus build notes and the
+  on-device privacy-claim guardrail.
+- Next in Phase 4 (to discuss): press kit, share cards (#25), review prompt (#26).
 
 
 
