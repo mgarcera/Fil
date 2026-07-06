@@ -18,6 +18,8 @@ struct FilApp: App {
                 // glass/blob layout stays usable at accessibility sizes. Revisit once the
                 // fixed-height containers are made flexible (audit P2 #23).
                 .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+                // Warm the on-device title model after first frame so the first fil isn't stalled.
+                .task { ArticleGenerationService.shared.prewarm() }
         }
         .modelContainer(modelContainer)
     }
@@ -39,16 +41,26 @@ private extension FilApp {
         do {
             return try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            guard shouldResetStore(after: error) else {
-                fatalError("Unresolved error loading container: \(error)")
+            // First recovery: if this looks like a migration/corruption failure, move the old
+            // store aside (never silently delete) and try once more with a fresh store.
+            if shouldResetStore(after: error) {
+                do {
+                    try moveStoreAside(at: storeURL)
+                    return try ModelContainer(for: schema, configurations: [configuration])
+                } catch {
+                    // Fall through to the in-memory fallback below.
+                }
             }
 
-            do {
-                try deleteStoreFiles(at: storeURL)
-                return try ModelContainer(for: schema, configurations: [configuration])
-            } catch {
-                fatalError("Unresolved error loading container after store reset: \(error)")
+            // Last resort: launch on an in-memory store so the app still opens instead of
+            // crashing. Data won't persist this session, but the user isn't locked out and the
+            // on-disk store (moved aside above, if any) is preserved for recovery.
+            let inMemory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            if let memoryContainer = try? ModelContainer(for: schema, configurations: [inMemory]) {
+                return memoryContainer
             }
+
+            fatalError("Unresolved error creating in-memory fallback container: \(error)")
         }
     }
 
@@ -90,13 +102,12 @@ private extension FilApp {
         return false
     }
 
-    static func deleteStoreFiles(at storeURL: URL) throws {
+    /// Moves the existing store (and its `-wal`/`-shm` sidecars) aside to a timestamped backup
+    /// rather than deleting it, so a corrupt or unmigratable store is preserved for possible
+    /// recovery instead of being silently destroyed.
+    static func moveStoreAside(at storeURL: URL) throws {
         let fileManager = FileManager.default
-        let storeDirectory = storeURL.deletingLastPathComponent()
-
-        if !fileManager.fileExists(atPath: storeDirectory.path()) {
-            try fileManager.createDirectory(at: storeDirectory, withIntermediateDirectories: true)
-        }
+        let suffix = ".corrupt-\(Int(Date.now.timeIntervalSince1970))"
 
         let sidecarURLs = [
             storeURL,
@@ -105,7 +116,9 @@ private extension FilApp {
         ]
 
         for url in sidecarURLs where fileManager.fileExists(atPath: url.path()) {
-            try fileManager.removeItem(at: url)
+            let destination = URL(fileURLWithPath: url.path() + suffix)
+            try? fileManager.removeItem(at: destination)
+            try fileManager.moveItem(at: url, to: destination)
         }
     }
 }

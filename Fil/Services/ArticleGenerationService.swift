@@ -10,20 +10,36 @@ struct NoteMetadataResponse {
 final class ArticleGenerationService {
     static let shared = ArticleGenerationService()
 
+    /// Instructions shared by real generation and prewarming, so both warm the same model path.
+    private static let instructions = """
+        You are extracting a lightweight title from one person's transcript.
+        Always assume the transcript is spoken by the same person who will read the result.
+        Do not generate a polished article.
+        Return only one short, natural title that captures the main topic — a brief
+        phrase or clause that reads like a headline, up to six words.
+
+        The title should read naturally, be specific enough to recognize the note later,
+        and stay short — up to six words, grounded in the transcript.
+        Do not invent themes or details that are not present.
+        """
+
+    /// A prewarmed session, held so its asset loading completes and stays resident.
+    private var warmupSession: LanguageModelSession?
+
+    /// Loads the on-device model assets ahead of first use so the first real title generation
+    /// isn't stalled by a cold start. A no-op when the model is unavailable or already warmed.
+    /// Call once early (e.g. at app launch, after the first frame).
+    func prewarm() {
+        guard warmupSession == nil, SystemLanguageModel.default.isAvailable else { return }
+        let session = LanguageModelSession(instructions: Self.instructions)
+        session.prewarm()
+        warmupSession = session
+    }
+
     func generateMetadata(
         from transcript: String
     ) async throws -> NoteMetadataResponse {
-        let session = LanguageModelSession(instructions: """
-            You are extracting a lightweight title from one person's transcript.
-            Always assume the transcript is spoken by the same person who will read the result.
-            Do not generate a polished article.
-            Return only one short, natural title that captures the main topic — a brief
-            phrase or clause that reads like a headline, up to six words.
-
-            The title should read naturally, be specific enough to recognize the note later,
-            and stay short — up to six words, grounded in the transcript.
-            Do not invent themes or details that are not present.
-            """)
+        let session = LanguageModelSession(instructions: Self.instructions)
 
         let response = try await session.respond(
             to: metadataPrompt(for: transcript),

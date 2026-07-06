@@ -372,12 +372,12 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 **Phase 3 — Reliability, UX & accessibility hardening**
 15. [ ] Add permission priming + a Settings-redirect on denial — `apple-skills:generators` (permission-priming)
 16. [x] Fix the `transcribe()` continuation leak (single-resume + timeout) — `apple-skills:swift`
-17. [ ] Warm/reuse + prewarm the FoundationModels session — `apple-skills:apple-intelligence`
+17. [x] Warm/reuse + prewarm the FoundationModels session — `apple-skills:apple-intelligence`
 18. [ ] Add VoiceOver labels (dark-mode toggle, composer buttons, note cards + selection action); hide decorative canvases — `xcode-integration:accessibility-voiceover-specialist`
-19. [ ] Replace `fatalError` with graceful fallback; tighten the store-reset heuristic (move-aside, not delete) — `apple-skills:swiftdata`
-20. [ ] Apply `.completeFileProtection` and truncate the pinned-snapshot `previewText`; protect shared-draft + audio files; add app-switcher privacy blur — `apple-skills:security`
+19. [x] Replace `fatalError` with graceful fallback; tighten the store-reset heuristic (move-aside, not delete) — `apple-skills:swiftdata`
+20. [~] Apply `.completeFileProtection` and truncate the pinned-snapshot `previewText`; protect shared-draft + audio files; add app-switcher privacy blur — `apple-skills:security` *(previewText truncated ✅; file-protection classes + privacy blur deferred — need device-locked testing, see worklog)*
 21. [ ] Adopt Swift 6 / strict concurrency; remove force-unwraps; wrap meaningful saves with logging — `apple-skills:swift` + `apple-skills:ios`
-22. [ ] Warm SoundscapeManager off-main; debounce the idle detector — `apple-skills:performance`
+22. [~] Warm SoundscapeManager off-main; debounce the idle detector — `apple-skills:performance` *(idle-detector debounce ✅; off-main sound decode deferred with #21 — concurrency care)*
 23. [ ] Clamp Dynamic Type / add `ViewThatFits` for dense grid + header/composer rows — `xcode-integration:accessibility-dynamic-type-specialist`
 
 **Phase 4 — Growth infrastructure (pre-launch → launch)**

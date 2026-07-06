@@ -200,6 +200,33 @@ reliability + performance + a security quick win — self-contained, no design d
   nonisolated cancellation handler + speech callback under the target's MainActor-default isolation.
 - Verified: diagnostics clean + full BuildProject passed.
 
+### #19 + #17 — graceful container recovery + model prewarm (audit #19, #17) ✅
+*(Committed together: both touch `FilApp.swift`; can't split one file's hunks non-interactively.)*
+- **#19:** `FilApp.makeModelContainer` no longer `fatalError`s. On a migration/corruption error it
+  now (1) **moves the store aside** to a timestamped `.corrupt-<ts>` backup — never silently
+  deletes — and retries, then (2) falls back to an **in-memory** container so the app still opens
+  instead of crashing. Renamed `deleteStoreFiles` → `moveStoreAside`.
+- **#17:** `ArticleGenerationService.prewarm()` (availability-gated, holds the warmed session);
+  instructions extracted to a shared constant; called from `RootView.task` after first frame so the
+  first fil's title isn't stalled by a cold model start.
+- Verified: diagnostics clean + full BuildProject passed.
+
+### #20 (partial) — truncate pinned-snapshot transcript (audit #20) ✅ / file-protection deferred
+- `PinnedFilStore` now stores only a ~200-char excerpt in the App Group snapshot instead of the
+  full `note.transcript`, keeping the whole note body out of the shared container.
+- **Deferred (device-locked testing):** the `.completeFileProtection` half of #20 — the lock-screen
+  widget / Live Activity must read `pinnedFilSnapshot.json` while the device is locked, so
+  `.complete` would break it. The audio/shared-draft/SwiftData file-protection changes similarly
+  need on-device verification. Tracked for a dedicated security-hardening pass.
+
+### #22 (partial) — idle-detector debounce (audit #22) ✅ / sound-decode deferred
+- `IdleScreensaverDetector` now resets the idle timer only on `touchesBegan`/`touchesEnded` (not
+  every `touchesMoved`), ending the per-movement Timer churn, and detaches the window recognizer
+  when idling is disabled.
+- **Deferred:** moving SoundscapeManager's 14 AVAudioPlayer decodes off the main thread — clean
+  under the target's `@MainActor`-default isolation requires care (AVAudioPlayer is non-Sendable);
+  not worth introducing concurrency warnings pre-launch for a minor gain. Tracked with #21.
+
 
 
 
