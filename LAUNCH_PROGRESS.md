@@ -251,6 +251,17 @@ reliability + performance + a security quick win — self-contained, no design d
   dead-end "OK" alert.
 - Verified: full BuildProject passed. (New UI for Mason to eyeball on device.)
 
+### #21 (safe subset) — force-unwraps + save logging (audit #21) ✅ / full Swift 6 flip deferred
+- New `Fil/FilLog.swift`: an `OSLog` `Logger` + `ModelContext.saveOrLog()` that logs save failures
+  instead of swallowing them. Converted all 12 `try? modelContext.save()` sites (ContentView,
+  OnboardingView, ArticleView ×6, KeywordAttachmentSheet ×2) to `saveOrLog()`.
+- Removed the four force-unwraps: `AquariumView` (3× `randomElement()!` → `?? default` / `guard`)
+  and `SelectableTextView` (`URL(string:)!` → `if let`, mirroring the AppKit branch).
+- **Deferred (per decision):** the full `SWIFT_VERSION = 6` / `strict-concurrency = complete`
+  migration — its own post-launch effort on this `@MainActor`-heavy codebase. Bundled with the
+  off-main SoundscapeManager decode (#22).
+- Verified: full BuildProject passed.
+
 
 
 

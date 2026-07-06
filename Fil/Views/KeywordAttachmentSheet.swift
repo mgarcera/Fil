@@ -601,7 +601,7 @@ struct KeywordPopup: View {
             linkedNote.threadedBacklinks.append(backlink)
         }
 
-        try? modelContext.save()
+        modelContext.saveOrLog()
     }
 
     private func updateEntry(id: UUID, mutate: (inout AttachmentEntry) -> Void) {
@@ -629,7 +629,7 @@ struct KeywordPopup: View {
         linkedNote.threadedBacklinks.removeAll {
             $0.parentNoteID == parentID && $0.parentKeyword == keyword
         }
-        try? modelContext.save()
+        modelContext.saveOrLog()
     }
 
     private var linkURLBinding: Binding<String> {

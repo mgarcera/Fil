@@ -721,7 +721,7 @@ struct ArticleView: View {
             return
         }
         note.addTodo(trimmed)
-        try? modelContext.save()
+        modelContext.saveOrLog()
         SoundscapeManager.shared.playTodoArticleToggleSound()
         newTodoText = ""
         isTodoFieldFocused = true
@@ -730,14 +730,14 @@ struct ArticleView: View {
     private func removeTodo(at index: Int) {
         SoundscapeManager.shared.playTodoArticleToggleSound()
         note.removeTodo(at: index)
-        try? modelContext.save()
+        modelContext.saveOrLog()
     }
 
     /// Promotes arbitrary text (e.g. a selection from the transcript) into a to-do. This is
     /// how voice fils and anything missed at capture get action items after the fact.
     private func makeTodo(from text: String) {
         note.addTodo(text)
-        try? modelContext.save()
+        modelContext.saveOrLog()
         SoundscapeManager.shared.playTodoArticleToggleSound()
     }
 
@@ -769,7 +769,7 @@ struct ArticleView: View {
         guard note.completedTodos.indices.contains(index) else { return }
         SoundscapeManager.shared.playTodoArticleToggleSound()
         note.completedTodos[index].toggle()
-        try? modelContext.save()
+        modelContext.saveOrLog()
     }
 
     private func normalizeTodoCompletionStates() {
@@ -786,7 +786,7 @@ struct ArticleView: View {
             note.originalTranscript = note.transcript
         }
         note.transcript = newValue
-        try? modelContext.save()
+        modelContext.saveOrLog()
     }
 
     @MainActor
@@ -803,7 +803,7 @@ struct ArticleView: View {
             )
             note.keyword = metadata.keyword
             note.title = metadata.keyword
-            try? modelContext.save()
+            modelContext.saveOrLog()
         } catch {
             // Keep transcript edits even if metadata refresh fails.
         }

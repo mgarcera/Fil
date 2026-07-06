@@ -1185,7 +1185,7 @@ struct ContentView: View {
             if let data = icon?.pngData() {
                 note.sourceFaviconData = data
             }
-            try? modelContext.save()
+            modelContext.saveOrLog()
         }
     }
 

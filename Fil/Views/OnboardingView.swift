@@ -331,7 +331,7 @@ struct OnboardingView: View {
         } else {
             modelContext.insert(UserProfile())
         }
-        try? modelContext.save()
+        modelContext.saveOrLog()
         didSkipSetup = false
         onFinish?()
         if existingProfile != nil {

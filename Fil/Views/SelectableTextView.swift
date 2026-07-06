@@ -62,11 +62,13 @@ struct SelectableTextView: UIViewRepresentable {
             while let range = text.range(of: keyword, options: .caseInsensitive, range: searchRange) {
                 let nsRange = NSRange(range, in: text)
                 let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? keyword
-                attributed.addAttributes([
-                    .font: boldBodyFont,
-                    .foregroundColor: highlightColor,
-                    .link: URL(string: "fil-highlight://\(encoded)")!
-                ], range: nsRange)
+                if let url = URL(string: "fil-highlight://\(encoded)") {
+                    attributed.addAttributes([
+                        .font: boldBodyFont,
+                        .foregroundColor: highlightColor,
+                        .link: url
+                    ], range: nsRange)
+                }
                 searchRange = range.upperBound..<text.endIndex
             }
         }

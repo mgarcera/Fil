@@ -127,7 +127,7 @@ final class AquariumScene: SKScene {
                           "coral_6", "coral_7", "coral_8", "coral_9"]
         var x: CGFloat = CGFloat.random(in: 20...60)
         while x < size.width - 20 {
-            let name = floorDecor.randomElement()!
+            let name = floorDecor.randomElement() ?? "coral1"
             guard let texture = AquariumScene.loadTexture(name) else { x += 70; continue }
             let targetHeight = size.height * CGFloat.random(in: 0.08...0.14)
             let node = SKSpriteNode(texture: texture)
@@ -163,7 +163,7 @@ final class AquariumScene: SKScene {
 
     @discardableResult
     private func makeSwimmer(at point: CGPoint, state: Swimmer.State) -> Swimmer? {
-        let kind = AquariumScene.fishRoster.randomElement()!
+        guard let kind = AquariumScene.fishRoster.randomElement() else { return nil }
         guard let texture = AquariumScene.loadFishTexture(kind.name, facesRight: kind.facesRight) else { return nil }
         let depth = CGFloat.random(in: 0.82...1.1)
         let targetHeight = size.height * 0.09 * depth
@@ -271,7 +271,8 @@ final class AquariumScene: SKScene {
             x: CGFloat.random(in: edgeMargin...(size.width - edgeMargin)),
             y: size.height - edgeMargin
         )
-        let pellet = Pellet(texture: pelletTextures.randomElement()!)
+        guard let pelletTexture = pelletTextures.randomElement() else { return }
+        let pellet = Pellet(texture: pelletTexture)
         pellet.node.position = spawn
         addChild(pellet.node)
         pellets.append(pellet)
