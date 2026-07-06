@@ -262,6 +262,17 @@ reliability + performance + a security quick win — self-contained, no design d
   off-main SoundscapeManager decode (#22).
 - Verified: full BuildProject passed.
 
+---
+
+## Phase 4 — Growth infrastructure
+
+### #24 (started) — brand foundation
+- `docs/brand/brand-positioning.md`: the source-of-truth brand doc — one-line positioning, what
+  Fil is / is NOT (from the "from mason" manifesto), audience, market fit & differentiation, value
+  prop, **voice** (with do/don't), the `-fil-` lexicon, visual identity, and ready-to-use lines.
+  First input for the website; everything downstream (press kit, ASO, copy) checks against it.
+- Next in Phase 4 (to discuss): website copy, press kit, share cards (#25), review prompt (#26).
+
 
 
 
