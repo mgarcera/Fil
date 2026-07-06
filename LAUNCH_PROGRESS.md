@@ -149,4 +149,38 @@ explicitly anti-optimization, *not* a productivity/second-brain/journal app):
 - Verified: diagnostics clean + full BuildProject passed. Links 404/no-op until the pages are
   hosted and the App Store ID is set (expected; placeholder phase).
 
+### #9, #10, #13, #14, #11 — Phase 2 documents authored ✅ (drafted; you host/enter/capture)
+Committed as one set (interdependent reference content, not independently-revertible code):
+- **#9 Privacy Policy** — `docs/legal/privacy-policy.md`. Local-first; names mic/speech/camera;
+  honestly discloses the on-device-vs-Apple-speech-service nuance and the LinkPresentation fetch.
+- **Terms of Service** — `docs/legal/terms-of-service.md`. Short; defers to Apple's Standard EULA.
+- **#10 Support page** — `docs/support/index.md`. Contact + FAQ (offline, storage, permissions,
+  voice privacy, delete, screensaver unlocks).
+- **#11 App Privacy answers** — `AppStore/app-privacy.md`. "Data Not Collected" + Tracking No,
+  with the rationale (Apple's speech service ≠ developer collection) and an ASC checklist.
+- **#13 Listing metadata** — `AppStore/metadata.md`. Final `Fil — Let Thoughts Be` /
+  `Speak your mind. Let it be.`; ~96-char keyword string; promo text; description + What's New in
+  the manifesto voice; Lifestyle/Utilities categories.
+- **#14 Screenshot spec** — `AppStore/screenshots.md`. 6-shot 6.9″ shot-list with lowercase
+  captions; flags the "don't claim 100% on-device transcription" caveat.
+
+Docs live under `docs/` and `AppStore/` at the repo root — **outside the app targets**, so they're
+never bundled into the app.
+
+---
+
+## Phase 2 — COMPLETE ✅ (my part)
+
+All 6 items addressed. The **code** item (#12 in-app links) builds clean; the **content** items
+(#9/#10/#11/#13/#14) are drafted and ready.
+
+**Handoff — these need you (accounts/hosting/capture I can't do):**
+1. Host `docs/legal/privacy-policy.md`, `docs/legal/terms-of-service.md`, and `docs/support/` at
+   real URLs, then update the three placeholders in `Fil/FilLinks.swift` (one line each).
+2. In App Store Connect: enter the Privacy Policy URL + Support URL; complete App Privacy per
+   `AppStore/app-privacy.md`; set name/subtitle/keywords/description per `AppStore/metadata.md`.
+3. Capture + upload the 6.9″ screenshots per `AppStore/screenshots.md`.
+4. After the app record exists, set the numeric `appStoreID` in `FilLinks.swift` so "rate fil" works.
+
+
 

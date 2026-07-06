@@ -362,12 +362,12 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 8. [x] Make `Theme.dmSans/dmMono` Dynamic-Type-aware + `UIFontMetrics` for `SelectableTextView`; convert inline sites — `xcode-integration:accessibility-dynamic-type-specialist` *(Theme + SelectableTextView + root clamp done; inline `.system(size:)` conversion folded into P2 #23)*
 
 **Phase 2 — Submission metadata & App Store Connect**
-9. [ ] Write + host the Privacy Policy; enter Privacy Policy URL in ASC — `apple-skills:legal`
-10. [ ] Stand up a Support page; enter Support URL — `apple-skills:growth`
-11. [ ] Complete the App Privacy nutrition label ("Data Not Collected", Tracking = No) consistent with the manifest — `apple-skills:legal`
+9. [x] Write + host the Privacy Policy; enter Privacy Policy URL in ASC — `apple-skills:legal` *(drafted `docs/legal/privacy-policy.md`; you host + enter URL)*
+10. [x] Stand up a Support page; enter Support URL — `apple-skills:growth` *(drafted `docs/support/`; you host + enter URL)*
+11. [x] Complete the App Privacy nutrition label ("Data Not Collected", Tracking = No) consistent with the manifest — `apple-skills:legal` *(answers in `AppStore/app-privacy.md`; you enter in ASC)*
 12. [x] Add in-app Settings links: Privacy Policy, Contact/Feedback, Rate Fil — `apple-skills:generators` + `apple-skills:legal` *(+ Terms; URLs are placeholders in FilLinks.swift until hosted)*
-13. [ ] Set the App Store name + subtitle + deduped keywords — `apple-skills:app-store`
-14. [ ] Produce the 6-shot 6.9″/6.7″ screenshot set (+ optional preview) — `apple-skills:app-store` + `apple-skills:generators`
+13. [x] Set the App Store name + subtitle + deduped keywords — `apple-skills:app-store` *(finalized in `AppStore/metadata.md`: "Fil — Let Thoughts Be"; you enter in ASC)*
+14. [x] Produce the 6-shot 6.9″/6.7″ screenshot set (+ optional preview) — `apple-skills:app-store` + `apple-skills:generators` *(shot-list spec in `AppStore/screenshots.md`; you capture + upload)*
 
 **Phase 3 — Reliability, UX & accessibility hardening**
 15. [ ] Add permission priming + a Settings-redirect on denial — `apple-skills:generators` (permission-priming)
