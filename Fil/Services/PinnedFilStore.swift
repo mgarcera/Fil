@@ -54,13 +54,21 @@ final class PinnedFilStore {
         let snapshot = PinnedFilSnapshot(
             id: note.uuid,
             title: title.isEmpty ? (fallbackTitle.isEmpty ? "fil" : fallbackTitle) : title,
-            previewText: transcript,
+            previewText: Self.truncatedPreview(from: transcript),
             keyword: note.displayBadgeText,
             gradientStartHex: note.gradientStartHex,
             gradientEndHex: note.gradientEndHex
         )
         save(snapshot)
         return snapshot
+    }
+
+    /// The widget renders only a few lines, so only a short excerpt is ever needed. Truncating
+    /// here keeps the full note transcript out of the shared App Group container, which other
+    /// on-device processes with the group entitlement could otherwise read.
+    private static func truncatedPreview(from transcript: String, limit: Int = 200) -> String {
+        guard transcript.count > limit else { return transcript }
+        return String(transcript.prefix(limit)).trimmingCharacters(in: .whitespacesAndNewlines) + "…"
     }
 
     func unpin() {
