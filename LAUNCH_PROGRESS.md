@@ -288,6 +288,16 @@ reliability + performance + a security quick win — self-contained, no design d
   and a 1.5s delay so the ask lands on a happy beat. StoreKit further throttles actual display.
 - Verified: full BuildProject passed.
 
+### #25 — outbound share cards (audit #25) ✅
+- New `Fil/Views/FilShareCard.swift`: `FilShareCard` (a branded 1080² card — the fil's gradient
+  blob + title + excerpt + "fil · let thoughts be" wordmark on a fixed dark canvas) and
+  `FilShareCardData`, a `nonisolated` `Transferable` value that renders to PNG **on demand at share
+  time** via `@MainActor ImageRenderer` (not eagerly).
+- `ArticleView`: a `ShareLink` in the toolbar trailing group (labelled "share fil") backed by a
+  cheap `filShareCard` computed value. Every shared card is a free, on-brand impression — the
+  organic-acquisition loop the audit flagged as missing.
+- Verified: full BuildProject passed. (Worth an on-device look at the rendered card + share sheet.)
+
 
 
 

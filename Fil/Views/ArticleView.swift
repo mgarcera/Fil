@@ -185,6 +185,11 @@ struct ArticleView: View {
 
             if !note.isLinkFil {
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    ShareLink(item: filShareCard, preview: SharePreview("a fil from fil")) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                    .accessibilityLabel("share fil")
+
                     Menu {
                         Section("Created") {
                             Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
@@ -591,6 +596,20 @@ struct ArticleView: View {
                 isEditingTranscript = true
             }
         }
+    }
+
+    /// The fil rendered as a shareable branded card. Cheap to build (value copy); the bitmap is
+    /// only produced when the user actually picks a share destination.
+    private var filShareCard: FilShareCardData {
+        let title = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let transcript = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        return FilShareCardData(
+            title: title.isEmpty ? "fil" : title,
+            excerpt: String(transcript.prefix(160)),
+            startHex: note.gradientStartHex,
+            endHex: note.gradientEndHex,
+            seed: note.blobShapeSeed
+        )
     }
 
     private func togglePinnedFil() {
