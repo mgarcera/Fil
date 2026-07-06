@@ -35,7 +35,7 @@ final class IdleObservingView: UIView, UIGestureRecognizerDelegate {
 
     override func didMoveToWindow() {
         super.didMoveToWindow()
-        attachRecognizerIfNeeded()
+        if isActive { attachRecognizerIfNeeded() }
     }
 
     private func attachRecognizerIfNeeded() {
@@ -51,14 +51,25 @@ final class IdleObservingView: UIView, UIGestureRecognizerDelegate {
         self.recognizer = recognizer
     }
 
+    private func detachRecognizer() {
+        if let recognizer {
+            recognizer.view?.removeGestureRecognizer(recognizer)
+        }
+        recognizer = nil
+    }
+
     func setActive(_ active: Bool) {
         guard active != isActive else { return }
         isActive = active
         if active {
+            attachRecognizerIfNeeded()
             resetTimer()
         } else {
+            // Detach the window recognizer while idling is disabled, so we're not observing
+            // (and scheduling nothing) when the feature is off.
             timer?.invalidate()
             timer = nil
+            detachRecognizer()
         }
     }
 
@@ -82,8 +93,10 @@ final class IdleObservingView: UIView, UIGestureRecognizerDelegate {
 private final class ActivityRecognizer: UIGestureRecognizer {
     var onActivity: () -> Void = {}
 
+    // Only the start and end of a touch reset the idle timer. Observing `touchesMoved` too would
+    // reschedule the Timer on every movement sample during a drag — needless churn — while
+    // begin/end already bracket any interaction that should count as activity.
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) { onActivity() }
-    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) { onActivity() }
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) { onActivity() }
 }
 #endif
