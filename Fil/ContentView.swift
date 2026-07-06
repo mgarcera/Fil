@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import PhotosUI
+import StoreKit
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -14,6 +15,10 @@ struct ContentView: View {
     @State private var showPermissionAlert = false
     @State private var showMicPriming = false
     @State private var showFilSetup = false
+
+    @Environment(\.requestReview) private var requestReview
+    /// Ask for a rating at most once, after the user has felt the core loop a few times.
+    @AppStorage("didRequestReview") private var didRequestReview = false
     @FocusState private var isComposerFocused: Bool
     @FocusState private var isSearchFieldFocused: Bool
     @State private var textEntryText = ""
@@ -877,6 +882,19 @@ struct ContentView: View {
             try? await Task.sleep(for: .milliseconds(300))
         }
         finishCreatingFil(filID)
+        if succeeded { maybeRequestReview() }
+    }
+
+    /// Requests an App Store review after a genuine "aha" moment — a fil the user just made —
+    /// but only once, and only after they've created a few fils, so the ask lands on a happy beat
+    /// rather than cold. StoreKit itself further throttles how often the prompt actually shows.
+    private func maybeRequestReview() {
+        guard !didRequestReview, notes.count >= 3 else { return }
+        didRequestReview = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            requestReview()
+        }
     }
 
     private func handleIncomingURL(_ url: URL) {

@@ -383,7 +383,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 **Phase 4 — Growth infrastructure (pre-launch → launch)**
 24. [ ] Build website + press kit + promo video — `apple-skills:app-store` + `apple-skills:growth`
 25. [ ] Add outbound share / summary-card social export — `apple-skills:generators` (share cards)
-26. [ ] Add `SKStoreReviewController` review prompt after an "aha" moment — `apple-skills:generators` (review prompt)
+26. [x] Add `SKStoreReviewController` review prompt after an "aha" moment — `apple-skills:generators` (review prompt) *(via `requestReview`, gated once after 3+ fils)*
 27. [ ] Run the TestFlight beta, press embargo, Product Hunt / Show HN launch; instrument the ASC funnel — `apple-skills:growth`
 
 **Phase 5 — Monetization (fast-follow, v1.1–1.2)**

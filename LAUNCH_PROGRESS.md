@@ -279,7 +279,14 @@ reliability + performance + a security quick win — self-contained, no design d
 - **Website copy** drafted → `docs/website/website-copy.md`: SEO meta, hero, how-it-works, the
   "what fil isn't" turn, features, privacy, "from mason", footer — plus build notes and the
   on-device privacy-claim guardrail.
-- Next in Phase 4 (to discuss): press kit, share cards (#25), review prompt (#26).
+- Press kit: **deferred** by decision — only needed for active press outreach; cheap to assemble
+  later from the brand doc + metadata.
+
+### #26 — review prompt after an "aha" moment (audit #26) ✅
+- `ContentView`: `@Environment(\.requestReview)` + `@AppStorage("didRequestReview")`. After a fil is
+  successfully created (`createFil`), `maybeRequestReview()` fires once, gated to `notes.count >= 3`
+  and a 1.5s delay so the ask lands on a happy beat. StoreKit further throttles actual display.
+- Verified: full BuildProject passed.
 
 
 
