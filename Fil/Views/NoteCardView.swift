@@ -72,13 +72,15 @@ struct NoteCardView: View {
                 KeywordBadgeLabel(
                     text: badgeText,
                     textColor: note.isLinkFil ? .white : .black,
+                    backgroundColor: note.isLinkFil ? linkBadgeColor : .white,
+                    strokeColor: note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5),
                     isRegenerating: !note.isLinkFil && TitleRegenerationTracker.shared.isRegenerating(note.uuid)
                 )
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 3)
-                    .background(note.isLinkFil ? linkBadgeColor : .white, in: Capsule())
-                    .overlay(Capsule().stroke(note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5), lineWidth: 1.5))
-                    .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
+                    // The badge is a compact chip on a fixed-size card; cap its Dynamic Type growth
+                    // a notch below the app-wide accessibility1 clamp so it breathes without
+                    // swallowing the blob's word-count/waveform content. Its internal padding
+                    // (declared inside the badge) scales to this same cap.
+                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     .padding(.trailing, 8)
                     .offset(y: -10)
             }
@@ -147,11 +149,18 @@ struct NoteCardView: View {
 private struct KeywordBadgeLabel: View {
     let text: String
     let textColor: Color
+    let backgroundColor: Color
+    let strokeColor: Color
     let isRegenerating: Bool
 
     @State private var isRevealing = false
     /// Pulsing blur applied to the old title while it's being regenerated.
     @State private var blurRadius: CGFloat = 0
+
+    // Internal padding scales with Dynamic Type so the chip breathes at larger text sizes
+    // instead of cramping. Bounded by the caller's dynamicTypeSize cap.
+    @ScaledMetric(relativeTo: .body) private var horizontalPadding: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 3
 
     var body: some View {
         Group {
@@ -172,6 +181,11 @@ private struct KeywordBadgeLabel: View {
             }
         }
         .font(Theme.dmSans(9, weight: .semibold))
+        .padding(.horizontal, horizontalPadding)
+        .padding(.vertical, verticalPadding)
+        .background(backgroundColor, in: Capsule())
+        .overlay(Capsule().stroke(strokeColor, lineWidth: 1.5))
+        .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
         // Capsule eases between the old and new title widths as the new one reveals,
         // rather than snapping. One motion — no intermediate resize step.
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: text)

@@ -116,3 +116,14 @@ Carried into later phases (noted inline above): on-device-speech privacy-policy 
 no-support devices (→ Phase 2 #9); inline `.system(size:)` conversion + fixed-height flexibility
 (→ P2 #23); the inert `[sdk=macosx*]` runpath (cosmetic). Nothing here blocks submission.
 
+### #8 follow-up — blob badge padding + growth at large text (device finding)
+- Mason device-tested Dynamic Type: works great, but at larger sizes the keyword badge on blob
+  cards looked cramped (fixed 6/3 padding) and grew enough to cover the centered word-count ("X
+  words") on some blobs.
+- Fix in `NoteCardView`: moved the badge chrome into `KeywordBadgeLabel`, made its internal padding
+  `@ScaledMetric(relativeTo: .body)` so it breathes proportionally, and capped the badge subtree at
+  `.dynamicTypeSize(...DynamicTypeSize.xLarge)` — a notch below the app-wide accessibility1 clamp —
+  so the compact chip stops swallowing the blob's word-count/waveform content. Body/content text
+  still scales to accessibility1.
+- Verified: diagnostics clean + full BuildProject passed. (This is a concrete instance of P2 #23.)
+
