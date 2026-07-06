@@ -14,6 +14,10 @@ struct FilApp: App {
         WindowGroup {
             RootView()
                 .preferredColorScheme(isDarkMode ? .dark : .light)
+                // Text now scales with Dynamic Type; clamp the upper bound so the constrained
+                // glass/blob layout stays usable at accessibility sizes. Revisit once the
+                // fixed-height containers are made flexible (audit P2 #23).
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         }
         .modelContainer(modelContainer)
     }

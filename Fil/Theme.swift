@@ -38,12 +38,19 @@ enum Theme {
     static let recordRed = Color(red: 0.9, green: 0.2, blue: 0.2)
     static let accentGradientColors: [Color] = [Color(hex: "#33BF99"), .green, .blue, .pink, .orange, .indigo]
 
+    /// The point size the `.body` text style resolves to at the default (Large) Dynamic Type
+    /// setting. Used to convert a fixed point size into a body-relative scale factor.
+    private static let bodyReferenceSize: CGFloat = 17
+
     static func dmSans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .default)
+        // Anchor to the `.body` text style so the font tracks Dynamic Type, then scale to the
+        // requested point size. At the default setting this equals `.system(size:)`; at larger
+        // accessibility sizes it grows proportionally.
+        .system(.body, design: .default).weight(weight).scaled(by: size / bodyReferenceSize)
     }
 
     static func dmMono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        .system(size: size, weight: weight, design: .monospaced)
+        .system(.body, design: .monospaced).weight(weight).scaled(by: size / bodyReferenceSize)
     }
 
     private static let filGradientPalettes: [[String]] = [

@@ -359,7 +359,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 5. [x] Add `PrivacyInfo.xcprivacy` (app + extensions) with UserDefaults `CA92.1`/`1C8F.1` and empty collection/tracking — `apple-skills:legal`
 6. [x] Set `requiresOnDeviceRecognition = true` (gated on `supportsOnDeviceRecognition`) OR reconcile all on-device claims — `apple-skills:apple-intelligence` *(code done; privacy-policy wording for no-on-device-support devices tracked in Phase 2 #9)*
 7. [x] Fix the Speech usage string (and camera trailing space) — `apple-skills:release-review`
-8. [ ] Make `Theme.dmSans/dmMono` Dynamic-Type-aware + `UIFontMetrics` for `SelectableTextView`; convert inline sites — `xcode-integration:accessibility-dynamic-type-specialist`
+8. [x] Make `Theme.dmSans/dmMono` Dynamic-Type-aware + `UIFontMetrics` for `SelectableTextView`; convert inline sites — `xcode-integration:accessibility-dynamic-type-specialist` *(Theme + SelectableTextView + root clamp done; inline `.system(size:)` conversion folded into P2 #23)*
 
 **Phase 2 — Submission metadata & App Store Connect**
 9. [ ] Write + host the Privacy Policy; enter Privacy Policy URL in ASC — `apple-skills:legal`

@@ -27,6 +27,7 @@ struct SelectableTextView: UIViewRepresentable {
         textView.textContainerInset = .zero
         textView.textContainer.lineFragmentPadding = 0
         textView.delegate = context.coordinator
+        textView.adjustsFontForContentSizeCategory = true
         textView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         textView.linkTextAttributes = [
             .foregroundColor: UIColor.label
@@ -34,11 +35,19 @@ struct SelectableTextView: UIViewRepresentable {
         return textView
     }
 
+    /// Body-relative Dynamic Type fonts so the selectable transcript scales like the rest of the app.
+    private var bodyFont: UIFont {
+        UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 16))
+    }
+    private var boldBodyFont: UIFont {
+        UIFontMetrics(forTextStyle: .body).scaledFont(for: .boldSystemFont(ofSize: 16))
+    }
+
     func updateUIView(_ textView: UITextView, context: Context) {
         context.coordinator.parent = self
 
         let attributed = NSMutableAttributedString(string: text, attributes: [
-            .font: UIFont.systemFont(ofSize: 16),
+            .font: bodyFont,
             .foregroundColor: UIColor.label.withAlphaComponent(0.85),
             .paragraphStyle: {
                 let style = NSMutableParagraphStyle()
@@ -54,7 +63,7 @@ struct SelectableTextView: UIViewRepresentable {
                 let nsRange = NSRange(range, in: text)
                 let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? keyword
                 attributed.addAttributes([
-                    .font: UIFont.boldSystemFont(ofSize: 16),
+                    .font: boldBodyFont,
                     .foregroundColor: highlightColor,
                     .link: URL(string: "fil-highlight://\(encoded)")!
                 ], range: nsRange)
@@ -64,7 +73,7 @@ struct SelectableTextView: UIViewRepresentable {
 
         textView.linkTextAttributes = [
             .foregroundColor: UIColor(Color(hex: lighterHex)),
-            .font: UIFont.boldSystemFont(ofSize: 16)
+            .font: boldBodyFont
         ]
         textView.attributedText = attributed
 

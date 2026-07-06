@@ -83,3 +83,36 @@ file's hunks into two commits needs interactive `git add -p`, which isn't availa
   target as a bundled resource. Verified by reading the synchronized-group + exception sections.
 - Phase-end build will confirm the manifests copy into each bundle cleanly.
 
+### #8 — Dynamic Type support (audit #8) ✅ (core; inline sites are follow-up)
+- `Theme.dmSans`/`dmMono` now anchor to the `.body` text style and use `Font.scaled(by: size/17)`,
+  so all text built through the Theme helpers (73 call sites) scales with Dynamic Type. At the
+  default setting the result is visually identical to the old fixed `.system(size:)`.
+- `SelectableTextView` (UIKit transcript) now builds its fonts with
+  `UIFontMetrics(forTextStyle: .body).scaledFont(for:)` and sets `adjustsFontForContentSizeCategory`.
+- Added a root clamp on `RootView`: `.dynamicTypeSize(...DynamicTypeSize.accessibility1)` so text
+  can grow to accessibility sizes without shattering the fixed-height glass/blob layout.
+- **Deliberately left as follow-up** (not silently dropped): the ~43 inline `.font(.system(size:))`
+  sites across 12 files still don't scale — converting them is mechanical but broad, and pairs
+  naturally with audit P2 #23 (make fixed-height containers flexible). Recommend doing both
+  together with on-device verification via the device-interaction skill. The AppKit branch of
+  SelectableTextView was left untouched — it no longer compiles now that the app is iPhone-only.
+- Chose the SwiftUI-native `.system(.body).scaled(by:)` over raw per-call `UIFontMetrics` because
+  it stays reactive to the `dynamicTypeSize` environment. (Confirmed `scaled(by:)` exists in the
+  iOS 26 SDK via DocumentationSearch.)
+
+---
+
+## Phase 1 — COMPLETE ✅
+
+All 8 hard blockers addressed. **Full `BuildProject` passed (0 errors)** after the final item,
+validating the platform trim, the unified 26.4 deployment target (widget/extension needed nothing
+newer — lowering was safe), the privacy-manifest bundling, and every code change together.
+
+Commits on `launch-prep` (one per audit item, plus a combined #4+#7):
+`P1.1`(93d1746) · `P1.6`(effc325) · `P1.2`(76ddb5a) · `P1.3`(0578322) · `P1.4+P1.7`(3a24760) ·
+`P1.5`(fc652ed) · `P1.8`(next).
+
+Carried into later phases (noted inline above): on-device-speech privacy-policy wording for
+no-support devices (→ Phase 2 #9); inline `.system(size:)` conversion + fixed-height flexibility
+(→ P2 #23); the inert `[sdk=macosx*]` runpath (cosmetic). Nothing here blocks submission.
+
