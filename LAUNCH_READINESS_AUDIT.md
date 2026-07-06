@@ -371,7 +371,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 
 **Phase 3 — Reliability, UX & accessibility hardening**
 15. [ ] Add permission priming + a Settings-redirect on denial — `apple-skills:generators` (permission-priming)
-16. [ ] Fix the `transcribe()` continuation leak (single-resume + timeout) — `apple-skills:swift`
+16. [x] Fix the `transcribe()` continuation leak (single-resume + timeout) — `apple-skills:swift`
 17. [ ] Warm/reuse + prewarm the FoundationModels session — `apple-skills:apple-intelligence`
 18. [ ] Add VoiceOver labels (dark-mode toggle, composer buttons, note cards + selection action); hide decorative canvases — `xcode-integration:accessibility-voiceover-specialist`
 19. [ ] Replace `fatalError` with graceful fallback; tighten the store-reset heuristic (move-aside, not delete) — `apple-skills:swiftdata`

@@ -182,5 +182,24 @@ All 6 items addressed. The **code** item (#12 in-app links) builds clean; the **
 3. Capture + upload the 6.9″ screenshots per `AppStore/screenshots.md`.
 4. After the app record exists, set the numeric `appStoreID` in `FilLinks.swift` so "rate fil" works.
 
+---
+
+## Phase 3 — Reliability, UX & accessibility hardening
+
+Worked in themed sub-batches (this phase is large; a few items carry decisions). First sub-batch:
+reliability + performance + a security quick win — self-contained, no design decisions.
+
+### #16 — transcribe() continuation leak + timeout (audit #16) ✅
+- `VoiceRecorderViewModel.transcribe(url:)` now routes through a `TranscriptionResumeGuard` that
+  resumes the checked continuation **exactly once** — first of success / error / a 60s safety
+  timeout / task cancellation — and cancels the recognition task afterward. Wrapped in
+  `withTaskCancellationHandler`.
+- Fixes the hang where a recognition that never reported `isFinal` left fil creation stuck in the
+  "creating…" state forever. Added `TranscriptionError.timedOut`.
+- Guard is `nonisolated`/`@unchecked Sendable` (NSLock-synchronized) so it's callable from the
+  nonisolated cancellation handler + speech callback under the target's MainActor-default isolation.
+- Verified: diagnostics clean + full BuildProject passed.
+
+
 
 

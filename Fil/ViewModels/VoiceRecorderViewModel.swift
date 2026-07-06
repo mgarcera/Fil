@@ -66,16 +66,25 @@ final class VoiceRecorderViewModel {
             request.requiresOnDeviceRecognition = true
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            recognizer.recognitionTask(with: request) { result, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
+        let resumeGuard = TranscriptionResumeGuard()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+                // Store the continuation (and arm the timeout) before starting the task, so a
+                // fast callback can never race ahead of the guard.
+                resumeGuard.store(continuation: continuation, timeout: 60)
+                let task = recognizer.recognitionTask(with: request) { result, error in
+                    if let error {
+                        resumeGuard.finish(.failure(error))
+                        return
+                    }
+                    if let result, result.isFinal {
+                        resumeGuard.finish(.success(result.bestTranscription.formattedString))
+                    }
                 }
-                if let result, result.isFinal {
-                    continuation.resume(returning: result.bestTranscription.formattedString)
-                }
+                resumeGuard.attach(task: task)
             }
+        } onCancel: {
+            resumeGuard.cancel()
         }
     }
 
@@ -119,10 +128,66 @@ final class VoiceRecorderViewModel {
 
 enum TranscriptionError: LocalizedError {
     case unavailable
+    case timedOut
 
     var errorDescription: String? {
         switch self {
         case .unavailable: "Speech recognition is not available"
+        case .timedOut: "Transcription took too long"
         }
+    }
+}
+
+/// Guarantees a speech-recognition continuation is resumed exactly once — on the first of
+/// success, error, a safety timeout, or task cancellation — and stops the underlying recognition
+/// task afterward. Without this, a recognition that never reports `isFinal` (a stall, an abnormal
+/// termination) leaks the continuation and hangs fil creation in the "creating…" state forever.
+private nonisolated final class TranscriptionResumeGuard: @unchecked Sendable {
+    private let lock = NSLock()
+    private var resumed = false
+    private var continuation: CheckedContinuation<String, Error>?
+    private var task: SFSpeechRecognitionTask?
+    private var timeoutTask: Task<Void, Never>?
+
+    func store(continuation: CheckedContinuation<String, Error>, timeout seconds: TimeInterval) {
+        lock.lock()
+        self.continuation = continuation
+        lock.unlock()
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            self?.finish(.failure(TranscriptionError.timedOut))
+        }
+    }
+
+    func attach(task: SFSpeechRecognitionTask) {
+        lock.lock()
+        self.task = task
+        let alreadyResumed = resumed
+        lock.unlock()
+        // If we already finished (e.g. an immediate timeout) before the task was attached,
+        // make sure the recognition doesn't keep running.
+        if alreadyResumed { task.cancel() }
+    }
+
+    func finish(_ result: Result<String, Error>) {
+        lock.lock()
+        if resumed {
+            lock.unlock()
+            return
+        }
+        resumed = true
+        let continuation = self.continuation
+        let task = self.task
+        let timeoutTask = self.timeoutTask
+        self.continuation = nil
+        lock.unlock()
+
+        timeoutTask?.cancel()
+        task?.cancel()
+        continuation?.resume(with: result)
+    }
+
+    func cancel() {
+        finish(.failure(CancellationError()))
     }
 }
