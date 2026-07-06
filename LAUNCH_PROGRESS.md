@@ -240,6 +240,17 @@ reliability + performance + a security quick win — self-contained, no design d
 - Verified: full BuildProject passed (the live-diagnostics tool errored transiently; build is
   authoritative).
 
+### #15 — permission priming + Settings-redirect on denial (audit #15) ✅
+- Added `VoiceRecorderViewModel.permissionStatus` (reads combined mic + speech state *without*
+  prompting).
+- New `MicPrimingSheet` — a benefit-framed, manifesto-voice screen ("talk to fil… you can always
+  just type instead") with **enable** / **not now**.
+- `ContentView.startRecording()` now branches on status: authorized → record; notDetermined → show
+  priming (enable → system prompt; not now → focus the text field); denied → an alert offering
+  **open settings** (`UIApplication.openSettingsURLString`) / not now — instead of the old
+  dead-end "OK" alert.
+- Verified: full BuildProject passed. (New UI for Mason to eyeball on device.)
+
 
 
 

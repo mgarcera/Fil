@@ -370,7 +370,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 14. [x] Produce the 6-shot 6.9″/6.7″ screenshot set (+ optional preview) — `apple-skills:app-store` + `apple-skills:generators` *(shot-list spec in `AppStore/screenshots.md`; you capture + upload)*
 
 **Phase 3 — Reliability, UX & accessibility hardening**
-15. [ ] Add permission priming + a Settings-redirect on denial — `apple-skills:generators` (permission-priming)
+15. [x] Add permission priming + a Settings-redirect on denial — `apple-skills:generators` (permission-priming)
 16. [x] Fix the `transcribe()` continuation leak (single-resume + timeout) — `apple-skills:swift`
 17. [x] Warm/reuse + prewarm the FoundationModels session — `apple-skills:apple-intelligence`
 18. [x] Add VoiceOver labels (dark-mode toggle, composer buttons, note cards + selection action); hide decorative canvases — `xcode-integration:accessibility-voiceover-specialist`

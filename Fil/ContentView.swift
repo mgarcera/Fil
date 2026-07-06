@@ -12,6 +12,7 @@ struct ContentView: View {
     @State private var selectedNote: Note?
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showPermissionAlert = false
+    @State private var showMicPriming = false
     @State private var showFilSetup = false
     @FocusState private var isComposerFocused: Bool
     @FocusState private var isSearchFieldFocused: Bool
@@ -159,10 +160,25 @@ struct ContentView: View {
                 .presentationDetents([.fraction(0.6)])
                 .presentationBackground(Theme.background)
         }
-        .alert("Permissions Required", isPresented: $showPermissionAlert) {
-            Button("OK") {}
+        .sheet(isPresented: $showMicPriming) {
+            MicPrimingSheet(
+                onEnable: {
+                    showMicPriming = false
+                    beginRecording()
+                },
+                onNotNow: {
+                    showMicPriming = false
+                    isComposerFocused = true
+                }
+            )
+            .presentationDetents([.height(360)])
+            .presentationBackground(Theme.background)
+        }
+        .alert("microphone access is off", isPresented: $showPermissionAlert) {
+            Button("open settings") { openAppSettings() }
+            Button("not now", role: .cancel) {}
         } message: {
-            Text("Microphone and speech recognition access are needed to record notes.")
+            Text("to record a voice fil, turn on microphone and speech recognition for fil in settings. you can always type instead.")
         }
         .alert("move to landfil?", isPresented: $showBulkLandfilConfirmation) {
             Button("landfil", role: .destructive) {
@@ -950,6 +966,19 @@ struct ContentView: View {
     }
 
     private func startRecording() {
+        // Prime before the first system prompt; route to Settings once permission is denied
+        // (iOS never re-shows the dialog, so a raw denial would otherwise dead-end the feature).
+        switch recorder.permissionStatus {
+        case .authorized:
+            beginRecording()
+        case .notDetermined:
+            showMicPriming = true
+        case .denied:
+            showPermissionAlert = true
+        }
+    }
+
+    private func beginRecording() {
         Task {
             let granted = await recorder.requestPermissions()
             if granted {
@@ -959,6 +988,14 @@ struct ContentView: View {
                 showPermissionAlert = true
             }
         }
+    }
+
+    private func openAppSettings() {
+        #if canImport(UIKit)
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+        #endif
     }
 
     private func stopRecording() {

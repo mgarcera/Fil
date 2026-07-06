@@ -88,6 +88,39 @@ final class VoiceRecorderViewModel {
         }
     }
 
+    enum PermissionStatus {
+        case authorized
+        case notDetermined
+        case denied
+    }
+
+    /// The combined microphone + speech authorization state, read *without* prompting — so the UI
+    /// can show a priming screen before the first system dialog and route to Settings after a
+    /// denial. Denied if either is denied; not-determined if either is still undecided.
+    var permissionStatus: PermissionStatus {
+        #if os(iOS)
+        let micStatus: PermissionStatus
+        switch AVAudioApplication.shared.recordPermission {
+        case .granted: micStatus = .authorized
+        case .denied: micStatus = .denied
+        default: micStatus = .notDetermined
+        }
+        #else
+        let micStatus: PermissionStatus = .authorized
+        #endif
+
+        let speechStatus: PermissionStatus
+        switch SFSpeechRecognizer.authorizationStatus() {
+        case .authorized: speechStatus = .authorized
+        case .denied, .restricted: speechStatus = .denied
+        default: speechStatus = .notDetermined
+        }
+
+        if micStatus == .denied || speechStatus == .denied { return .denied }
+        if micStatus == .notDetermined || speechStatus == .notDetermined { return .notDetermined }
+        return .authorized
+    }
+
     func requestPermissions() async -> Bool {
         #if os(iOS)
         let audioGranted = await withCheckedContinuation { continuation in
