@@ -373,7 +373,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 15. [ ] Add permission priming + a Settings-redirect on denial — `apple-skills:generators` (permission-priming)
 16. [x] Fix the `transcribe()` continuation leak (single-resume + timeout) — `apple-skills:swift`
 17. [x] Warm/reuse + prewarm the FoundationModels session — `apple-skills:apple-intelligence`
-18. [ ] Add VoiceOver labels (dark-mode toggle, composer buttons, note cards + selection action); hide decorative canvases — `xcode-integration:accessibility-voiceover-specialist`
+18. [x] Add VoiceOver labels (dark-mode toggle, composer buttons, note cards + selection action); hide decorative canvases — `xcode-integration:accessibility-voiceover-specialist`
 19. [x] Replace `fatalError` with graceful fallback; tighten the store-reset heuristic (move-aside, not delete) — `apple-skills:swiftdata`
 20. [~] Apply `.completeFileProtection` and truncate the pinned-snapshot `previewText`; protect shared-draft + audio files; add app-switcher privacy blur — `apple-skills:security` *(previewText truncated ✅; file-protection classes + privacy blur deferred — need device-locked testing, see worklog)*
 21. [ ] Adopt Swift 6 / strict concurrency; remove force-unwraps; wrap meaningful saves with logging — `apple-skills:swift` + `apple-skills:ios`

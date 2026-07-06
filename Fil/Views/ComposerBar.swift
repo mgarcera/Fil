@@ -96,6 +96,7 @@ struct ComposerBar: View {
                             .contentShape(Circle())
                     }
                     .disabled(isProcessing)
+                    .accessibilityLabel("add photos")
 
                     Button(action: addTodoPill) {
                         Image(systemName: "checklist")
@@ -106,6 +107,7 @@ struct ComposerBar: View {
                     }
                     .buttonStyle(.plain)
                     .disabled(isProcessing)
+                    .accessibilityLabel("add to-do")
                 }
 
                 Spacer(minLength: 0)
@@ -232,6 +234,7 @@ struct ComposerBar: View {
                 beamedCircle(symbol: "stop.fill", weight: .semibold)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("stop recording")
         } else if isComposing {
             Button(action: sendWithDissolve) {
                 beamedCircle(symbol: "arrow.up", weight: .bold)
@@ -239,11 +242,14 @@ struct ComposerBar: View {
             }
             .buttonStyle(.plain)
             .disabled(isProcessing || !canSend)
+            .accessibilityLabel("send fil")
         } else {
             Button(action: onStartRecording) {
                 filledCircle(symbol: "mic.fill")
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("record voice note")
+            .accessibilityAddTraits(.startsMediaSession)
         }
     }
 
@@ -331,6 +337,7 @@ struct ComposerBar: View {
                     }
                     .buttonStyle(.plain)
                     .offset(x: 5, y: -5)
+                    .accessibilityLabel("remove photo")
                 }
         }
     }

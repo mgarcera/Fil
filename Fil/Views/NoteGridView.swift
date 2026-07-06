@@ -552,6 +552,31 @@ private struct DeletableNoteCard: View {
         .animation(.easeOut(duration: 0.45), value: showsLandfilAnimation)
         .animation(.snappy(duration: 0.18), value: isSelected)
         .animation(.snappy(duration: 0.18), value: isSelectionMode)
+        // Collapse the decorative blob into one spoken element with a meaningful label, and
+        // expose the long-press selection (which VoiceOver can't perform) as a named action.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(cardAccessibilityLabel)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(isSelected ? "selected" : "")
+        .accessibilityHint(isSelectionMode ? "double tap to toggle selection" : "double tap to open")
+        .accessibilityAction(named: Text("select")) { onLongPress() }
+    }
+
+    /// Title + fil kind, so VoiceOver announces what the card is rather than the bare badge.
+    private var cardAccessibilityLabel: Text {
+        let name = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = name.isEmpty ? "fil" : name
+        let kind: String
+        if note.isImageFil {
+            kind = "photo fil"
+        } else if note.isLinkFil {
+            kind = "link fil"
+        } else if !note.audioFilePath.isEmpty {
+            kind = "voice fil"
+        } else {
+            kind = "text fil"
+        }
+        return Text("\(title), \(kind)")
     }
 
     private var showsLandfilAnimation: Bool {

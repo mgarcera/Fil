@@ -227,6 +227,19 @@ reliability + performance + a security quick win — self-contained, no design d
   under the target's `@MainActor`-default isolation requires care (AVAudioPlayer is non-Sendable);
   not worth introducing concurrency warnings pre-launch for a minor gain. Tracked with #21.
 
+### #18 — VoiceOver labels + decorative-canvas handling (audit #18) ✅
+- **Composer** (`ComposerBar`): labelled add-photos, add-to-do, record (with `.startsMediaSession`),
+  send fil, stop recording, remove photo.
+- **Header** (`ContentView`): dark/light-mode toggle now announces "switch to light/dark mode".
+- **Note cards** (`NoteGridView.DeletableNoteCard`): collapse the decorative blob into one element
+  with a composed label (title + fil kind: photo/link/voice/text), a selected value, and a named
+  **"select"** action exposing the long-press (which VoiceOver can't otherwise perform).
+- **Screensaver overlay** (`ContentView`): collapsed to one element and — importantly — given a
+  dismiss `accessibilityAction` so a VoiceOver user isn't trapped (the sighted tap-to-exit isn't
+  discoverable); hidden entirely from a11y when idle.
+- Verified: full BuildProject passed (the live-diagnostics tool errored transiently; build is
+  authoritative).
+
 
 
 

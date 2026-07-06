@@ -135,6 +135,19 @@ struct ContentView: View {
                 }
             }
             .ignoresSafeArea()
+            // Collapse the decorative screensaver canvas into a single VoiceOver element and,
+            // crucially, expose a dismiss action so a VoiceOver user isn't trapped in it (the
+            // sighted tap-to-exit isn't discoverable to them). Hidden entirely when idle.
+            .accessibilityElement(children: .ignore)
+            .accessibilityHidden(activeScreensaverMode == nil && !showKoiPond)
+            .accessibilityLabel("screensaver")
+            .accessibilityHint("double tap to dismiss")
+            .accessibilityAction {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    activeScreensaverMode = nil
+                    showKoiPond = false
+                }
+            }
         }
         .sheet(item: $selectedNote, onDismiss: handleArticleDismissed) { note in
             FilSheetContent(note: note, filSheetPath: $filSheetPath) { route in
@@ -305,6 +318,7 @@ struct ContentView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(isDarkMode ? "switch to light mode" : "switch to dark mode")
                 }
                 .padding(.horizontal, 6)
                 .glassEffect()
