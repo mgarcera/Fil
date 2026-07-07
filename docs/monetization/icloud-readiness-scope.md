@@ -1,9 +1,14 @@
 # iCloud / CloudKit Readiness Scope
 
-*Precise, buildable scope for making Fil's SwiftData layer CloudKit-sync-ready — the gating work
-for the Fil Pro hero feature. Grounds: `docs/monetization/fil-pro-plan.md` (§ Prerequisites A) and
-`LAUNCH_READINESS_AUDIT.md` roadmap Phase 6 #32. Verified against Apple's SwiftData "Syncing model
-data across a person's devices" docs (2026-07-06).*
+> **STATUS: SHELVED (2026-07-06).** iCloud sync is **no longer the Fil Pro hero** — the Pro bundle
+> is now summaries + all-screensavers + ambience (no CloudKit). This document is preserved as
+> reference *if sync is ever revisited as a future v2*. Reasons for shelving: audio recordings
+> (loose files) don't sync via SwiftData so voice fils would arrive silent; a prior migration
+> attempt cost ~a day and was reverted; highest-risk + fully optional. If revisited: solve audio
+> first and do the migration deliberately, not under launch pressure. See `fil-pro-plan.md`.
+
+*Precise, buildable scope for making Fil's SwiftData layer CloudKit-sync-ready. Verified against
+Apple's SwiftData "Syncing model data across a person's devices" docs (2026-07-06).*
 
 Execute on the `launch-prep` branch, per-item commits + worklog, same as prior phases. This is a
 **schema migration + capability** change; test hard on a seeded store before release.

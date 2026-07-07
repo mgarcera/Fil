@@ -393,7 +393,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 31. [ ] Add first-party conversion analytics to validate pricing — `apple-skills:generators`
 
 **Phase 6 — Future (post-PMF)**
-32. [ ] iCloud/CloudKit sync as the flagship Pro anchor — `apple-skills:monetization`
+32. [~] iCloud/CloudKit sync as the flagship Pro anchor — `apple-skills:monetization` *(SHELVED 2026-07-06 — audio files don't sync + prior migration reverted; Pro anchor is now summaries + delight bundle. Scope preserved in `docs/monetization/icloud-readiness-scope.md`.)*
 33. [ ] iPad adaptive (`NavigationSplitView`/size-class) layout — `apple-skills:ios`
 34. [ ] Native macOS support (audio paths, windowed layout, FoundationModels availability) — `apple-skills:macos`
 35. [ ] Listing localization / keyword cross-localization (es-MX/en-GB first) — `apple-skills:app-store`

@@ -304,6 +304,12 @@ reliability + performance + a security quick win — self-contained, no design d
   (b) **audio files live as loose files** (`audioFilePath`) and won't sync via SwiftData — a synced
   voice fil would arrive without playable audio unless remodeled. Both are open decisions in the doc.
 - No app code changed yet — scoping only.
+- **Pivot (2026-07-06):** after scoping, **iCloud sync SHELVED as the Pro hero** — audio files
+  (loose files) don't sync via SwiftData (voice fils would arrive silent) and a prior migration
+  attempt cost ~a day + was reverted. New Pro hero = **summaries + all-screensavers + ambience
+  bundle** (local, no CloudKit, no migration). `fil-pro-plan.md` rewritten; scope doc marked
+  shelved. Bonus: "notes stay on your device" copy stays 100% true. Gating build is now the
+  **summaries feature**, not a migration.
 
 ### #25 — outbound share cards (audit #25) ✅
 - New `Fil/Views/FilShareCard.swift`: `FilShareCard` (a branded 1080² card — the fil's gradient
