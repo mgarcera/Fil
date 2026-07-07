@@ -41,7 +41,6 @@ struct ContentView: View {
     @Namespace private var composerNamespace
     @Namespace private var filCreationNamespace
     @State private var creatingFilIDs: [UUID] = []
-    @State private var visibleTip = emptyStateTip
     @State private var filSheetPath: [FilSheetRoute] = []
     @State private var selectedNoteIDs = Set<UUID>()
     @State private var landfillingNoteIDs = Set<UUID>()
@@ -77,18 +76,6 @@ struct ContentView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    if notes.isEmpty && creatingFilIDs.isEmpty && firstUserFilAt == 0 {
-                        AnimatedGradientRevealText(text: visibleTip)
-                            .font(Theme.dmSans(15, weight: .medium))
-                            .foregroundStyle(Theme.secondaryText)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
-                            .blur(radius: isComposerFocused ? 8 : 0)
-                            .opacity(isComposerFocused ? 0 : 1)
-                            .animation(.easeInOut(duration: 0.3), value: isComposerFocused)
-                    }
-
                     notesSection
                 }
                 // Clear the floating header so content starts below it, then scrolls under.
@@ -707,9 +694,42 @@ struct ContentView: View {
     }
 
     private var emptyState: some View {
-        // The "from mason" card lives only in the Settings sheet now, not on the home screen.
-        // The short welcome tip above the grid is the only first-run guidance here.
-        EmptyView()
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            emptyStateMessage
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 28)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity)
+        // Fill the scroll viewport so the bottom-anchored composer stays put even with zero fils
+        // (otherwise the ScrollView collapses to content height and the composer floats up).
+        .containerRelativeFrame(.vertical)
+        .blur(radius: isComposerFocused ? 8 : 0)
+        .opacity(isComposerFocused ? 0 : 1)
+        .animation(.easeInOut(duration: 0.3), value: isComposerFocused)
+    }
+
+    /// Empty-home message: a first-run welcome, or — once the user has made (and cleared) fils —
+    /// a playful "blank canvas" line with the "fil" in "filled" in the accent colors.
+    @ViewBuilder
+    private var emptyStateMessage: some View {
+        if firstUserFilAt == 0 {
+            Text(Self.emptyStateTip)
+                .font(Theme.dmSans(16, weight: .medium))
+                .foregroundStyle(Theme.secondaryText)
+        } else {
+            (
+                Text("here's a whole blank canvas\njust waiting to be ")
+                + Text("f").foregroundColor(Color(hex: "#F24D59"))
+                + Text("i").foregroundColor(Color(hex: "#33BF99"))
+                + Text("l").foregroundColor(Color(hex: "#6659CC"))
+                + Text("led.")
+            )
+            .font(Theme.dmSans(17, weight: .semibold))
+            .foregroundStyle(Theme.secondaryText)
+        }
     }
 
     @ViewBuilder
