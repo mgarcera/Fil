@@ -695,17 +695,7 @@ struct ContentView: View {
         )
     }
 
-    private static let emptyStateTip = """
-    fil was made to take advantage of your on-device ai. everything is processed locally and nothing is stored in the cloud
-
-    it's absolutely free. i'm a social worker / data specialist having fun in my digital world and want you to have fun in it too
-
-    i wanted an app whose recipe calls for fluff. filler. a dash of dictation with a tablespoon of inference. 
-
-    to get started, create a fil. watch it fil'n the blanks with fil'r. then, highlight text, click fil'ament, and string up to 32 different kinds of attachments.
-
-    happy fil'ng. and have fun :) mason
-    """
+    private static let emptyStateTip = "welcome :) to get started, share a thought below."
 
     private var searchEmptyState: some View {
         Text("no fils match “\(trimmedSearch)”")
@@ -717,9 +707,9 @@ struct ContentView: View {
     }
 
     private var emptyState: some View {
-        FromMasonFilCard()
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+        // The "from mason" card lives only in the Settings sheet now, not on the home screen.
+        // The short welcome tip above the grid is the only first-run guidance here.
+        EmptyView()
     }
 
     @ViewBuilder
