@@ -288,6 +288,23 @@ reliability + performance + a security quick win — self-contained, no design d
   and a 1.5s delay so the ask lands on a happy beat. StoreKit further throttles actual display.
 - Verified: full BuildProject passed.
 
+---
+
+## Phase 5 — Monetization (Fil Pro)
+
+- **Strategy** decided + documented in `docs/monetization/fil-pro-plan.md`: one-time **lifetime
+  unlock** (keeps the "no subscription" promise), **iCloud sync as the paid hero**, summaries move
+  to free.
+- **iCloud-readiness scope** (the gating technical work) fully scoped in
+  `docs/monetization/icloud-readiness-scope.md` — verified against Apple's SwiftData sync docs.
+  Per-file model changes (remove `.unique`, default non-optionals across Note/NoteImage/
+  KeywordAttachment/UserProfile), container `cloudKitDatabase` gating, entitlements + Background
+  Modes, VersionedSchema migration, and a test plan. **Two important findings surfaced:**
+  (a) attachment binaries are stored inline in a Codable blob → can exceed CloudKit record limits;
+  (b) **audio files live as loose files** (`audioFilePath`) and won't sync via SwiftData — a synced
+  voice fil would arrive without playable audio unless remodeled. Both are open decisions in the doc.
+- No app code changed yet — scoping only.
+
 ### #25 — outbound share cards (audit #25) ✅
 - New `Fil/Views/FilShareCard.swift`: `FilShareCard` (a branded 1080² card — the fil's gradient
   blob + title + excerpt + "fil · let thoughts be" wordmark on a fixed dark canvas) and
