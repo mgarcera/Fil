@@ -319,6 +319,25 @@ Design in `docs/onboarding/onboarding-design.md` (research in `onboarding-resear
   onboarding gate, so nothing user-facing is lost. `OnboardingView`/`SummaryScope` now dead code
   (removed in O5). Verified: full BuildProject passed.
 
+### O2 — first-launch nudge ✅ (already satisfied)
+- The existing empty-state tip (`ContentView.emptyStateTip`, in Mason's voice) already invites
+  "to get started, create a fil… highlight text, click fil'ament…". No new nudge needed.
+
+### O3 + O4 + O5 — action-first flow + seed fil + cleanup ✅
+- **Flow (`ContentView`):** after the user's **own** first fil completes in `createFil`, a quiet
+  congratulation overlay ("that's a fil. it's yours.") shows for ~2s, then the **"from mason" seed
+  fil animates in through the same `createFil`/creation-blob path** (the reveal demonstrates the
+  creation animation + discoverability). Guarded once by `@AppStorage("didSeedWelcomeFil")`.
+- **Seed excluded from activation:** it runs through `createFil` too, so an `isSeedingWelcomeFil`
+  flag skips user-fil stamping + re-trigger.
+- **Seed content (`WelcomeFil.swift`):** fixed title/transcript/gradient (no AI → always renders) +
+  two sample filaments (`filament`, `landfil`) that highlight in the transcript. Deletable like any
+  fil. Copy is Mason-editable in one file.
+- **Instrumentation:** first-party `firstLaunchAt` / `firstUserFilAt` (epoch seconds, seed excluded).
+- **Cleanup:** moved `RootView` into `FilApp.swift`; **deleted `OnboardingView.swift`**.
+- Verified: diagnostics clean + full BuildProject passed.
+- **Open (Mason):** edit seed copy / congrat line / gradient; device-test the first-run sequence.
+
 ---
 
 ### (Phase 5 monetization pivot, for reference)

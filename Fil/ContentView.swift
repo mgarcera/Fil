@@ -19,6 +19,15 @@ struct ContentView: View {
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
     @AppStorage("didRequestReview") private var didRequestReview = false
+
+    // First-run onboarding (action-first + "from mason" seed fil). See docs/onboarding/.
+    @AppStorage("didSeedWelcomeFil") private var didSeedWelcomeFil = false
+    /// First-party, on-device activation instrumentation (no third-party SDK). Epoch seconds.
+    @AppStorage("firstLaunchAt") private var firstLaunchAt: Double = 0
+    @AppStorage("firstUserFilAt") private var firstUserFilAt: Double = 0
+    /// True only while the welcome seed fil is animating in, so it isn't counted as a user fil.
+    @State private var isSeedingWelcomeFil = false
+    @State private var showWelcomeCongrats = false
     @FocusState private var isComposerFocused: Bool
     @FocusState private var isSearchFieldFocused: Bool
     @State private var textEntryText = ""
@@ -229,8 +238,27 @@ struct ContentView: View {
         .onChange(of: shouldKeepScreenAwake) { _, _ in applyScreenAwake() }
         .onChange(of: collapsedDayKeys) { _, _ in persistCollapsedDayKeys() }
         .task {
+            if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
             ingestSharedDrafts()
         }
+        .overlay {
+            if showWelcomeCongrats {
+                welcomeCongratsOverlay
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    /// A quiet, calm beat after the user's first fil — no confetti. Fades before the seed reveal.
+    private var welcomeCongratsOverlay: some View {
+        ZStack {
+            Theme.background.opacity(0.55).ignoresSafeArea()
+            Text("that's a fil.\nit's yours.")
+                .font(Theme.dmSans(24, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+                .multilineTextAlignment(.center)
+        }
+        .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -882,7 +910,53 @@ struct ContentView: View {
             try? await Task.sleep(for: .milliseconds(300))
         }
         finishCreatingFil(filID)
-        if succeeded { maybeRequestReview() }
+
+        guard succeeded else { return }
+        // The welcome seed fil also runs through createFil — don't treat it as a user fil.
+        guard !isSeedingWelcomeFil else { return }
+
+        if firstUserFilAt == 0 { firstUserFilAt = Date.now.timeIntervalSince1970 }
+        maybeRequestReview()
+        maybeRevealWelcomeFil()
+    }
+
+    /// After the user's own first fil, offer a quiet congratulation, then reveal the one-time
+    /// "from mason" seed fil — animated in through the normal creation path so the reveal itself
+    /// demonstrates the creation blob + discoverability. Runs exactly once, ever.
+    private func maybeRevealWelcomeFil() {
+        guard !didSeedWelcomeFil else { return }
+        didSeedWelcomeFil = true
+        Task { @MainActor in
+            withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = true }
+            try? await Task.sleep(for: .seconds(2.2))
+            withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = false }
+            try? await Task.sleep(for: .milliseconds(350))
+            isSeedingWelcomeFil = true
+            await createFil { filID in insertWelcomeFil(filID) }
+            isSeedingWelcomeFil = false
+        }
+    }
+
+    /// Builds the fixed "from mason" seed fil (no AI) with two sample filaments. Deletable like
+    /// any fil; seeded only once (guarded by `didSeedWelcomeFil`).
+    private func insertWelcomeFil(_ filID: UUID) {
+        let note = Note(
+            title: WelcomeFil.title,
+            transcript: WelcomeFil.transcript,
+            keyword: WelcomeFil.title,
+            gradientStartHex: WelcomeFil.gradientStart,
+            gradientEndHex: WelcomeFil.gradientEnd
+        )
+        note.uuid = filID
+
+        let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
+        filament.entries = [.note(WelcomeFil.filamentNote)]
+        let landfil = KeywordAttachment(keyword: WelcomeFil.landfilKeyword, note: note)
+        landfil.entries = [.note(WelcomeFil.landfilNote)]
+        note.attachments = [filament, landfil]
+
+        modelContext.insert(note)
+        SoundscapeManager.shared.playArticleMadeSound()
     }
 
     /// Requests an App Store review after a genuine "aha" moment — a fil the user just made —

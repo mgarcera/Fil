@@ -25,6 +25,15 @@ struct FilApp: App {
     }
 }
 
+/// The app's root. New users land straight in the app; the action-first onboarding
+/// (first fil → congratulation → "from mason" seed fil) lives in ContentView.
+/// See docs/onboarding/onboarding-design.md.
+struct RootView: View {
+    var body: some View {
+        ContentView()
+    }
+}
+
 private extension FilApp {
     static func makeModelContainer() -> ModelContainer {
         let schema = Schema([
