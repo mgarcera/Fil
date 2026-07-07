@@ -9,21 +9,21 @@ enum WelcomeFil {
     static let gradientEnd = "#6659CC"     // indigo
 
     static let transcript = """
-    hi — i'm mason, and i made fil.
+    hi, i'm mason, and i made fil.
 
     you just made your first fil. this one's mine.
 
-    i wanted somewhere to put a thought without turning it into a project. no inbox, no tags, no streaks. some thoughts are just thoughts. they just need to exist.
+    i wanted somewhere to put thoughts without turning it into a project. no inbox, no tags, no streaks. just a fun place for them to be.
 
-    tap a word to attach a filament. swipe to landfil a fil when you're ready to let it go — even this one.
+    tap a word to attach a filament. long press to send thoughts to the landfil when you're ready to let it go. even this one.
 
     i hope you find as much ful·fil·ment here as i do.
     """
 
     // Sample filaments — both keywords appear in the transcript, so they highlight + are tappable.
     static let filamentKeyword = "filament"
-    static let filamentNote = "a filament is a little something you attach to a word — a note, photo, recording, or link. you're reading one now."
+    static let filamentNote = "a filament is something you attach to a word to give it depth."
 
     static let landfilKeyword = "landfil"
-    static let landfilNote = "landfil = letting a fil go. swipe it away anytime. nothing here asks you to keep it."
+    static let landfilNote = "landfil = trash."
 }
