@@ -22,8 +22,10 @@ enum WelcomeFil {
 
     // Sample filaments — both keywords appear in the transcript, so they highlight + are tappable.
     static let filamentKeyword = "filament"
+    static let filamentNoteTitle = "what's a filament?"
     static let filamentNote = "a filament is something you attach to a word to give it depth."
 
     static let landfilKeyword = "landfil"
+    static let landfilNoteTitle = "what's the landfil?"
     static let landfilNote = "landfil = trash."
 }

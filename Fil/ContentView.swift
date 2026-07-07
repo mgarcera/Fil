@@ -77,7 +77,7 @@ struct ContentView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
-                    if notes.isEmpty {
+                    if notes.isEmpty && creatingFilIDs.isEmpty && firstUserFilAt == 0 {
                         AnimatedGradientRevealText(text: visibleTip)
                             .font(Theme.dmSans(15, weight: .medium))
                             .foregroundStyle(Theme.secondaryText)
@@ -940,9 +940,9 @@ struct ContentView: View {
         note.uuid = filID
 
         let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
-        filament.entries = [.note(WelcomeFil.filamentNote)]
+        filament.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.filamentNote, noteTitle: WelcomeFil.filamentNoteTitle)]
         let landfil = KeywordAttachment(keyword: WelcomeFil.landfilKeyword, note: note)
-        landfil.entries = [.note(WelcomeFil.landfilNote)]
+        landfil.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.landfilNote, noteTitle: WelcomeFil.landfilNoteTitle)]
         note.attachments = [filament, landfil]
 
         modelContext.insert(note)
