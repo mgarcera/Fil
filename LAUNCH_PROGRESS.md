@@ -304,6 +304,24 @@ reliability + performance + a security quick win — self-contained, no design d
   (b) **audio files live as loose files** (`audioFilePath`) and won't sync via SwiftData — a synced
   voice fil would arrive without playable audio unless remodeled. Both are open decisions in the doc.
 - No app code changed yet — scoping only.
+
+---
+
+## Onboarding redesign (action-first + "from mason" seed fil)
+
+Design in `docs/onboarding/onboarding-design.md` (research in `onboarding-research.md`). Building on
+`launch-prep`, per-item commits.
+
+### O1 — strip stale onboarding (submittable checkpoint) ✅
+- `RootView` now renders `ContentView()` directly; new users no longer see the stale
+  summary-preview onboarding that promised the removed summaries feature (accuracy / App Review
+  risk removed). The lowercase toggle already lives in Settings; `UserProfile` was only the
+  onboarding gate, so nothing user-facing is lost. `OnboardingView`/`SummaryScope` now dead code
+  (removed in O5). Verified: full BuildProject passed.
+
+---
+
+### (Phase 5 monetization pivot, for reference)
 - **Pivot (2026-07-06):** after scoping, **iCloud sync SHELVED as the Pro hero** — audio files
   (loose files) don't sync via SwiftData (voice fils would arrive silent) and a prior migration
   attempt cost ~a day + was reverted. New Pro hero = **summaries + all-screensavers + ambience

@@ -2,15 +2,11 @@ import SwiftUI
 import SwiftData
 
 struct RootView: View {
-    @Query(sort: [SortDescriptor(\UserProfile.createdAt, order: .reverse)]) private var profiles: [UserProfile]
-    @AppStorage("didSkipSetup") private var didSkipSetup = false
-
     var body: some View {
-        if profiles.isEmpty && !didSkipSetup {
-            OnboardingView()
-        } else {
-            ContentView()
-        }
+        // New users land straight in the app (composer + home). The action-first onboarding
+        // (first-fil → congratulation → "from mason" seed fil) lives in ContentView; the old
+        // summary-preview onboarding is gone. See docs/onboarding/onboarding-design.md.
+        ContentView()
     }
 }
 
