@@ -733,11 +733,11 @@ struct ContentView: View {
 
     private var emptyState: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
             emptyStateMessage
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 28)
+                .padding(.top, 28)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
@@ -754,19 +754,13 @@ struct ContentView: View {
     @ViewBuilder
     private var emptyStateMessage: some View {
         if firstUserFilAt == 0 {
-            Text(Self.emptyStateTip)
+            AnimatedGradientRevealText(text: Self.emptyStateTip)
                 .font(Theme.dmSans(16, weight: .medium))
                 .foregroundStyle(Theme.secondaryText)
         } else {
-            (
-                Text("here's a blank canvas.\nhow will you ")
-                + Text("f").foregroundColor(Color(hex: "#F24D59"))
-                + Text("i").foregroundColor(Color(hex: "#33BF99"))
-                + Text("l").foregroundColor(Color(hex: "#6659CC"))
-                + Text("l it?")
-            )
-            .font(Theme.dmSans(17, weight: .semibold))
-            .foregroundStyle(Theme.secondaryText)
+            AnimatedGradientRevealText(text: "here's a blank canvas.\nhow will you fill it?")
+                .font(Theme.dmSans(17, weight: .semibold))
+                .foregroundStyle(Theme.secondaryText)
         }
     }
 
