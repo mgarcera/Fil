@@ -185,27 +185,25 @@ struct ArticleView: View {
 
             if !note.isLinkFil {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    ShareLink(item: filShareCard, preview: SharePreview("a fil from fil")) {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                    .accessibilityLabel("share fil")
-
                     Menu {
-                        Section("Created") {
+                        Button {
+                            togglePinnedFil()
+                        } label: {
+                            Label(isCurrentFilPinned ? "unpin from lock screen" : "pin to lock screen",
+                                  systemImage: isCurrentFilPinned ? "pin.slash" : "pin")
+                        }
+
+                        ShareLink(item: filShareCard, preview: SharePreview("a fil from fil")) {
+                            Label("share", systemImage: "square.and.arrow.up")
+                        }
+
+                        Section("created") {
                             Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
-                                .font(Theme.dmMono(12))
                         }
                     } label: {
-                        Image(systemName: "info.circle")
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("Fil info")
-
-                    Button {
-                        togglePinnedFil()
-                    } label: {
-                        Image(systemName: isCurrentFilPinned ? "pin.fill" : "pin")
-                    }
-                    .accessibilityLabel(isCurrentFilPinned ? "Unpin fil" : "Pin fil")
+                    .accessibilityLabel("more")
 
                     Button {
                         toggleEditing()
