@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import StoreKit
+import OSLog
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -236,6 +237,10 @@ struct ContentView: View {
         .onAppear { applyScreenAwake() }
         .onChange(of: shouldKeepScreenAwake) { _, _ in applyScreenAwake() }
         .onChange(of: collapsedDayKeys) { _, _ in persistCollapsedDayKeys() }
+        // TEMP diagnostic: log every article-sheet item transition (value -> nil -> value = the flicker).
+        .onChange(of: selectedNote?.uuid) { old, new in
+            FilLog.sheet.debug("selectedNote \(old?.uuidString ?? "nil", privacy: .public) -> \(new?.uuidString ?? "nil", privacy: .public)")
+        }
         .task {
             if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
             ingestSharedDrafts()
@@ -1450,6 +1455,7 @@ struct ContentView: View {
     }
 
     private func handleArticleDismissed() {
+        FilLog.sheet.debug("article sheet onDismiss fired")
         filSheetPath.removeAll()
     }
 }
