@@ -1505,6 +1505,10 @@ private struct FilSheetContent<Destination: View>: View {
         }
         .presentationDetents(availableDetents, selection: $detent)
         .presentationBackground(Theme.background)
+        // TEMP diagnostic: a spontaneous detent change would look like the sheet resizing.
+        .onChange(of: detent) { old, new in
+            FilLog.sheet.notice("detent \(String(describing: old), privacy: .public) -> \(String(describing: new), privacy: .public)")
+        }
     }
 }
 
