@@ -664,29 +664,22 @@ struct ArticleView: View {
     private var todoQuoteList: some View {
         if !note.todos.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(Array(note.todos.enumerated()), id: \.offset) { index, todo in
-                    Button {
-                        toggleTodo(at: index)
-                    } label: {
-                        HStack(alignment: .center, spacing: 12) {
-                            todoStatusCircle(isCompleted: isTodoCompleted(at: index))
-
-                            Text(todo)
-                                .font(Theme.dmMono(13, weight: .bold))
-                                .foregroundStyle(Theme.secondaryText)
-                                .strikethrough(isTodoCompleted(at: index), color: Theme.tertiaryText)
-                                .opacity(isTodoCompleted(at: index) ? 0.65 : 1)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                // Stable identity (from Note.todoIDs) so swipe state + removal animations track the
+                // right row. Swipe left to landfil; long-press still offers it too (and keeps the
+                // action reachable for VoiceOver, which can't drive the custom swipe).
+                ForEach(note.todoRowItems) { item in
+                    SwipeToLandfil {
+                        removeTodo(at: item.index)
+                    } content: {
+                        TodoRowContent(text: item.text, isCompleted: item.done) {
+                            toggleTodo(at: item.index)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button(role: .destructive) {
-                            removeTodo(at: index)
-                        } label: {
-                            Label("remove to-do", systemImage: "trash")
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                removeTodo(at: item.index)
+                            } label: {
+                                Label("landfil", systemImage: "trash")
+                            }
                         }
                     }
                 }
@@ -702,7 +695,7 @@ struct ArticleView: View {
     private var addTodoControl: some View {
         if isAddingTodo {
             HStack(alignment: .center, spacing: 12) {
-                todoStatusCircle(isCompleted: false)
+                TodoStatusCircle(isCompleted: false)
 
                 TextField("to-do", text: $newTodoText)
                     .font(Theme.dmMono(13))
@@ -768,16 +761,9 @@ struct ArticleView: View {
     private func landfilFil() {
         SoundscapeManager.shared.playLandfilSound()
         let noteToDelete = note
-        // Clear its lock-screen pin (snapshot + Live Activity) before removing it.
-        if pinnedFilStore.isPinned(noteToDelete) {
-            pinnedFilStore.unpin()
-            Task { await PinnedFilLiveActivityController.unpin() }
-        }
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            if let audioURL = AudioPlayerViewModel.audioFileURL(for: noteToDelete.audioFilePath) {
-                try? FileManager.default.removeItem(at: audioURL)
-            }
+            FilLandfil.cleanUpResources(for: noteToDelete)
             modelContext.delete(noteToDelete)
             modelContext.saveOrLog()
         }
@@ -789,24 +775,6 @@ struct ArticleView: View {
         note.addTodo(text)
         modelContext.saveOrLog()
         SoundscapeManager.shared.playTodoArticleToggleSound()
-    }
-
-    private func todoStatusCircle(isCompleted: Bool) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(isCompleted ? Theme.inactiveTabBackground.opacity(0.9) : Theme.cardBackground.opacity(0.9))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .stroke(Theme.tertiaryText.opacity(isCompleted ? 0.28 : 0.42), lineWidth: 1)
-                }
-
-            if isCompleted {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Theme.tertiaryText)
-            }
-        }
-        .frame(width: 22, height: 22)
     }
 
     private func isTodoCompleted(at index: Int) -> Bool {

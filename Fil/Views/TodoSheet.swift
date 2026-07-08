@@ -11,16 +11,6 @@ struct TodoSheet: View {
 
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
-    /// A to-do captured by value at render time. Capturing text/done here (rather than indexing
-    /// `note.todos[index]` inside the row) is what keeps a row that's animating out of a swipe
-    /// delete from reading a now-out-of-range index and crashing.
-    private struct TodoItem: Identifiable {
-        let id: UUID       // stable per-to-do identity (from Note.todoIDs) — drives list animations
-        let index: Int     // current position in the fil's todos array (for toggle/delete)
-        let text: String
-        let done: Bool
-    }
-
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
@@ -61,7 +51,7 @@ struct TodoSheet: View {
                 Section {
                     filHeaderRow(note)
 
-                    ForEach(todoItems(for: note)) { item in
+                    ForEach(note.todoRowItems) { item in
                         todoRow(note, item)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -118,47 +108,11 @@ struct TodoSheet: View {
         .accessibilityHint("opens the fil")
     }
 
-    /// Matches the article view's to-do row exactly — same button, checkbox, spacing, font.
-    private func todoRow(_ note: Note, _ item: TodoItem) -> some View {
-        Button {
+    /// Uses the shared `TodoRowContent` so the row is identical to the fil detail view.
+    private func todoRow(_ note: Note, _ item: FilTodoItem) -> some View {
+        TodoRowContent(text: item.text, isCompleted: item.done) {
             onToggle(note, item.index)
-        } label: {
-            HStack(alignment: .center, spacing: 12) {
-                todoStatusCircle(isCompleted: item.done)
-
-                Text(item.text)
-                    .font(Theme.dmMono(13, weight: .bold))
-                    .foregroundStyle(Theme.secondaryText)
-                    .strikethrough(item.done, color: Theme.tertiaryText)
-                    .opacity(item.done ? 0.65 : 1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(item.text)
-        .accessibilityValue(item.done ? "done" : "open")
-        .accessibilityHint(item.done ? "mark open" : "mark done")
-    }
-
-    /// Mirrors `ArticleView.todoStatusCircle` so the checkbox is identical to the fil detail view.
-    private func todoStatusCircle(isCompleted: Bool) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(isCompleted ? Theme.inactiveTabBackground.opacity(0.9) : Theme.cardBackground.opacity(0.9))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .stroke(Theme.tertiaryText.opacity(isCompleted ? 0.28 : 0.42), lineWidth: 1)
-                }
-
-            if isCompleted {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Theme.tertiaryText)
-            }
-        }
-        .frame(width: 22, height: 22)
     }
 
     private var emptyState: some View {
@@ -178,25 +132,13 @@ struct TodoSheet: View {
 
     private var filsWithTodos: [Note] {
         notes
-            .filter { !todoItems(for: $0).isEmpty }
+            .filter { !$0.todoRowItems.isEmpty }
             .sorted { $0.timestamp > $1.timestamp }
     }
 
     private var openCount: Int {
         filsWithTodos.reduce(0) { total, note in
-            total + todoItems(for: note).filter { !$0.done }.count
-        }
-    }
-
-    /// Every non-empty to-do (open OR completed) for a fil, captured by value.
-    private func todoItems(for note: Note) -> [TodoItem] {
-        note.todos.indices.compactMap { index in
-            let text = note.todos[index].trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !text.isEmpty else { return nil }
-            let done = note.completedTodos.indices.contains(index) && note.completedTodos[index]
-            // IDs are backfilled before the sheet opens; fall back defensively just in case.
-            let id = note.todoIDs.indices.contains(index) ? note.todoIDs[index] : UUID()
-            return TodoItem(id: id, index: index, text: note.todos[index], done: done)
+            total + note.todoRowItems.filter { !$0.done }.count
         }
     }
 
