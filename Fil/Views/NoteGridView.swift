@@ -126,7 +126,7 @@ private struct DaySectionView: View {
             Button(action: toggleSection) {
                 HStack {
                     Text(formattedHeaderDate)
-                        .font(Theme.dmSans(14, weight: .medium))
+                        .font(Theme.dmSans(18, weight: .bold))
                         .foregroundStyle(headerColor)
                         .opacity(headerOpacity)
                     Spacer()
