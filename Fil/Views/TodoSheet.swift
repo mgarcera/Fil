@@ -53,7 +53,9 @@ struct TodoSheet: View {
                         todoRow(note, index)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                            // Indented so to-dos read as nested beneath their fil header (the
+                            // checkbox lines up under the header's title text).
+                            .listRowInsets(EdgeInsets(top: 6, leading: 48, bottom: 6, trailing: 20))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     onDeleteTodo(note, index)
@@ -98,29 +100,48 @@ struct TodoSheet: View {
         .accessibilityHint("opens the fil")
     }
 
+    /// Matches the article view's to-do row exactly — same button, checkbox, spacing, font.
     private func todoRow(_ note: Note, _ index: Int) -> some View {
         let done = isDone(note, index)
         return Button {
             onToggle(note, index)
         } label: {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(done ? Theme.tertiaryText : Theme.secondaryText)
+            HStack(alignment: .center, spacing: 12) {
+                todoStatusCircle(isCompleted: done)
+
                 Text(note.todos[index])
-                    .font(Theme.dmSans(14))
-                    .foregroundStyle(done ? Theme.tertiaryText : Theme.secondaryText)
+                    .font(Theme.dmMono(13))
+                    .foregroundStyle(Theme.secondaryText)
                     .strikethrough(done, color: Theme.tertiaryText)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
+                    .opacity(done ? 0.65 : 1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(note.todos[index])
         .accessibilityValue(done ? "done" : "open")
         .accessibilityHint(done ? "mark open" : "mark done")
+    }
+
+    /// Mirrors `ArticleView.todoStatusCircle` so the checkbox is identical to the fil detail view.
+    private func todoStatusCircle(isCompleted: Bool) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(isCompleted ? Theme.inactiveTabBackground.opacity(0.9) : Theme.cardBackground.opacity(0.9))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .stroke(Theme.tertiaryText.opacity(isCompleted ? 0.28 : 0.42), lineWidth: 1)
+                }
+
+            if isCompleted {
+                Image(systemName: "checkmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Theme.tertiaryText)
+            }
+        }
+        .frame(width: 22, height: 22)
     }
 
     private var emptyState: some View {
