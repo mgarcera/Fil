@@ -59,13 +59,15 @@ struct TodoSheet: View {
         List {
             ForEach(filsWithTodos) { note in
                 Section {
+                    filHeaderRow(note)
+
                     ForEach(todoItems(for: note)) { item in
                         todoRow(note, item)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             // Indented so to-dos read as nested beneath their fil header (the
                             // checkbox lines up under the header's title text).
-                            .listRowInsets(EdgeInsets(top: 6, leading: 48, bottom: 6, trailing: 20))
+                            .listRowInsets(EdgeInsets(top: 6, leading: 56, bottom: 6, trailing: 20))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     onDeleteTodo(note, item.index)
@@ -75,8 +77,6 @@ struct TodoSheet: View {
                                 .tint(Theme.recordRed)
                             }
                     }
-                } header: {
-                    filHeader(note)
                 }
             }
         }
@@ -85,28 +85,36 @@ struct TodoSheet: View {
         .scrollIndicators(.hidden)
     }
 
-    private func filHeader(_ note: Note) -> some View {
+    private func filHeaderRow(_ note: Note) -> some View {
         Button {
             onOpenNote(note)
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 NoteBlobShape(seed: note.blobShapeSeed)
                     .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                    .frame(width: 18, height: 18)
+                    .frame(width: 26, height: 26)
                 Text(displayTitle(note))
-                    .font(Theme.dmSans(15, weight: .semibold))
+                    .font(Theme.dmSans(18, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(1)
-                Spacer(minLength: 8)
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Theme.tertiaryText)
+                Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .textCase(nil)
-        .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 4, trailing: 20))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+        .listRowInsets(EdgeInsets(top: 16, leading: 20, bottom: 6, trailing: 20))
+        // Tap opens the fil; swipe right does too.
+        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            Button {
+                onOpenNote(note)
+            } label: {
+                Label("open", systemImage: "arrow.up.right")
+            }
+            .tint(Color(hex: note.gradientStartHex))
+        }
+        .accessibilityAddTraits(.isButton)
         .accessibilityHint("opens the fil")
     }
 
