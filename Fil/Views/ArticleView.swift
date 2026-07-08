@@ -664,22 +664,17 @@ struct ArticleView: View {
     private var todoQuoteList: some View {
         if !note.todos.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                // Stable identity (from Note.todoIDs) so swipe state + removal animations track the
-                // right row. Swipe left to landfil; long-press still offers it too (and keeps the
-                // action reachable for VoiceOver, which can't drive the custom swipe).
+                // Stable identity (from Note.todoIDs) so removal animations track the right row.
+                // Long-press a to-do to landfil it.
                 ForEach(note.todoRowItems) { item in
-                    SwipeToLandfil {
-                        removeTodo(at: item.index)
-                    } content: {
-                        TodoRowContent(text: item.text, isCompleted: item.done) {
-                            toggleTodo(at: item.index)
-                        }
-                        .contextMenu {
-                            Button(role: .destructive) {
-                                removeTodo(at: item.index)
-                            } label: {
-                                Label("landfil", systemImage: "trash")
-                            }
+                    TodoRowContent(text: item.text, isCompleted: item.done) {
+                        toggleTodo(at: item.index)
+                    }
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            removeTodo(at: item.index)
+                        } label: {
+                            Label("landfil", systemImage: "trash")
                         }
                     }
                 }
