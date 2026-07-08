@@ -64,7 +64,7 @@ struct TodoRowContent: View {
                 TodoStatusCircle(isCompleted: isCompleted)
 
                 Text(text)
-                    .font(Theme.dmMono(13, weight: .bold))
+                    .font(Theme.dmSans(13, weight: .regular))
                     .foregroundStyle(Theme.secondaryText)
                     .strikethrough(isCompleted, color: Theme.tertiaryText)
                     .opacity(isCompleted ? 0.65 : 1)

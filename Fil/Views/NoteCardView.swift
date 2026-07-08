@@ -82,7 +82,7 @@ struct NoteCardView: View {
                     // (declared inside the badge) scales to this same cap.
                     .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     .padding(.trailing, 8)
-                    .offset(y: -14)
+                    .offset(y: -18)
             }
         }
     }

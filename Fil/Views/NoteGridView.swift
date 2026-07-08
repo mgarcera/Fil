@@ -316,7 +316,7 @@ private struct DaySectionView: View {
     // opacity, and height interpolation below — interpolating spacing too only added
     // per-frame layout churn (and re-computed every blob path) with no visible benefit.
     private var gridSpacing: CGFloat {
-        18
+        26
     }
 
     private var activeColumns: [GridItem] {
