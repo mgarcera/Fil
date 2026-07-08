@@ -42,6 +42,14 @@ private extension FilApp {
             KeywordAttachment.self,
             UserProfile.self
         ])
+        // The store lives in Application Support, which isn't guaranteed to exist — create it first,
+        // otherwise the first addPersistentStore fails with NSCocoaErrorDomain 512 ("Failed to create
+        // file") and dumps a large diagnostic before CoreData recovers.
+        try? FileManager.default.createDirectory(
+            at: URL.applicationSupportDirectory,
+            withIntermediateDirectories: true
+        )
+
         let configuration = ModelConfiguration(
             schema: schema,
             url: storeURL
