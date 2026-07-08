@@ -239,7 +239,7 @@ struct ContentView: View {
         .onChange(of: collapsedDayKeys) { _, _ in persistCollapsedDayKeys() }
         // TEMP diagnostic: log every article-sheet item transition (value -> nil -> value = the flicker).
         .onChange(of: selectedNote?.uuid) { old, new in
-            FilLog.sheet.debug("selectedNote \(old?.uuidString ?? "nil", privacy: .public) -> \(new?.uuidString ?? "nil", privacy: .public)")
+            FilLog.sheet.notice("selectedNote \(old?.uuidString ?? "nil", privacy: .public) -> \(new?.uuidString ?? "nil", privacy: .public)")
         }
         .task {
             if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
@@ -1037,6 +1037,7 @@ struct ContentView: View {
     }
 
     private func handleIncomingURL(_ url: URL) {
+        FilLog.sheet.notice("handleIncomingURL: \(url.absoluteString, privacy: .public)")
         if let pinnedNoteID = pinnedNoteID(from: url) {
             openFil(with: pinnedNoteID)
             return
@@ -1115,6 +1116,7 @@ struct ContentView: View {
     }
 
     private func openFil(with id: UUID) {
+        FilLog.sheet.notice("openFil(with:) called for \(id.uuidString, privacy: .public)")
         guard let note = notes.first(where: { $0.uuid == id }) else {
             // The query may not have loaded yet on a cold launch; retry when notes populate.
             pendingPinnedNoteID = id
@@ -1131,6 +1133,7 @@ struct ContentView: View {
     private func ingestSharedDrafts() {
         let drafts = SharedDraftInbox.drain()
         guard !drafts.isEmpty else { return }
+        FilLog.sheet.notice("ingestSharedDrafts: creating \(drafts.count) fil(s)")
         Task { await createFils(from: drafts) }
     }
 
@@ -1455,7 +1458,7 @@ struct ContentView: View {
     }
 
     private func handleArticleDismissed() {
-        FilLog.sheet.debug("article sheet onDismiss fired")
+        FilLog.sheet.notice("article sheet onDismiss fired")
         filSheetPath.removeAll()
     }
 }
