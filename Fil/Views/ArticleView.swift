@@ -519,9 +519,12 @@ struct ArticleView: View {
     private var transcriptSection: some View {
         Group {
             if isEditingTranscript {
+                // Match the reading view (SelectableTextView) exactly so text doesn't shift when
+                // toggling edit: system font, body-relative 16pt, label @0.85, 6pt line spacing.
                 TextEditor(text: transcriptBinding)
-                    .font(Theme.dmSans(13))
-                    .foregroundStyle(Theme.secondaryText)
+                    .font(Theme.dmSans(16))
+                    .foregroundStyle(Theme.primaryText.opacity(0.85))
+                    .lineSpacing(6)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: editingTranscriptMinHeight, alignment: .topLeading)
             } else {
