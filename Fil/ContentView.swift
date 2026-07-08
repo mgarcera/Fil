@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showPermissionAlert = false
     @State private var showMicPriming = false
+    @State private var showTodoSheet = false
     @State private var showFilSetup = false
 
     @Environment(\.requestReview) private var requestReview
@@ -159,6 +160,11 @@ struct ContentView: View {
         .sheet(isPresented: $showFilSetup) {
             SettingsView()
                 .presentationDetents([.fraction(0.6)])
+                .presentationBackground(Theme.background)
+        }
+        .sheet(isPresented: $showTodoSheet) {
+            TodoSheet(notes: notes, onToggle: toggleTodoFromSheet, onOpenNote: openNoteFromSheet)
+                .presentationDetents([.medium, .large])
                 .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showMicPriming) {
@@ -601,16 +607,18 @@ struct ContentView: View {
     private var bottomComposer: some View {
         GlassEffectContainer(spacing: 8) {
             VStack(spacing: 10) {
-                if showsSectionToggleFAB {
+                if showsSectionToggleFAB || showsTodoFAB {
                     HStack {
+                        if showsTodoFAB { todoFAB }
                         Spacer()
-                        sectionToggleFAB
+                        if showsSectionToggleFAB { sectionToggleFAB }
                     }
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
                 }
                 composerContent
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.86), value: showsSectionToggleFAB)
+            .animation(.spring(response: 0.4, dampingFraction: 0.86), value: showsTodoFAB)
         }
     }
 
@@ -619,6 +627,28 @@ struct ContentView: View {
     /// nothing to collapse or while recording / bulk-selecting so it never crowds it.
     private var showsSectionToggleFAB: Bool {
         !allDaySectionKeys.isEmpty && !isSelectingNotes && !recorder.isRecording && !isSearching
+    }
+
+    /// Left-hand FAB, a mirror of the expand/collapse control — opens the to-dos sheet. Shown only
+    /// when there are open to-dos to see.
+    private var showsTodoFAB: Bool {
+        homeFocusPageCount > 0 && !isSelectingNotes && !recorder.isRecording && !isSearching
+    }
+
+    private var todoFAB: some View {
+        Button {
+            SoundscapeManager.shared.playTabSound()
+            showTodoSheet = true
+        } label: {
+            Image(systemName: "checklist")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 44, height: 44)
+        }
+        .glassEffect(.regular.interactive(), in: .circle)
+        // Mirror the toggle FAB's trailing inset so both line up with the composer's edge icons.
+        .padding(.leading, 10)
+        .accessibilityLabel("open to-dos")
     }
 
     private var sectionToggleFAB: some View {
@@ -721,11 +751,11 @@ struct ContentView: View {
                 .foregroundStyle(Theme.secondaryText)
         } else {
             (
-                Text("here's a whole blank canvas\njust waiting to be ")
+                Text("here's a blank canvas.\nhow will you ")
                 + Text("f").foregroundColor(Color(hex: "#F24D59"))
                 + Text("i").foregroundColor(Color(hex: "#33BF99"))
                 + Text("l").foregroundColor(Color(hex: "#6659CC"))
-                + Text("led.")
+                + Text("l it?")
             )
             .font(Theme.dmSans(17, weight: .semibold))
             .foregroundStyle(Theme.secondaryText)
@@ -1007,6 +1037,27 @@ struct ContentView: View {
             return nil
         }
         return UUID(uuidString: idValue)
+    }
+
+    private func toggleTodoFromSheet(_ note: Note, _ index: Int) {
+        note.normalizeCompletedTodos()
+        guard note.completedTodos.indices.contains(index) else { return }
+        SoundscapeManager.shared.playTodoArticleToggleSound()
+        withAnimation(.snappy) {
+            note.completedTodos[index].toggle()
+        }
+        modelContext.saveOrLog()
+    }
+
+    private func openNoteFromSheet(_ note: Note) {
+        showTodoSheet = false
+        // Let the to-dos sheet dismiss before presenting the fil, so the two sheets don't fight.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(300))
+            SoundscapeManager.shared.playOpenFilClick()
+            filSheetPath.removeAll()
+            selectedNote = note
+        }
     }
 
     private func openFil(with id: UUID) {
