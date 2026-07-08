@@ -48,6 +48,7 @@ struct KeywordPopup: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var selectedVideo: PhotosPickerItem?
     @State private var videoPickerPresented = false
+    @State private var showVideoCamera = false
     @State private var videoThumbnails: [UUID: UIImage] = [:]
     @State private var linkEditor: LinkEditorState?
     @State private var linkEditorDetent = PresentationDetent.fraction(0.6)
@@ -233,6 +234,12 @@ struct KeywordPopup: View {
                     let att = findOrCreate()
                     att.entries.append(.image(data))
                 }
+            }
+            .ignoresSafeArea()
+        }
+        .fullScreenCover(isPresented: $showVideoCamera) {
+            CameraVideoPicker { url in
+                saveImportedVideo(from: url)
             }
             .ignoresSafeArea()
         }
@@ -449,6 +456,11 @@ struct KeywordPopup: View {
                     } label: {
                         Label("Take Photo", systemImage: "camera")
                     }
+                    Button {
+                        showVideoCamera = true
+                    } label: {
+                        Label("Record Video", systemImage: "video.badge.plus")
+                    }
                 }
             }
             Section {
@@ -488,17 +500,22 @@ struct KeywordPopup: View {
         Task {
             defer { Task { @MainActor in selectedVideo = nil } }
             guard let movie = try? await item.loadTransferable(type: VideoAttachmentFile.self) else { return }
-            let filename = "video-\(UUID().uuidString).mov"
-            let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
-            do {
-                try FileManager.default.copyItem(at: movie.url, to: dest)
-            } catch {
-                try? FileManager.default.removeItem(at: movie.url)
-                return
-            }
+            await MainActor.run { saveImportedVideo(from: movie.url) }
             try? FileManager.default.removeItem(at: movie.url)
-            await MainActor.run { appendEntry(.video(path: filename)) }
         }
+    }
+
+    /// Copies a video at `sourceURL` (from the library or camera) into the documents dir and appends
+    /// a `.video` entry pointing at it. Runs on the main actor (mutates the model).
+    private func saveImportedVideo(from sourceURL: URL) {
+        let filename = "video-\(UUID().uuidString).mov"
+        let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: dest)
+        } catch {
+            return
+        }
+        appendEntry(.video(path: filename))
     }
 
     /// Videos live in the same documents directory as audio, so the audio resolver works for both.
@@ -1399,6 +1416,42 @@ struct CameraPicker: UIViewControllerRepresentable {
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
             if let image = info[.originalImage] as? UIImage {
                 parent.onCapture(image)
+            }
+            parent.dismiss()
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
+        }
+    }
+}
+
+/// Records a video with the camera and hands back the captured file URL (a temp file).
+struct CameraVideoPicker: UIViewControllerRepresentable {
+    @Environment(\.dismiss) private var dismiss
+    let onCapture: (URL) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.mediaTypes = [UTType.movie.identifier]
+        picker.cameraCaptureMode = .video
+        picker.videoQuality = .typeHigh
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraVideoPicker
+        init(_ parent: CameraVideoPicker) { self.parent = parent }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let url = info[.mediaURL] as? URL {
+                parent.onCapture(url)
             }
             parent.dismiss()
         }
