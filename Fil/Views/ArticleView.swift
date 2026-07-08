@@ -526,6 +526,9 @@ struct ArticleView: View {
                     .foregroundStyle(Theme.primaryText.opacity(0.85))
                     .lineSpacing(6)
                     .scrollContentBackground(.hidden)
+                    // Cancel TextEditor's built-in ~5pt lineFragmentPadding so the text left-aligns
+                    // with the zero-inset reading view (no horizontal shift on toggling edit).
+                    .padding(.horizontal, -5)
                     .frame(minHeight: editingTranscriptMinHeight, alignment: .topLeading)
             } else {
                 SelectableTextView(
