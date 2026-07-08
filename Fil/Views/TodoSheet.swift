@@ -11,11 +11,15 @@ struct TodoSheet: View {
 
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
+    /// When false, only open to-dos are shown; when true, completed ones appear too (struck
+    /// through). Toggled by the filter button in the header — a plain two-state switch, no menu.
+    @State private var showsCompleted = false
+
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
-            if filsWithTodos.isEmpty {
+            if !hasAnyTodos {
                 emptyState
             } else {
                 VStack(spacing: 0) {
@@ -23,7 +27,14 @@ struct TodoSheet: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 20)
                         .padding(.bottom, 4)
-                    todoList
+
+                    // Header (and its filter toggle) stays put even when the current filter has
+                    // nothing to show, so you can always switch back to seeing completed ones.
+                    if filsWithTodos.isEmpty {
+                        allClearState
+                    } else {
+                        todoList
+                    }
                 }
             }
         }
@@ -37,9 +48,30 @@ struct TodoSheet: View {
                 .font(Theme.dmSans(18, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
             Spacer()
-            Text("\(openCount) open")
-                .font(Theme.dmMono(12))
-                .foregroundStyle(Theme.secondaryText)
+            filterButton
+        }
+    }
+
+    /// Toggles between "open only" and "open + completed". Filled icon = filtering to open only;
+    /// outline = showing everything.
+    private var filterButton: some View {
+        Button(action: toggleShowsCompleted) {
+            Image(systemName: showsCompleted ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
+                .font(.system(size: 22, weight: .semibold))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(showsCompleted ? Theme.secondaryText : Theme.primaryText)
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("filter to-dos")
+        .accessibilityValue(showsCompleted ? "showing open and completed" : "showing open only")
+        .accessibilityHint("toggles between open only and all to-dos")
+    }
+
+    private func toggleShowsCompleted() {
+        SoundscapeManager.shared.playTabSound()
+        withAnimation(.snappy(duration: 0.25)) {
+            showsCompleted.toggle()
         }
     }
 
@@ -51,7 +83,7 @@ struct TodoSheet: View {
                 Section {
                     filHeaderRow(note)
 
-                    ForEach(note.todoRowItems) { item in
+                    ForEach(visibleItems(for: note)) { item in
                         todoRow(note, item)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
@@ -115,6 +147,21 @@ struct TodoSheet: View {
         }
     }
 
+    /// Shown when there are to-dos, but the "open only" filter has nothing to list.
+    private var allClearState: some View {
+        VStack(spacing: 8) {
+            Text("all caught up")
+                .font(Theme.dmSans(17, weight: .semibold))
+                .foregroundStyle(Theme.primaryText)
+            Text("no open to-dos. tap the filter to see completed ones.")
+                .font(Theme.dmSans(14))
+                .foregroundStyle(Theme.secondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, 40)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
     private var emptyState: some View {
         VStack(spacing: 8) {
             Text("no to-dos yet")
@@ -130,16 +177,21 @@ struct TodoSheet: View {
 
     // MARK: - Data
 
-    private var filsWithTodos: [Note] {
-        notes
-            .filter { !$0.todoRowItems.isEmpty }
-            .sorted { $0.timestamp > $1.timestamp }
+    /// True if any fil has a to-do at all (regardless of the current filter) — drives the
+    /// "nothing here yet" empty state vs. the header + list.
+    private var hasAnyTodos: Bool {
+        notes.contains { !$0.todoRowItems.isEmpty }
     }
 
-    private var openCount: Int {
-        filsWithTodos.reduce(0) { total, note in
-            total + note.todoRowItems.filter { !$0.done }.count
-        }
+    /// The to-dos to show for a fil under the current filter.
+    private func visibleItems(for note: Note) -> [FilTodoItem] {
+        showsCompleted ? note.todoRowItems : note.todoRowItems.filter { !$0.done }
+    }
+
+    private var filsWithTodos: [Note] {
+        notes
+            .filter { !visibleItems(for: $0).isEmpty }
+            .sorted { $0.timestamp > $1.timestamp }
     }
 
     private func displayTitle(_ note: Note) -> String {
