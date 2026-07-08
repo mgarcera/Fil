@@ -82,7 +82,7 @@ struct NoteCardView: View {
                     // (declared inside the badge) scales to this same cap.
                     .dynamicTypeSize(...DynamicTypeSize.xLarge)
                     .padding(.trailing, 8)
-                    .offset(y: -10)
+                    .offset(y: -14)
             }
         }
     }
@@ -159,8 +159,8 @@ private struct KeywordBadgeLabel: View {
 
     // Internal padding scales with Dynamic Type so the chip breathes at larger text sizes
     // instead of cramping. Bounded by the caller's dynamicTypeSize cap.
-    @ScaledMetric(relativeTo: .body) private var horizontalPadding: CGFloat = 14
-    @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 3
+    @ScaledMetric(relativeTo: .body) private var horizontalPadding: CGFloat = 9
+    @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 4
 
     var body: some View {
         Group {
