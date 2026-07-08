@@ -6,8 +6,6 @@ import SwiftData
 enum FilLog {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil"
     static let data = Logger(subsystem: subsystem, category: "data")
-    /// Temporary: diagnosing the article sheet closing/reopening at random. Remove once resolved.
-    static let sheet = Logger(subsystem: subsystem, category: "sheet")
 }
 
 extension ModelContext {

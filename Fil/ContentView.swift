@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import StoreKit
-import OSLog
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -224,14 +223,6 @@ struct ContentView: View {
         .onAppear { applyScreenAwake() }
         .onChange(of: shouldKeepScreenAwake) { _, _ in applyScreenAwake() }
         .onChange(of: collapsedDayKeys) { _, _ in persistCollapsedDayKeys() }
-        // TEMP diagnostic: log every article-sheet item transition (value -> nil -> value = the flicker).
-        .onChange(of: selectedNote?.uuid) { old, new in
-            FilLog.sheet.notice("selectedNote \(old?.uuidString ?? "nil", privacy: .public) -> \(new?.uuidString ?? "nil", privacy: .public)")
-        }
-        // TEMP diagnostic: a note-title write (generation/regeneration) re-runs body via @Query.
-        .onChange(of: notes.map(\.title)) { _, _ in
-            FilLog.sheet.notice("notes titles changed (body re-run trigger)")
-        }
         .task {
             if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
             ingestSharedDrafts()
@@ -1081,7 +1072,6 @@ struct ContentView: View {
     }
 
     private func handleIncomingURL(_ url: URL) {
-        FilLog.sheet.notice("handleIncomingURL: \(url.absoluteString, privacy: .public)")
         if let pinnedNoteID = pinnedNoteID(from: url) {
             openFil(with: pinnedNoteID)
             return
@@ -1160,7 +1150,6 @@ struct ContentView: View {
     }
 
     private func openFil(with id: UUID) {
-        FilLog.sheet.notice("openFil(with:) called for \(id.uuidString, privacy: .public)")
         guard let note = notes.first(where: { $0.uuid == id }) else {
             // The query may not have loaded yet on a cold launch; retry when notes populate.
             pendingPinnedNoteID = id
@@ -1177,7 +1166,6 @@ struct ContentView: View {
     private func ingestSharedDrafts() {
         let drafts = SharedDraftInbox.drain()
         guard !drafts.isEmpty else { return }
-        FilLog.sheet.notice("ingestSharedDrafts: creating \(drafts.count) fil(s)")
         Task { await createFils(from: drafts) }
     }
 
@@ -1502,7 +1490,6 @@ struct ContentView: View {
     }
 
     private func handleArticleDismissed() {
-        FilLog.sheet.notice("article sheet onDismiss fired")
         filSheetPath.removeAll()
     }
 }
@@ -1549,10 +1536,6 @@ private struct FilSheetContent<Destination: View>: View {
         }
         .presentationDetents(availableDetents, selection: $detent)
         .presentationBackground(Theme.background)
-        // TEMP diagnostic: a spontaneous detent change would look like the sheet resizing.
-        .onChange(of: detent) { old, new in
-            FilLog.sheet.notice("detent \(String(describing: old), privacy: .public) -> \(String(describing: new), privacy: .public)")
-        }
     }
 }
 

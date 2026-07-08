@@ -1,7 +1,6 @@
 import SwiftUI
 import SwiftData
 import QuickLook
-import OSLog
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -246,9 +245,6 @@ struct ArticleView: View {
             .presentationDetents([.fraction(0.6)], selection: $backlinkSheetDetent)
             .presentationBackground(Theme.background)
         }
-        // TEMP diagnostic: a disappear+appear pair while the sheet stays open = the flicker.
-        .onAppear { FilLog.sheet.notice("ArticleView APPEAR \(note.uuid.uuidString, privacy: .public)") }
-        .onDisappear { FilLog.sheet.notice("ArticleView DISAPPEAR \(note.uuid.uuidString, privacy: .public)") }
     }
 
     private var backlinkParentNote: Note? {
