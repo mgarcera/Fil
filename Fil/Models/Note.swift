@@ -22,6 +22,9 @@ final class Note {
     var duration: TimeInterval
     var todos: [String]
     var completedTodos: [Bool]
+    /// Stable identity per to-do (parallel to `todos`) for correct list animations. Kept in sync by
+    /// `addTodo` / `removeTodo` / `normalizeCompletedTodos`; generated for legacy notes on demand.
+    var todoIDs: [UUID] = []
     var calibrationNotes: [String]
     var keyword: String = ""
     var gradientStartHex: String = "#408CD9"
@@ -65,6 +68,7 @@ final class Note {
         self.duration = duration
         self.todos = todos
         self.completedTodos = completedTodos.isEmpty ? Array(repeating: false, count: todos.count) : completedTodos
+        self.todoIDs = todos.map { _ in UUID() }
         self.calibrationNotes = calibrationNotes
         self.keyword = keyword
         self.gradientStartHex = gradientStartHex
@@ -87,6 +91,7 @@ final class Note {
         guard !todos.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
         todos.append(trimmed)
         completedTodos.append(false)
+        todoIDs.append(UUID())
     }
 
     /// Removes the to-do at `index`, keeping `completedTodos` in sync.
@@ -97,15 +102,25 @@ final class Note {
         if completedTodos.indices.contains(index) {
             completedTodos.remove(at: index)
         }
+        if todoIDs.indices.contains(index) {
+            todoIDs.remove(at: index)
+        }
     }
 
-    /// Keeps `completedTodos` the same length as `todos` (padding with `false`,
-    /// truncating any excess) so the two parallel arrays never drift out of sync.
+    /// Keeps `completedTodos` and `todoIDs` the same length as `todos` (padding / truncating) so the
+    /// parallel arrays never drift. Missing `todoIDs` are generated here (e.g. for notes created
+    /// before to-do IDs existed).
     func normalizeCompletedTodos() {
         if completedTodos.count < todos.count {
             completedTodos.append(contentsOf: Array(repeating: false, count: todos.count - completedTodos.count))
         } else if completedTodos.count > todos.count {
             completedTodos = Array(completedTodos.prefix(todos.count))
+        }
+
+        if todoIDs.count < todos.count {
+            todoIDs.append(contentsOf: (0..<(todos.count - todoIDs.count)).map { _ in UUID() })
+        } else if todoIDs.count > todos.count {
+            todoIDs = Array(todoIDs.prefix(todos.count))
         }
     }
 

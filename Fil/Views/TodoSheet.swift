@@ -15,7 +15,8 @@ struct TodoSheet: View {
     /// `note.todos[index]` inside the row) is what keeps a row that's animating out of a swipe
     /// delete from reading a now-out-of-range index and crashing.
     private struct TodoItem: Identifiable {
-        let id: Int        // index within the fil's todos array
+        let id: UUID       // stable per-to-do identity (from Note.todoIDs) — drives list animations
+        let index: Int     // current position in the fil's todos array (for toggle/delete)
         let text: String
         let done: Bool
     }
@@ -67,7 +68,7 @@ struct TodoSheet: View {
                             .listRowInsets(EdgeInsets(top: 6, leading: 48, bottom: 6, trailing: 20))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    onDeleteTodo(note, item.id)
+                                    onDeleteTodo(note, item.index)
                                 } label: {
                                     Label("landfil", systemImage: "trash")
                                 }
@@ -112,7 +113,7 @@ struct TodoSheet: View {
     /// Matches the article view's to-do row exactly — same button, checkbox, spacing, font.
     private func todoRow(_ note: Note, _ item: TodoItem) -> some View {
         Button {
-            onToggle(note, item.id)
+            onToggle(note, item.index)
         } label: {
             HStack(alignment: .center, spacing: 12) {
                 todoStatusCircle(isCompleted: item.done)
@@ -185,7 +186,9 @@ struct TodoSheet: View {
             let text = note.todos[index].trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
             let done = note.completedTodos.indices.contains(index) && note.completedTodos[index]
-            return TodoItem(id: index, text: note.todos[index], done: done)
+            // IDs are backfilled before the sheet opens; fall back defensively just in case.
+            let id = note.todoIDs.indices.contains(index) ? note.todoIDs[index] : UUID()
+            return TodoItem(id: id, index: index, text: note.todos[index], done: done)
         }
     }
 

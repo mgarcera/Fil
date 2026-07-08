@@ -651,6 +651,7 @@ struct ContentView: View {
     private var todoFAB: some View {
         Button {
             SoundscapeManager.shared.playTabSound()
+            ensureTodoIDs()
             showTodoSheet = true
         } label: {
             Image(systemName: "checklist")
@@ -1060,6 +1061,17 @@ struct ContentView: View {
             note.completedTodos[index].toggle()
         }
         modelContext.saveOrLog()
+    }
+
+    /// Backfills stable per-to-do IDs for any notes that predate them, so the to-dos sheet has
+    /// correct list identity. Runs at a safe point (opening the sheet), never during rendering.
+    private func ensureTodoIDs() {
+        var changed = false
+        for note in notes where note.todoIDs.count != note.todos.count {
+            note.normalizeCompletedTodos()
+            changed = true
+        }
+        if changed { modelContext.saveOrLog() }
     }
 
     private func deleteTodoFromSheet(_ note: Note, _ index: Int) {
