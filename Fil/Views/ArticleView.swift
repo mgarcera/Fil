@@ -31,6 +31,7 @@ struct ArticleView: View {
     private let pinnedFilStore = PinnedFilStore.shared
     @State private var pinnedFil: PinnedFilSnapshot? = PinnedFilStore.shared.pinnedFil
     @State private var linkBrowserURL: URL?
+    @State private var showLandfilConfirmation = false
     @State private var backlinkSheetDetent = PresentationDetent.fraction(0.6)
     @State private var backlinkNoteToOpen: Note?
     @State private var transcriptTextHeight: CGFloat = 100
@@ -198,7 +199,7 @@ struct ArticleView: View {
                         }
 
                         Button(role: .destructive) {
-                            landfilFil()
+                            showLandfilConfirmation = true
                         } label: {
                             Label("landfil", systemImage: "trash")
                         }
@@ -221,6 +222,12 @@ struct ArticleView: View {
             }
         }
         .quickLookPreview($imagePreviewURL, in: imagePreviewURLs)
+        .alert("move to landfil?", isPresented: $showLandfilConfirmation) {
+            Button("landfil", role: .destructive) { landfilFil() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("this fil will be deleted. this cannot be undone.")
+        }
         .sheet(isPresented: Binding(
             get: { linkBrowserURL != nil },
             set: { if !$0 { linkBrowserURL = nil } }
@@ -761,6 +768,11 @@ struct ArticleView: View {
     private func landfilFil() {
         SoundscapeManager.shared.playLandfilSound()
         let noteToDelete = note
+        // Clear its lock-screen pin (snapshot + Live Activity) before removing it.
+        if pinnedFilStore.isPinned(noteToDelete) {
+            pinnedFilStore.unpin()
+            Task { await PinnedFilLiveActivityController.unpin() }
+        }
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             if let audioURL = AudioPlayerViewModel.audioFileURL(for: noteToDelete.audioFilePath) {

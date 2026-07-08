@@ -1206,6 +1206,11 @@ struct ContentView: View {
     }
 
     private func deleteNoteResources(_ note: Note) {
+        // Clear its lock-screen pin (snapshot + Live Activity) if this was the pinned fil.
+        if PinnedFilStore.shared.isPinned(note) {
+            PinnedFilStore.shared.unpin()
+            Task { await PinnedFilLiveActivityController.unpin() }
+        }
         if let audioURL = AudioPlayerViewModel.audioFileURL(for: note.audioFilePath) {
             try? FileManager.default.removeItem(at: audioURL)
         }
