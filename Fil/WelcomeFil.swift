@@ -9,15 +9,19 @@ enum WelcomeFil {
     static let gradientEnd = "#6659CC"     // indigo
 
     static let transcript = """
-    hi, i'm mason, and i made fil.
+    hi, i'm mason, the maker of fil.
 
-    you just made your first fil. this one's mine.
+    congrats on making your first one! this one's mine!
 
-    i wanted somewhere to put thoughts without turning it into a project. no inbox, no tags, no streaks. just a fun place for them to be.
+    i wanted somewhere to put thoughts without turning it into a project. no inbox, tags, streaks, or anything like that. just a cool place for them to be.
 
-    tap a word to attach a filament. send thoughts to the landfil (trash) when you're ready to let them go.
+    tap a word to attach a filament. it's a really fun and powerful feature that you can use in an infinite number of ways.
 
-    have fun deoptimizing :)
+    like this for example!
+
+    when you're ready to let go of your thoughts, send them to the landfil (trash).
+
+    let me know how deoptimizing goes for you :)
     """
 
     // Sample filaments — both keywords appear in the transcript, so they highlight + are tappable.
@@ -25,6 +29,6 @@ enum WelcomeFil {
     static let filamentNoteTitle = "what's a filament?"
     static let filamentNote = "a filament is something you attach to a word to give it depth."
 
-    // The "deoptimizing" filament — seeded so the word highlights; a video link goes here.
-    static let deoptimizingKeyword = "deoptimizing"
+    // The "this" filament — seeded so the word highlights; tutorial images go here.
+    static let exampleKeyword = "this"
 }

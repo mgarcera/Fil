@@ -993,9 +993,9 @@ struct ContentView: View {
 
         let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
         filament.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.filamentNote, noteTitle: WelcomeFil.filamentNoteTitle)]
-        // Seeded empty for now so the word highlights + is tappable; a video link will be added here.
-        let deoptimizing = KeywordAttachment(keyword: WelcomeFil.deoptimizingKeyword, note: note)
-        note.attachments = [filament, deoptimizing]
+        // Seeded empty for now so the word highlights + is tappable; tutorial images go here.
+        let example = KeywordAttachment(keyword: WelcomeFil.exampleKeyword, note: note)
+        note.attachments = [filament, example]
 
         modelContext.insert(note)
         SoundscapeManager.shared.playArticleMadeSound()
