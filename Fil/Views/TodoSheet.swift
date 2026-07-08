@@ -16,6 +16,16 @@ struct TodoSheet: View {
     /// whole fil (with all its content) from here is destructive, so it's gated behind a prompt.
     @State private var pendingLandfilNote: Note?
 
+    /// The to-do a row swipe wants to landfil, held until its confirmation is answered.
+    @State private var pendingLandfilTodo: PendingTodoLandfil?
+
+    private struct PendingTodoLandfil: Identifiable {
+        let id = UUID()
+        let note: Note
+        let index: Int
+        let text: String
+    }
+
     /// When false, only open to-dos are shown; when true, completed ones appear too (struck
     /// through). Set from the header's filter menu; persisted so the choice sticks across sessions.
     @AppStorage("todoSheetShowsCompleted") private var showsCompleted = false
@@ -94,7 +104,7 @@ struct TodoSheet: View {
                             .listRowInsets(EdgeInsets(top: 6, leading: 56, bottom: 6, trailing: 20))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    onDeleteTodo(note, item.index)
+                                    pendingLandfilTodo = PendingTodoLandfil(note: note, index: item.index, text: item.text)
                                 } label: {
                                     Label("landfil", systemImage: "trash")
                                 }
@@ -107,21 +117,15 @@ struct TodoSheet: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
-        .confirmationDialog(
-            "move this fil to the landfil?",
-            isPresented: Binding(
-                get: { pendingLandfilNote != nil },
-                set: { if !$0 { pendingLandfilNote = nil } }
-            ),
-            presenting: pendingLandfilNote
-        ) { note in
-            Button("landfil", role: .destructive) {
-                onLandfilNote(note)
-                pendingLandfilNote = nil
-            }
-            Button("Cancel", role: .cancel) { pendingLandfilNote = nil }
-        } message: { _ in
-            Text("this deletes the whole fil and everything in it. this cannot be undone.")
+        .landfilConfirmation(item: $pendingLandfilNote) { _ in
+            "this deletes the whole fil and everything in it. this cannot be undone."
+        } onConfirm: { note in
+            onLandfilNote(note)
+        }
+        .landfilConfirmation(item: $pendingLandfilTodo) { pending in
+            "“\(pending.text)” will be deleted. this cannot be undone."
+        } onConfirm: { pending in
+            onDeleteTodo(pending.note, pending.index)
         }
     }
 
@@ -155,8 +159,7 @@ struct TodoSheet: View {
             .tint(Color(hex: note.gradientStartHex))
         }
         // Swipe left to landfil the whole fil (confirmed first — this deletes more than its to-dos).
-        // No full swipe, so it can't fire from a careless flick.
-        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 pendingLandfilNote = note
             } label: {

@@ -32,6 +32,7 @@ struct ArticleView: View {
     @State private var pinnedFil: PinnedFilSnapshot? = PinnedFilStore.shared.pinnedFil
     @State private var linkBrowserURL: URL?
     @State private var showLandfilConfirmation = false
+    @State private var pendingLandfilTodo: ArticleTodoLandfil?
     @State private var backlinkSheetDetent = PresentationDetent.fraction(0.6)
     @State private var backlinkNoteToOpen: Note?
     @State private var transcriptTextHeight: CGFloat = 100
@@ -672,7 +673,7 @@ struct ArticleView: View {
                     }
                     .contextMenu {
                         Button(role: .destructive) {
-                            removeTodo(at: item.index)
+                            pendingLandfilTodo = ArticleTodoLandfil(index: item.index, text: item.text)
                         } label: {
                             Label("landfil", systemImage: "trash")
                         }
@@ -680,6 +681,11 @@ struct ArticleView: View {
                 }
             }
             .padding(.top, 2)
+            .landfilConfirmation(item: $pendingLandfilTodo) { pending in
+                "“\(pending.text)” will be deleted. this cannot be undone."
+            } onConfirm: { pending in
+                removeTodo(at: pending.index)
+            }
         }
     }
 
@@ -940,6 +946,13 @@ private extension String {
 /// container (e.g. a sheet animating between detents) just stretches one texture instead
 /// of re-laying-out and re-blurring the original view tree every frame. The snapshot is
 /// taken at the first non-zero size and re-taken only if the width changes (rotation).
+/// A to-do pending landfil confirmation in the article view (identity for the shared alert).
+private struct ArticleTodoLandfil: Identifiable {
+    let id = UUID()
+    let index: Int
+    let text: String
+}
+
 private struct CalibrateSheetBackground: View {
     let startColor: Color
     let endColor: Color
