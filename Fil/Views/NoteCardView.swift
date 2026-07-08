@@ -8,6 +8,7 @@ struct NoteCardView: View {
     var selectionStrokeShadowOpacity: Double = 0
 
     @AppStorage("prefersLowercase") private var prefersLowercase = false
+    @AppStorage("badgeStyleRaw") private var badgeStyle: BadgeStyle = .solid
 
     var body: some View {
         ZStack {
@@ -74,6 +75,8 @@ struct NoteCardView: View {
                     textColor: note.isLinkFil ? .white : .black,
                     backgroundColor: note.isLinkFil ? linkBadgeColor : .white,
                     strokeColor: note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5),
+                    style: badgeStyle,
+                    glassTint: note.isLinkFil ? linkBadgeColor : Color(hex: note.gradientStartHex),
                     isRegenerating: !note.isLinkFil && TitleRegenerationTracker.shared.isRegenerating(note.uuid)
                 )
                     // The badge is a compact chip on a fixed-size card; cap its Dynamic Type growth
@@ -151,6 +154,8 @@ private struct KeywordBadgeLabel: View {
     let textColor: Color
     let backgroundColor: Color
     let strokeColor: Color
+    let style: BadgeStyle
+    let glassTint: Color
     let isRegenerating: Bool
 
     @State private var isRevealing = false
@@ -183,9 +188,7 @@ private struct KeywordBadgeLabel: View {
         .font(Theme.dmSans(9, weight: .semibold))
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
-        .background(backgroundColor, in: Capsule())
-        .overlay(Capsule().stroke(strokeColor, lineWidth: 1.5))
-        .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
+        .modifier(BadgeChrome(style: style, backgroundColor: backgroundColor, strokeColor: strokeColor, glassTint: glassTint))
         // Capsule eases between the old and new title widths as the new one reveals,
         // rather than snapping. One motion — no intermediate resize step.
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: text)
@@ -208,6 +211,32 @@ private struct KeywordBadgeLabel: View {
                 try? await Task.sleep(for: .seconds(1.1))
                 isRevealing = false
             }
+        }
+    }
+}
+
+/// Renders the badge's capsule chrome per the chosen `BadgeStyle`: the classic solid chip, or one of
+/// three Liquid Glass variants (regular / tinted / clear).
+private struct BadgeChrome: ViewModifier {
+    let style: BadgeStyle
+    let backgroundColor: Color
+    let strokeColor: Color
+    let glassTint: Color
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        switch style {
+        case .solid:
+            content
+                .background(backgroundColor, in: Capsule())
+                .overlay(Capsule().stroke(strokeColor, lineWidth: 1.5))
+                .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
+        case .glassRegular:
+            content.glassEffect(.regular, in: Capsule())
+        case .glassTinted:
+            content.glassEffect(.regular.tint(glassTint), in: Capsule())
+        case .glassClear:
+            content.glassEffect(.clear, in: Capsule())
         }
     }
 }

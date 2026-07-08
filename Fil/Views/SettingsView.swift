@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("prefersLowercase") private var prefersLowercase = false
+    @AppStorage("badgeStyleRaw") private var badgeStyle: BadgeStyle = .solid
 
     @State private var section: SettingsSection = .writing
     @State private var showFromMason = false
@@ -111,6 +112,9 @@ struct SettingsView: View {
                     isOn: $soundEnabled
                 )
 
+            case .appearance:
+                appearanceSection
+
             case .screensaver:
                 settingToggle(
                     "auto screensaver",
@@ -137,6 +141,44 @@ struct SettingsView: View {
                 .stroke(Color.white.opacity(0.12), lineWidth: 1)
         }
         .blurOpacityEffect(contentVisible)
+    }
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("fil badges")
+                .font(Theme.dmSans(16, weight: .medium))
+                .foregroundStyle(.white)
+
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(BadgeStyle.allCases) { style in
+                        Button {
+                            guard badgeStyle != style else { return }
+                            SoundscapeManager.shared.playTabSound()
+                            withAnimation(.snappy) { badgeStyle = style }
+                        } label: {
+                            let isSelected = badgeStyle == style
+                            Text(style.title)
+                                .font(Theme.dmSans(14, weight: .semibold))
+                                .foregroundStyle(isSelected ? Color.black : .white)
+                                .padding(.horizontal, 14)
+                                .frame(height: 38)
+                                .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
+                                .overlay {
+                                    Capsule().stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+
+            Text("choose how the fil badges look on the grid. glass options use liquid glass — all three are here to compare, and we'll settle on one.")
+                .font(Theme.dmSans(13))
+                .foregroundStyle(.white.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private func settingToggle(_ title: String, description: String, isOn: Binding<Bool>) -> some View {
@@ -238,6 +280,7 @@ struct SettingsView: View {
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case writing
     case sound
+    case appearance
     case screensaver
     case about
 
@@ -247,6 +290,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .writing: "Writing"
         case .sound: "Sound"
+        case .appearance: "Appearance"
         case .screensaver: "Screensaver"
         case .about: "About"
         }
@@ -259,6 +303,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
             [Color(hex: "#6366F1"), Color(hex: "#EC4899"), Color(hex: "#0EA5E9")]
         case .sound:
             [Color(hex: "#4F46E5"), Color(hex: "#7C3AED"), Color(hex: "#2563EB")]
+        case .appearance:
+            [Color(hex: "#22D3EE"), Color(hex: "#818CF8"), Color(hex: "#A78BFA")]
         case .screensaver:
             [Color(hex: "#0EA5E9"), Color(hex: "#14B8A6"), Color(hex: "#22C55E")]
         case .about:
