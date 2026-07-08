@@ -5,7 +5,7 @@ import Foundation
 /// intelligence is unavailable. Edit freely: this is the founder's welcome, in Mason's voice.
 enum WelcomeFil {
     static let title = "from mason"
-    static let gradientStart = "#F24D59"   // coral
+    static let gradientStart = "#408CD9"   // ocean blue
     static let gradientEnd = "#6659CC"     // indigo
 
     static let transcript = """
@@ -15,9 +15,9 @@ enum WelcomeFil {
 
     i wanted somewhere to put thoughts without turning it into a project. no inbox, no tags, no streaks. just a fun place for them to be.
 
-    tap a word to attach a filament. long press to send thoughts to the landfil when you're ready to let it go. even this one.
+    tap a word to attach a filament. send thoughts to the landfil (trash) when you're ready to let them go.
 
-    i hope you find as much ful·fil·ment here as i do.
+    have fun deoptimizing :)
     """
 
     // Sample filaments — both keywords appear in the transcript, so they highlight + are tappable.
@@ -25,7 +25,6 @@ enum WelcomeFil {
     static let filamentNoteTitle = "what's a filament?"
     static let filamentNote = "a filament is something you attach to a word to give it depth."
 
-    static let landfilKeyword = "landfil"
-    static let landfilNoteTitle = "what's the landfil?"
-    static let landfilNote = "landfil = trash."
+    // The "deoptimizing" filament — seeded so the word highlights; a video link goes here.
+    static let deoptimizingKeyword = "deoptimizing"
 }
