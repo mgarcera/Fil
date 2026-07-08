@@ -46,6 +46,9 @@ struct KeywordPopup: View {
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var selectedVideo: PhotosPickerItem?
+    @State private var videoPickerPresented = false
+    @State private var videoThumbnails: [UUID: UIImage] = [:]
     @State private var linkEditor: LinkEditorState?
     @State private var linkEditorDetent = PresentationDetent.fraction(0.6)
     @State private var noteEditorDetent = PresentationDetent.large
@@ -189,6 +192,11 @@ struct KeywordPopup: View {
             Text("this cannot be undone.")
         }
         .photosPicker(isPresented: $photoPickerPresented, selection: $selectedPhoto, matching: .images)
+        .photosPicker(isPresented: $videoPickerPresented, selection: $selectedVideo, matching: .videos)
+        .onChange(of: selectedVideo) { _, newValue in
+            guard let newValue else { return }
+            importVideo(newValue)
+        }
         .quickLookPreview($previewURL, in: previewURLs)
         .sheet(isPresented: Binding(
             get: { inAppBrowserURL != nil },
@@ -259,6 +267,21 @@ struct KeywordPopup: View {
             linkedNoteView(entry)
         case .pdf:
             pdfView(entry)
+        case .video:
+            videoView(entry)
+        }
+    }
+
+    private func videoView(_ entry: AttachmentEntry) -> some View {
+        Button {
+            openVideoPreview(for: entry)
+        } label: {
+            VideoAttachmentTile(thumbnail: videoThumbnails[entry.id], cornerRadius: cornerRadius)
+        }
+        .buttonStyle(AttachmentCellButtonStyle())
+        .task { loadThumbnail(for: entry) }
+        .contextMenu {
+            landfilButton(for: entry.id)
         }
     }
 
@@ -415,6 +438,11 @@ struct KeywordPopup: View {
                 } label: {
                     Label("Camera Roll", systemImage: "photo")
                 }
+                Button {
+                    videoPickerPresented = true
+                } label: {
+                    Label("Video", systemImage: "video")
+                }
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {
                         showCamera = true
@@ -451,6 +479,49 @@ struct KeywordPopup: View {
         previewURLs = preview.urls
         if let selectedURL = preview.selectedURL {
             previewURL = selectedURL
+        }
+    }
+
+    /// Copies the picked video into the documents directory (alongside audio memos) and appends a
+    /// `.video` entry holding its filename — never stores the bytes in SwiftData.
+    private func importVideo(_ item: PhotosPickerItem) {
+        Task {
+            defer { Task { @MainActor in selectedVideo = nil } }
+            guard let movie = try? await item.loadTransferable(type: VideoAttachmentFile.self) else { return }
+            let filename = "video-\(UUID().uuidString).mov"
+            let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
+            do {
+                try FileManager.default.copyItem(at: movie.url, to: dest)
+            } catch {
+                try? FileManager.default.removeItem(at: movie.url)
+                return
+            }
+            try? FileManager.default.removeItem(at: movie.url)
+            await MainActor.run { appendEntry(.video(path: filename)) }
+        }
+    }
+
+    /// Videos live in the same documents directory as audio, so the audio resolver works for both.
+    private func openVideoPreview(for entry: AttachmentEntry) {
+        guard let url = AudioPlayerViewModel.audioFileURL(for: entry.text ?? "") else { return }
+        previewURLs = [url]
+        previewURL = url
+    }
+
+    /// Generates a first-frame thumbnail once per video entry, cached in memory.
+    private func loadThumbnail(for entry: AttachmentEntry) {
+        guard videoThumbnails[entry.id] == nil,
+              let url = AudioPlayerViewModel.audioFileURL(for: entry.text ?? "") else { return }
+        let id = entry.id
+        Task.detached {
+            let asset = AVURLAsset(url: url)
+            let generator = AVAssetImageGenerator(asset: asset)
+            generator.appliesPreferredTrackTransform = true   // correct portrait orientation
+            generator.maximumSize = CGSize(width: 400, height: 400)
+            let time = CMTime(seconds: 0.1, preferredTimescale: 600)
+            guard let result = try? await generator.image(at: time) else { return }
+            let image = UIImage(cgImage: result.image)
+            await MainActor.run { videoThumbnails[id] = image }
         }
     }
 
@@ -632,6 +703,12 @@ struct KeywordPopup: View {
         attachment.entries.removeAll { $0.id == id }
         for entry in removedEntries where entry.kind == .linkedNote {
             removeBacklink(for: entry)
+        }
+        for entry in removedEntries where entry.kind == .video {
+            if let url = AudioPlayerViewModel.audioFileURL(for: entry.text ?? "") {
+                try? FileManager.default.removeItem(at: url)
+            }
+            videoThumbnails[entry.id] = nil
         }
         if attachment.entries.isEmpty {
             modelContext.delete(attachment)
@@ -865,6 +942,50 @@ private struct ImageAttachmentTile: View {
                     .clipped()
             }
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+}
+
+private struct VideoAttachmentTile: View {
+    let thumbnail: UIImage?
+    let cornerRadius: CGFloat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(Theme.cardBackground)
+            .aspectRatio(1, contentMode: .fill)
+            .overlay {
+                if let thumbnail {
+                    Image(uiImage: thumbnail)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                }
+            }
+            .overlay {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+    }
+}
+
+/// Lets a picked `PhotosPickerItem` video load as a file URL we can copy into the documents dir.
+private struct VideoAttachmentFile: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(contentType: .movie) { file in
+            SentTransferredFile(file.url)
+        } importing: { received in
+            let copy = FileManager.default.temporaryDirectory
+                .appendingPathComponent("import-\(UUID().uuidString).mov")
+            try? FileManager.default.removeItem(at: copy)
+            try FileManager.default.copyItem(at: received.file, to: copy)
+            return Self(url: copy)
+        }
     }
 }
 

@@ -42,5 +42,13 @@ enum FilLandfil {
         if let audioURL = AudioPlayerViewModel.audioFileURL(for: note.audioFilePath) {
             try? FileManager.default.removeItem(at: audioURL)
         }
+        // Delete any video files attached to the fil's filaments (they live in the documents dir).
+        for attachment in note.attachments {
+            for entry in attachment.entries where entry.kind == .video {
+                if let url = AudioPlayerViewModel.audioFileURL(for: entry.text ?? "") {
+                    try? FileManager.default.removeItem(at: url)
+                }
+            }
+        }
     }
 }

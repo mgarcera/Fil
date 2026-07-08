@@ -3,7 +3,7 @@ import SwiftData
 
 struct AttachmentEntry: Codable, Equatable {
     enum Kind: String, Codable {
-        case image, recording, link, textNote, linkedNote, pdf
+        case image, recording, link, textNote, linkedNote, pdf, video
     }
 
     var id: UUID = UUID()
@@ -39,6 +39,12 @@ struct AttachmentEntry: Codable, Equatable {
 
     static func pdf(data: Data, name: String) -> AttachmentEntry {
         AttachmentEntry(kind: .pdf, pdfData: data, pdfName: name)
+    }
+
+    /// Video files are large, so — like audio recordings — we store a file PATH in `text`
+    /// (a filename in the app's documents directory), never the bytes.
+    static func video(path: String) -> AttachmentEntry {
+        AttachmentEntry(kind: .video, text: path)
     }
 }
 
