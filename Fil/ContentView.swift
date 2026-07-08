@@ -163,7 +163,12 @@ struct ContentView: View {
                 .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showTodoSheet) {
-            TodoSheet(notes: notes, onToggle: toggleTodoFromSheet, onOpenNote: openNoteFromSheet)
+            TodoSheet(
+                notes: notes,
+                onToggle: toggleTodoFromSheet,
+                onDeleteTodo: deleteTodoFromSheet,
+                onOpenNote: openNoteFromSheet
+            )
                 .presentationDetents([.medium, .large])
                 .presentationBackground(Theme.background)
         }
@@ -632,7 +637,15 @@ struct ContentView: View {
     /// Left-hand FAB, a mirror of the expand/collapse control — opens the to-dos sheet. Shown only
     /// when there are open to-dos to see.
     private var showsTodoFAB: Bool {
-        homeFocusPageCount > 0 && !isSelectingNotes && !recorder.isRecording && !isSearching
+        hasAnyTodo && !isSelectingNotes && !recorder.isRecording && !isSearching
+    }
+
+    /// Any non-empty to-do (open or completed) exists — so the list stays reachable even once
+    /// everything's checked off.
+    private var hasAnyTodo: Bool {
+        notes.contains { note in
+            note.todos.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        }
     }
 
     private var todoFAB: some View {
@@ -1045,6 +1058,15 @@ struct ContentView: View {
         SoundscapeManager.shared.playTodoArticleToggleSound()
         withAnimation(.snappy) {
             note.completedTodos[index].toggle()
+        }
+        modelContext.saveOrLog()
+    }
+
+    private func deleteTodoFromSheet(_ note: Note, _ index: Int) {
+        guard note.todos.indices.contains(index) else { return }
+        SoundscapeManager.shared.playLandfilSound()
+        withAnimation(.snappy) {
+            note.removeTodo(at: index)
         }
         modelContext.saveOrLog()
     }
