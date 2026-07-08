@@ -7,6 +7,12 @@ import OSLog
 import UIKit
 #endif
 
+/// A value identity (UUID) for the presented fil sheet, so `.sheet(item:)` doesn't bind to the
+/// SwiftData Note object and re-present when the note churns from a background save.
+private struct PresentedFil: Identifiable {
+    let id: UUID
+}
+
 struct ContentView: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @Environment(\.modelContext) private var modelContext
@@ -153,9 +159,15 @@ struct ContentView: View {
                 }
             }
         }
-        .sheet(item: $selectedNote, onDismiss: handleArticleDismissed) { note in
-            FilSheetContent(note: note, filSheetPath: $filSheetPath) { route in
-                filSheetDestination(route)
+        // Present off a VALUE identity (the fil's UUID), not the SwiftData @Observable Note object.
+        // Binding the sheet directly to the Note made SwiftUI's sheet machinery observe the object
+        // and spuriously re-present it whenever the note/@Query churned from a background save — the
+        // flicker. A value item is stable across those saves.
+        .sheet(item: presentedFilBinding, onDismiss: handleArticleDismissed) { presented in
+            if let note = notes.first(where: { $0.uuid == presented.id }) {
+                FilSheetContent(note: note, filSheetPath: $filSheetPath) { route in
+                    filSheetDestination(route)
+                }
             }
         }
         // Each secondary sheet is hosted on its OWN Color.clear layer rather than stacked on the
@@ -709,6 +721,15 @@ struct ContentView: View {
     // The secondary sheets live on their own isolated host, off the main body where the article
     // sheet is presented. Stacking them alongside the article sheet made a body re-run (e.g. a
     // background note write) spuriously dismiss + re-present it — the flicker we tracked down.
+    /// Value identity (the fil's UUID) for the article sheet, mirroring `selectedNote`. Presenting
+    /// off this instead of the Note object keeps the sheet stable across background note saves.
+    private var presentedFilBinding: Binding<PresentedFil?> {
+        Binding(
+            get: { selectedNote.map { PresentedFil(id: $0.uuid) } },
+            set: { newValue in if newValue == nil { selectedNote = nil } }
+        )
+    }
+
     private var secondarySheetsHost: some View {
         Color.clear
             .sheet(isPresented: $showFilSetup) { filSetupSheet }
