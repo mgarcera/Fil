@@ -158,36 +158,11 @@ struct ContentView: View {
                 filSheetDestination(route)
             }
         }
-        .sheet(isPresented: $showFilSetup) {
-            SettingsView()
-                .presentationDetents([.fraction(0.6)])
-                .presentationBackground(Theme.background)
-        }
-        .sheet(isPresented: $showTodoSheet) {
-            TodoSheet(
-                notes: notes,
-                onToggle: toggleTodoFromSheet,
-                onDeleteTodo: deleteTodoFromSheet,
-                onOpenNote: openNoteFromSheet,
-                onLandfilNote: landfilNoteFromSheet
-            )
-                .presentationDetents([.medium, .large])
-                .presentationBackground(Theme.background)
-        }
-        .sheet(isPresented: $showMicPriming) {
-            MicPrimingSheet(
-                onEnable: {
-                    showMicPriming = false
-                    beginRecording()
-                },
-                onNotNow: {
-                    showMicPriming = false
-                    isComposerFocused = true
-                }
-            )
-            .presentationDetents([.height(360)])
-            .presentationBackground(Theme.background)
-        }
+        // Each secondary sheet is hosted on its OWN Color.clear layer rather than stacked on the
+        // main view alongside the article sheet. Multiple `.sheet` modifiers on one view make a
+        // body re-run (e.g. a background note write) spuriously dismiss + re-present a non-last
+        // sheet — the article-sheet flicker we tracked down. Isolating them keeps each independent.
+        .background(secondarySheetsHost)
         .alert("microphone access is off", isPresented: $showPermissionAlert) {
             Button("open settings") { openAppSettings() }
             Button("not now", role: .cancel) {}
@@ -730,6 +705,50 @@ struct ContentView: View {
     }
 
     private static let emptyStateTip = "welcome :) to get started, share a thought below."
+
+    // The secondary sheets live on their own isolated host, off the main body where the article
+    // sheet is presented. Stacking them alongside the article sheet made a body re-run (e.g. a
+    // background note write) spuriously dismiss + re-present it — the flicker we tracked down.
+    private var secondarySheetsHost: some View {
+        Color.clear
+            .sheet(isPresented: $showFilSetup) { filSetupSheet }
+            .sheet(isPresented: $showTodoSheet) { todoSheetView }
+            .sheet(isPresented: $showMicPriming) { micPrimingSheetView }
+    }
+
+    // Secondary-sheet contents, extracted so the (large) body stays type-checkable.
+    private var filSetupSheet: some View {
+        SettingsView()
+            .presentationDetents([.fraction(0.6)])
+            .presentationBackground(Theme.background)
+    }
+
+    private var todoSheetView: some View {
+        TodoSheet(
+            notes: notes,
+            onToggle: toggleTodoFromSheet,
+            onDeleteTodo: deleteTodoFromSheet,
+            onOpenNote: openNoteFromSheet,
+            onLandfilNote: landfilNoteFromSheet
+        )
+            .presentationDetents([.medium, .large])
+            .presentationBackground(Theme.background)
+    }
+
+    private var micPrimingSheetView: some View {
+        MicPrimingSheet(
+            onEnable: {
+                showMicPriming = false
+                beginRecording()
+            },
+            onNotNow: {
+                showMicPriming = false
+                isComposerFocused = true
+            }
+        )
+        .presentationDetents([.height(360)])
+        .presentationBackground(Theme.background)
+    }
 
     private var searchEmptyState: some View {
         Text("no fils match “\(trimmedSearch)”")
