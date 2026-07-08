@@ -89,6 +89,20 @@ enum Theme {
             "#26C2C2",  // teal-cyan
             "#9E2B6E",  // deep magenta
         ],
+        [
+            // Cool blues → indigos → violets, anchored on the seed fil's pair. Like the others,
+            // these mix freely cross-palette for even more gradient combinations.
+            "#408CD9",  // ocean blue
+            "#6659CC",  // indigo
+            "#3AA7E0",  // azure
+            "#2E63C4",  // cobalt
+            "#7A6BE6",  // periwinkle
+            "#4B3FA6",  // deep indigo
+            "#5FB0E6",  // sky blue
+            "#8E7DEB",  // lavender blue
+            "#2FA3C4",  // teal blue
+            "#9C8FF2",  // soft violet
+        ],
     ]
 
     static func randomGradientPair(
