@@ -1000,7 +1000,8 @@ struct ContentView: View {
             forResource: WelcomeFil.exampleVideoResource,
             withExtension: WelcomeFil.exampleVideoExtension
         ) {
-            let filename = "welcome-intro-\(note.uuid.uuidString).\(WelcomeFil.exampleVideoExtension)"
+            // Named for how it should read in the QuickLook title bar ("a vid").
+            let filename = "a vid.\(WelcomeFil.exampleVideoExtension)"
             let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
             if !FileManager.default.fileExists(atPath: dest.path()) {
                 try? FileManager.default.copyItem(at: bundledVideo, to: dest)
