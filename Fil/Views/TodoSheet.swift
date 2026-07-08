@@ -102,7 +102,10 @@ struct TodoSheet: View {
                             // Indented so to-dos read as nested beneath their fil header (the
                             // checkbox lines up under the header's title text).
                             .listRowInsets(EdgeInsets(top: 6, leading: 56, bottom: 6, trailing: 20))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            // No full swipe: the swipe reveals the button; tap → alert → (on
+                            // confirm) the row animates out. Full swipe would auto-fire and the row
+                            // would swipe away then rebound while waiting on the alert.
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
                                     pendingLandfilTodo = PendingTodoLandfil(note: note, index: item.index, text: item.text)
                                 } label: {
@@ -159,7 +162,8 @@ struct TodoSheet: View {
             .tint(Color(hex: note.gradientStartHex))
         }
         // Swipe left to landfil the whole fil (confirmed first — this deletes more than its to-dos).
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+        // No full swipe, so the row doesn't swipe away then rebound while the alert is up.
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
                 pendingLandfilNote = note
             } label: {
