@@ -733,11 +733,11 @@ struct ContentView: View {
 
     private var emptyState: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
             emptyStateMessage
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 28)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity)
