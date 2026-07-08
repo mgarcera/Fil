@@ -614,9 +614,11 @@ struct ContentView: View {
             VStack(spacing: 10) {
                 if showsSectionToggleFAB || showsTodoFAB {
                     HStack {
-                        if showsTodoFAB { todoFAB }
                         Spacer()
-                        if showsSectionToggleFAB { sectionToggleFAB }
+                        VStack(spacing: 8) {
+                            if showsSectionToggleFAB { sectionToggleFAB }
+                            if showsTodoFAB { todoFAB }
+                        }
                     }
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
                 }
@@ -637,14 +639,17 @@ struct ContentView: View {
     /// Left-hand FAB, a mirror of the expand/collapse control — opens the to-dos sheet. Shown only
     /// when there are open to-dos to see.
     private var showsTodoFAB: Bool {
-        hasAnyTodo && !isSelectingNotes && !recorder.isRecording && !isSearching
+        openTodoCount > 0 && !isSelectingNotes && !recorder.isRecording && !isSearching
     }
 
-    /// Any non-empty to-do (open or completed) exists — so the list stays reachable even once
-    /// everything's checked off.
-    private var hasAnyTodo: Bool {
-        notes.contains { note in
-            note.todos.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    /// Total open (incomplete, non-empty) to-dos across all fils — shown as the FAB's count.
+    private var openTodoCount: Int {
+        notes.reduce(0) { total, note in
+            total + note.todos.indices.reduce(into: 0) { subtotal, index in
+                let hasText = !note.todos[index].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                let isDone = note.completedTodos.indices.contains(index) && note.completedTodos[index]
+                if hasText && !isDone { subtotal += 1 }
+            }
         }
     }
 
@@ -654,15 +659,15 @@ struct ContentView: View {
             ensureTodoIDs()
             showTodoSheet = true
         } label: {
-            Image(systemName: "checklist")
-                .font(.system(size: 18, weight: .medium))
+            Text(openTodoCount > 99 ? "99+" : "\(openTodoCount)")
+                .font(Theme.dmSans(openTodoCount > 99 ? 13 : 17, weight: .semibold))
                 .foregroundStyle(Theme.primaryText)
                 .frame(width: 44, height: 44)
         }
         .glassEffect(.regular.interactive(), in: .circle)
-        // Mirror the toggle FAB's trailing inset so both line up with the composer's edge icons.
-        .padding(.leading, 10)
-        .accessibilityLabel("open to-dos")
+        // Sits beneath the expand/collapse control, sharing its trailing inset.
+        .padding(.trailing, 10)
+        .accessibilityLabel("\(openTodoCount) open to-dos")
     }
 
     private var sectionToggleFAB: some View {
