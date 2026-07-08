@@ -589,18 +589,6 @@ struct ContentView: View {
         return formatter
     }()
 
-    private var homeFocusPageCount: Int {
-        notes.reduce(into: 0) { count, note in
-            let hasOpenTodo = note.todos.enumerated().contains { index, _ in
-                let isCompleted = note.completedTodos.indices.contains(index) ? note.completedTodos[index] : false
-                return !isCompleted
-            }
-            if hasOpenTodo {
-                count += 1
-            }
-        }
-    }
-
     private var isSelectingNotes: Bool {
         !selectedNoteIDs.isEmpty
     }
