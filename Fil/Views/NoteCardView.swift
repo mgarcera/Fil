@@ -159,7 +159,7 @@ private struct KeywordBadgeLabel: View {
 
     // Internal padding scales with Dynamic Type so the chip breathes at larger text sizes
     // instead of cramping. Bounded by the caller's dynamicTypeSize cap.
-    @ScaledMetric(relativeTo: .body) private var horizontalPadding: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var horizontalPadding: CGFloat = 14
     @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 3
 
     var body: some View {
