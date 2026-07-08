@@ -1003,10 +1003,13 @@ struct ContentView: View {
             // Named for how it should read in the QuickLook title bar ("a vid").
             let filename = "a vid.\(WelcomeFil.exampleVideoExtension)"
             let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
-            if !FileManager.default.fileExists(atPath: dest.path()) {
+            // Decoded path: the space in "a vid.mp4" would percent-encode under .path(), so
+            // fileExists(atPath:) must use the real filesystem path or it never finds the copy.
+            let destPath = dest.path(percentEncoded: false)
+            if !FileManager.default.fileExists(atPath: destPath) {
                 try? FileManager.default.copyItem(at: bundledVideo, to: dest)
             }
-            if FileManager.default.fileExists(atPath: dest.path()) {
+            if FileManager.default.fileExists(atPath: destPath) {
                 example.entries = [AttachmentEntry.video(path: filename)]
             }
         }
