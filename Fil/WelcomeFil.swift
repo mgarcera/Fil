@@ -29,6 +29,9 @@ enum WelcomeFil {
     static let filamentNoteTitle = "what's a filament?"
     static let filamentNote = "a filament is something you attach to a word to give it depth."
 
-    // The "here" filament — seeded so the word highlights; tutorial images go here.
+    // The "here" filament — the word highlights and opens a tutorial video (bundled in Resources,
+    // copied into the documents dir at seed time).
     static let exampleKeyword = "here"
+    static let exampleVideoResource = "Intro"
+    static let exampleVideoExtension = "mp4"
 }

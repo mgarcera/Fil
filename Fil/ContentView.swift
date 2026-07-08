@@ -993,8 +993,22 @@ struct ContentView: View {
 
         let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
         filament.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.filamentNote, noteTitle: WelcomeFil.filamentNoteTitle)]
-        // Seeded empty for now so the word highlights + is tappable; tutorial images go here.
+        // The "here" filament holds a tutorial video: copy the bundled clip into the documents dir
+        // (where .video entries resolve) so it behaves like any user-added video.
         let example = KeywordAttachment(keyword: WelcomeFil.exampleKeyword, note: note)
+        if let bundledVideo = Bundle.main.url(
+            forResource: WelcomeFil.exampleVideoResource,
+            withExtension: WelcomeFil.exampleVideoExtension
+        ) {
+            let filename = "welcome-intro-\(note.uuid.uuidString).\(WelcomeFil.exampleVideoExtension)"
+            let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
+            if !FileManager.default.fileExists(atPath: dest.path()) {
+                try? FileManager.default.copyItem(at: bundledVideo, to: dest)
+            }
+            if FileManager.default.fileExists(atPath: dest.path()) {
+                example.entries = [AttachmentEntry.video(path: filename)]
+            }
+        }
         note.attachments = [filament, example]
 
         modelContext.insert(note)
