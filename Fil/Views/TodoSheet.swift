@@ -52,26 +52,23 @@ struct TodoSheet: View {
         }
     }
 
-    /// Toggles between "open only" and "open + completed". Filled icon = filtering to open only;
-    /// outline = showing everything.
+    /// A Liquid Glass menu button to filter between "open only" and "open + completed". The Picker
+    /// puts a checkmark on the active choice automatically.
     private var filterButton: some View {
-        Button(action: toggleShowsCompleted) {
-            Image(systemName: showsCompleted ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                .font(.system(size: 22, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(showsCompleted ? Theme.secondaryText : Theme.primaryText)
-                .contentTransition(.symbolEffect(.replace))
+        Menu {
+            Picker("show", selection: $showsCompleted) {
+                Text("open only").tag(false)
+                Text("open + completed").tag(true)
+            }
+        } label: {
+            Image(systemName: "line.3.horizontal.decrease")
+                .font(.system(size: 15, weight: .semibold))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.glass)
         .accessibilityLabel("filter to-dos")
         .accessibilityValue(showsCompleted ? "showing open and completed" : "showing open only")
-        .accessibilityHint("toggles between open only and all to-dos")
-    }
-
-    private func toggleShowsCompleted() {
-        SoundscapeManager.shared.playTabSound()
-        withAnimation(.snappy(duration: 0.25)) {
-            showsCompleted.toggle()
+        .onChange(of: showsCompleted) { _, _ in
+            SoundscapeManager.shared.playTabSound()
         }
     }
 
