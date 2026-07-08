@@ -241,6 +241,10 @@ struct ContentView: View {
         .onChange(of: selectedNote?.uuid) { old, new in
             FilLog.sheet.notice("selectedNote \(old?.uuidString ?? "nil", privacy: .public) -> \(new?.uuidString ?? "nil", privacy: .public)")
         }
+        // TEMP diagnostic: a note-title write (generation/regeneration) re-runs body via @Query.
+        .onChange(of: notes.map(\.title)) { _, _ in
+            FilLog.sheet.notice("notes titles changed (body re-run trigger)")
+        }
         .task {
             if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
             ingestSharedDrafts()
