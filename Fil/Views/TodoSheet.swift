@@ -8,8 +8,13 @@ struct TodoSheet: View {
     let onToggle: (Note, Int) -> Void
     let onDeleteTodo: (Note, Int) -> Void
     let onOpenNote: (Note) -> Void
+    let onLandfilNote: (Note) -> Void
 
     @AppStorage("prefersLowercase") private var prefersLowercase = false
+
+    /// The fil a header swipe wants to landfil, held until the confirmation is answered — deleting a
+    /// whole fil (with all its content) from here is destructive, so it's gated behind a prompt.
+    @State private var pendingLandfilNote: Note?
 
     /// When false, only open to-dos are shown; when true, completed ones appear too (struck
     /// through). Set from the header's filter menu; persisted so the choice sticks across sessions.
@@ -102,6 +107,22 @@ struct TodoSheet: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
+        .confirmationDialog(
+            "move this fil to the landfil?",
+            isPresented: Binding(
+                get: { pendingLandfilNote != nil },
+                set: { if !$0 { pendingLandfilNote = nil } }
+            ),
+            presenting: pendingLandfilNote
+        ) { note in
+            Button("landfil", role: .destructive) {
+                onLandfilNote(note)
+                pendingLandfilNote = nil
+            }
+            Button("Cancel", role: .cancel) { pendingLandfilNote = nil }
+        } message: { _ in
+            Text("this deletes the whole fil and everything in it. this cannot be undone.")
+        }
     }
 
     private func filHeaderRow(_ note: Note) -> some View {
@@ -132,6 +153,16 @@ struct TodoSheet: View {
                 Label("open", systemImage: "arrow.up.right")
             }
             .tint(Color(hex: note.gradientStartHex))
+        }
+        // Swipe left to landfil the whole fil (confirmed first — this deletes more than its to-dos).
+        // No full swipe, so it can't fire from a careless flick.
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                pendingLandfilNote = note
+            } label: {
+                Label("landfil", systemImage: "trash")
+            }
+            .tint(Theme.recordRed)
         }
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("opens the fil")

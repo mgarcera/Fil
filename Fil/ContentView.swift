@@ -167,7 +167,8 @@ struct ContentView: View {
                 notes: notes,
                 onToggle: toggleTodoFromSheet,
                 onDeleteTodo: deleteTodoFromSheet,
-                onOpenNote: openNoteFromSheet
+                onOpenNote: openNoteFromSheet,
+                onLandfilNote: landfilNoteFromSheet
             )
                 .presentationDetents([.medium, .large])
                 .presentationBackground(Theme.background)
@@ -1072,6 +1073,15 @@ struct ContentView: View {
         SoundscapeManager.shared.playLandfilSound()
         withAnimation(.snappy) {
             note.removeTodo(at: index)
+        }
+        modelContext.saveOrLog()
+    }
+
+    private func landfilNoteFromSheet(_ note: Note) {
+        SoundscapeManager.shared.playLandfilSound()
+        withAnimation(.snappy) {
+            deleteNoteResources(note)
+            modelContext.delete(note)
         }
         modelContext.saveOrLog()
     }
