@@ -43,6 +43,7 @@ struct KeywordPopup: View {
     let note: Note
     let keyword: String
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var linkEditor: LinkEditorState?
@@ -79,10 +80,15 @@ struct KeywordPopup: View {
             Theme.background
                 .ignoresSafeArea()
 
-            FilamentsTopEdgeGlow(
-                startColor: Color(hex: note.gradientStartHex),
-                endColor: Color(hex: note.gradientEndHex)
-            )
+            // Rasterize the top-edge glow to a single static image so a 0.6 → full detent drag
+            // stretches one cheap layer instead of re-laying-out the blurred strokes each frame —
+            // the same treatment the article view uses.
+            StaticBlurBackdrop(colorScheme: colorScheme) {
+                FilamentsTopEdgeGlow(
+                    startColor: Color(hex: note.gradientStartHex),
+                    endColor: Color(hex: note.gradientEndHex)
+                )
+            }
             .ignoresSafeArea()
 
             ScrollView {

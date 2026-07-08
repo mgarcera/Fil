@@ -940,48 +940,6 @@ private extension String {
 /// container (e.g. a sheet animating between detents) just stretches one texture instead
 /// of re-laying-out and re-blurring the original view tree every frame. The snapshot is
 /// taken at the first non-zero size and re-taken only if the width changes (rotation).
-private struct StaticBlurBackdrop<Content: View>: View {
-    /// Must be passed explicitly: ImageRenderer does NOT inherit the SwiftUI environment,
-    /// so without this the snapshot renders in light mode (Theme.background → white).
-    let colorScheme: ColorScheme
-    @ViewBuilder let content: () -> Content
-
-    @Environment(\.displayScale) private var displayScale
-    @State private var snapshot: Image?
-    @State private var renderedWidth: CGFloat = 0
-
-    var body: some View {
-        GeometryReader { proxy in
-            Group {
-                if let snapshot {
-                    snapshot.resizable()
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-            .task(id: proxy.size.width) {
-                render(size: proxy.size)
-            }
-        }
-    }
-
-    @MainActor
-    private func render(size: CGSize) {
-        guard size.width > 0, size.height > 0, size.width != renderedWidth else { return }
-        let renderer = ImageRenderer(
-            content: content()
-                .frame(width: size.width, height: size.height)
-                .environment(\.colorScheme, colorScheme)
-        )
-        renderer.scale = displayScale
-        if let uiImage = renderer.uiImage {
-            snapshot = Image(uiImage: uiImage)
-            renderedWidth = size.width
-        }
-    }
-}
-
 private struct CalibrateSheetBackground: View {
     let startColor: Color
     let endColor: Color
