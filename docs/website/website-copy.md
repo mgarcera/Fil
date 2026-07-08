@@ -19,6 +19,8 @@ and does it honor "let thoughts be"?*
 
 ## 1. Hero
 
+> *find your ful·**fil**·ment.*   ← eyebrow flourish above the headline
+>
 > # speak your mind. let it be.
 >
 > fil turns what you say into a titled note you can actually find later — right on your device.
@@ -28,6 +30,11 @@ and does it honor "let thoughts be"?*
 
 `[Visual: a single morphing gradient blob, slowly drifting. Optional: a short muted loop of
 tap → speak → a titled fil appearing.]`
+
+`[Typography note: render the flourish as "find your fulfilment" with the "fil" of "fulfilment"
+in the accent gradient (coral → teal → indigo) — the coined name visibly living inside the word.
+This wordplay is the reason to use it HERE (styleable) rather than in the App Store name (plain
+text). Keep it a small eyebrow/kicker, not the headline — the headline stays the clear promise.]`
 
 ---
 

@@ -18,8 +18,12 @@ fine.
 
 ## Promotional text (170)
 ```
-speak your mind, then let it be. fil turns what you say into a short, titled note you can actually find later — right on your device. no account. no ads.
+find your fulfilment. speak your mind and fil turns it into a short, titled note you can find later — right on your device. no account. no ads.
 ```
+*Wordplay: "ful·**fil**·ment" contains "fil" — the coined name lives inside the promise. App Store
+text is unstyled so the "fil" can't be highlighted here (it shines on the website/screenshots where
+typography is controllable). Spelling: "fulfilment" (one L) matches the app's in-brand
+`ful·fil·ment`; if you prefer the US-standard look, "fulfillment" (two L) still contains "fil" too.*
 
 ## Description
 ```
