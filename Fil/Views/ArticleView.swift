@@ -197,6 +197,12 @@ struct ArticleView: View {
                             Label("share", systemImage: "square.and.arrow.up")
                         }
 
+                        Button(role: .destructive) {
+                            landfilFil()
+                        } label: {
+                            Label("landfil", systemImage: "trash")
+                        }
+
                         Section("created") {
                             Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
                         }
@@ -748,6 +754,21 @@ struct ArticleView: View {
         SoundscapeManager.shared.playTodoArticleToggleSound()
         note.removeTodo(at: index)
         modelContext.saveOrLog()
+    }
+
+    /// Deletes the whole fil (from the ⋯ menu). Dismisses first so the view isn't rendering a
+    /// deleted model, then removes its audio + the record — mirroring the home grid's landfil.
+    private func landfilFil() {
+        SoundscapeManager.shared.playLandfilSound()
+        let noteToDelete = note
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            if let audioURL = AudioPlayerViewModel.audioFileURL(for: noteToDelete.audioFilePath) {
+                try? FileManager.default.removeItem(at: audioURL)
+            }
+            modelContext.delete(noteToDelete)
+            modelContext.saveOrLog()
+        }
     }
 
     /// Promotes arbitrary text (e.g. a selection from the transcript) into a to-do. This is
