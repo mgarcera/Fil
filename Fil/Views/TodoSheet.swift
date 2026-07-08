@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Every to-do across all fils, grouped by the fil it belongs to. Reached from the left-hand FAB on
 /// the home screen (mirror of the expand/collapse control). Tapping a fil header opens it; tapping a
-/// to-do's circle marks it done (it stays, struck through); swipe right on a to-do to landfil it.
+/// to-do's circle marks it done (it stays, struck through); swipe left on a to-do to landfil it.
 struct TodoSheet: View {
     let notes: [Note]
     let onToggle: (Note, Int) -> Void
@@ -10,6 +10,15 @@ struct TodoSheet: View {
     let onOpenNote: (Note) -> Void
 
     @AppStorage("prefersLowercase") private var prefersLowercase = false
+
+    /// A to-do captured by value at render time. Capturing text/done here (rather than indexing
+    /// `note.todos[index]` inside the row) is what keeps a row that's animating out of a swipe
+    /// delete from reading a now-out-of-range index and crashing.
+    private struct TodoItem: Identifiable {
+        let id: Int        // index within the fil's todos array
+        let text: String
+        let done: Bool
+    }
 
     var body: some View {
         ZStack {
@@ -49,8 +58,8 @@ struct TodoSheet: View {
         List {
             ForEach(filsWithTodos) { note in
                 Section {
-                    ForEach(todoIndices(for: note), id: \.self) { index in
-                        todoRow(note, index)
+                    ForEach(todoItems(for: note)) { item in
+                        todoRow(note, item)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             // Indented so to-dos read as nested beneath their fil header (the
@@ -58,7 +67,7 @@ struct TodoSheet: View {
                             .listRowInsets(EdgeInsets(top: 6, leading: 48, bottom: 6, trailing: 20))
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
-                                    onDeleteTodo(note, index)
+                                    onDeleteTodo(note, item.id)
                                 } label: {
                                     Label("landfil", systemImage: "trash")
                                 }
@@ -101,28 +110,27 @@ struct TodoSheet: View {
     }
 
     /// Matches the article view's to-do row exactly — same button, checkbox, spacing, font.
-    private func todoRow(_ note: Note, _ index: Int) -> some View {
-        let done = isDone(note, index)
-        return Button {
-            onToggle(note, index)
+    private func todoRow(_ note: Note, _ item: TodoItem) -> some View {
+        Button {
+            onToggle(note, item.id)
         } label: {
             HStack(alignment: .center, spacing: 12) {
-                todoStatusCircle(isCompleted: done)
+                todoStatusCircle(isCompleted: item.done)
 
-                Text(note.todos[index])
+                Text(item.text)
                     .font(Theme.dmMono(13))
                     .foregroundStyle(Theme.secondaryText)
-                    .strikethrough(done, color: Theme.tertiaryText)
-                    .opacity(done ? 0.65 : 1)
+                    .strikethrough(item.done, color: Theme.tertiaryText)
+                    .opacity(item.done ? 0.65 : 1)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(note.todos[index])
-        .accessibilityValue(done ? "done" : "open")
-        .accessibilityHint(done ? "mark open" : "mark done")
+        .accessibilityLabel(item.text)
+        .accessibilityValue(item.done ? "done" : "open")
+        .accessibilityHint(item.done ? "mark open" : "mark done")
     }
 
     /// Mirrors `ArticleView.todoStatusCircle` so the checkbox is identical to the fil detail view.
@@ -161,25 +169,24 @@ struct TodoSheet: View {
 
     private var filsWithTodos: [Note] {
         notes
-            .filter { !todoIndices(for: $0).isEmpty }
+            .filter { !todoItems(for: $0).isEmpty }
             .sorted { $0.timestamp > $1.timestamp }
     }
 
     private var openCount: Int {
         filsWithTodos.reduce(0) { total, note in
-            total + todoIndices(for: note).filter { !isDone(note, $0) }.count
+            total + todoItems(for: note).filter { !$0.done }.count
         }
     }
 
-    /// Indices of every non-empty to-do (open OR completed) for a fil.
-    private func todoIndices(for note: Note) -> [Int] {
-        note.todos.indices.filter { index in
-            !note.todos[index].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    /// Every non-empty to-do (open OR completed) for a fil, captured by value.
+    private func todoItems(for note: Note) -> [TodoItem] {
+        note.todos.indices.compactMap { index in
+            let text = note.todos[index].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            let done = note.completedTodos.indices.contains(index) && note.completedTodos[index]
+            return TodoItem(id: index, text: note.todos[index], done: done)
         }
-    }
-
-    private func isDone(_ note: Note, _ index: Int) -> Bool {
-        note.completedTodos.indices.contains(index) && note.completedTodos[index]
     }
 
     private func displayTitle(_ note: Note) -> String {
