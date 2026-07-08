@@ -520,7 +520,7 @@ struct ArticleView: View {
         Group {
             if isEditingTranscript {
                 TextEditor(text: transcriptBinding)
-                    .font(Theme.dmMono(13))
+                    .font(Theme.dmSans(13))
                     .foregroundStyle(Theme.secondaryText)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: editingTranscriptMinHeight, alignment: .topLeading)
