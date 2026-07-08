@@ -80,14 +80,23 @@ struct KeywordPopup: View {
             Theme.background
                 .ignoresSafeArea()
 
-            // Rasterize the top-edge glow to a single static image so a 0.6 → full detent drag
-            // stretches one cheap layer instead of re-laying-out the blurred strokes each frame —
-            // the same treatment the article view uses.
+            // Same backdrop as the parent fil (article view): the colored gradient wash plus the
+            // top-edge glow, in the parent note's colors — rasterized to one static image so a
+            // 0.6 → full detent drag stretches a single cheap layer instead of re-laying-out the
+            // blurred circles/strokes each frame.
             StaticBlurBackdrop(colorScheme: colorScheme) {
-                FilamentsTopEdgeGlow(
-                    startColor: Color(hex: note.gradientStartHex),
-                    endColor: Color(hex: note.gradientEndHex)
-                )
+                ZStack {
+                    FilrSheetBackground(
+                        startColor: Color(hex: note.gradientStartHex),
+                        endColor: Color(hex: note.gradientEndHex),
+                        isLightMode: colorScheme == .light
+                    )
+
+                    FilrTopEdgeGlow(
+                        startColor: Color(hex: note.gradientStartHex),
+                        endColor: Color(hex: note.gradientEndHex)
+                    )
+                }
             }
             .ignoresSafeArea()
 
@@ -728,56 +737,6 @@ struct MissingLinkedFilView: View {
             Text("fil not found")
                 .font(Theme.dmMono(12))
                 .foregroundStyle(Theme.tertiaryText)
-        }
-    }
-}
-
-private struct FilamentsTopEdgeGlow: View {
-    let startColor: Color
-    let endColor: Color
-
-    private var strokeGradient: AngularGradient {
-        AngularGradient(
-            gradient: Gradient(colors: [
-                startColor,
-                startColor.mix(with: endColor, by: 0.35),
-                endColor,
-                startColor
-            ]),
-            center: .top
-        )
-    }
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .strokeBorder(strokeGradient, lineWidth: 4)
-                .blur(radius: 1)
-
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .strokeBorder(strokeGradient, lineWidth: 10)
-                .blur(radius: 10)
-                .opacity(0.72)
-
-            RoundedRectangle(cornerRadius: 34, style: .continuous)
-                .strokeBorder(strokeGradient, lineWidth: 18)
-                .blur(radius: 15)
-                .opacity(1.0)
-        }
-        .padding(.horizontal, -25)
-        .padding(.top, -25)
-        .allowsHitTesting(false)
-        .mask(alignment: .top) {
-            LinearGradient(
-                stops: [
-                    .init(color: .white, location: 0.0),
-                    .init(color: .white, location: 0.012),
-                    .init(color: .white, location: 0.028),
-                    .init(color: .clear, location: 0.07)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
         }
     }
 }
