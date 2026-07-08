@@ -13,11 +13,11 @@ enum WelcomeFil {
 
     congrats on making your first one! this one's mine!
 
-    i wanted somewhere to put thoughts without turning it into a project. no inbox, tags, streaks, or anything like that. just a cool place for them to be.
+    i wanted a place to put thoughts without turning it into a project. no inbox, tags, streaks, or anything like that. just a cool place for them to be.
 
     tap a word to attach a filament. it's a really fun and powerful feature that you can use in an infinite number of ways.
 
-    like this for example!
+    like here for example!
 
     when you're ready to let go of your thoughts, send them to the landfil (trash).
 
@@ -29,6 +29,6 @@ enum WelcomeFil {
     static let filamentNoteTitle = "what's a filament?"
     static let filamentNote = "a filament is something you attach to a word to give it depth."
 
-    // The "this" filament — seeded so the word highlights; tutorial images go here.
-    static let exampleKeyword = "this"
+    // The "here" filament — seeded so the word highlights; tutorial images go here.
+    static let exampleKeyword = "here"
 }
