@@ -84,7 +84,7 @@ struct KeywordPopup: View {
             // top-edge glow, in the parent note's colors — rasterized to one static image so a
             // 0.6 → full detent drag stretches a single cheap layer instead of re-laying-out the
             // blurred circles/strokes each frame.
-            StaticBlurBackdrop(colorScheme: colorScheme) {
+            StaticBlurBackdrop(colorScheme: colorScheme, contentID: note.uuid) {
                 ZStack {
                     FilrSheetBackground(
                         startColor: Color(hex: note.gradientStartHex),

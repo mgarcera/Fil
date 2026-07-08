@@ -110,7 +110,7 @@ struct ArticleView: View {
             // Rasterizing them to a single static image once, then stretching that one image
             // as the sheet grows, collapses them to a single cheap layer. The heavy blur
             // hides the stretch, so the look is preserved.
-            StaticBlurBackdrop(colorScheme: colorScheme) {
+            StaticBlurBackdrop(colorScheme: colorScheme, contentID: note.uuid) {
                 ZStack {
                     if note.imageData == nil {
                         CalibrateSheetBackground(
