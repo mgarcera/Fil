@@ -12,8 +12,8 @@ struct TodoSheet: View {
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
     /// When false, only open to-dos are shown; when true, completed ones appear too (struck
-    /// through). Toggled by the filter button in the header — a plain two-state switch, no menu.
-    @State private var showsCompleted = false
+    /// through). Set from the header's filter menu; persisted so the choice sticks across sessions.
+    @AppStorage("todoSheetShowsCompleted") private var showsCompleted = false
 
     var body: some View {
         ZStack {
