@@ -54,7 +54,7 @@ struct TodoSheet: View {
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
                                     onDeleteTodo(note, index)
                                 } label: {
@@ -108,7 +108,7 @@ struct TodoSheet: View {
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(done ? Theme.tertiaryText : Theme.secondaryText)
                 Text(note.todos[index])
-                    .font(Theme.dmMono(14))
+                    .font(Theme.dmSans(14))
                     .foregroundStyle(done ? Theme.tertiaryText : Theme.secondaryText)
                     .strikethrough(done, color: Theme.tertiaryText)
                     .multilineTextAlignment(.leading)
