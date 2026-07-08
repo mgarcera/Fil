@@ -96,7 +96,7 @@ struct TodoSheet: View {
                 Text(displayTitle(note))
                     .font(Theme.dmSans(18, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
@@ -127,7 +127,7 @@ struct TodoSheet: View {
                 todoStatusCircle(isCompleted: item.done)
 
                 Text(item.text)
-                    .font(Theme.dmMono(13))
+                    .font(Theme.dmMono(13, weight: .bold))
                     .foregroundStyle(Theme.secondaryText)
                     .strikethrough(item.done, color: Theme.tertiaryText)
                     .opacity(item.done ? 0.65 : 1)

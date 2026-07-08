@@ -661,7 +661,7 @@ struct ArticleView: View {
                             todoStatusCircle(isCompleted: isTodoCompleted(at: index))
 
                             Text(todo)
-                                .font(Theme.dmMono(13))
+                                .font(Theme.dmMono(13, weight: .bold))
                                 .foregroundStyle(Theme.secondaryText)
                                 .strikethrough(isTodoCompleted(at: index), color: Theme.tertiaryText)
                                 .opacity(isTodoCompleted(at: index) ? 0.65 : 1)
