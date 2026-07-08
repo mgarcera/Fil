@@ -90,13 +90,15 @@ final class AudioPlayerViewModel {
         guard !storedPath.isEmpty else { return nil }
 
         let fileManager = FileManager.default
+        // Use the decoded filesystem path: fileExists(atPath:) wants a real path, not a
+        // percent-encoded one, so filenames with spaces (e.g. "a vid.mp4") resolve correctly.
         if storedPath.hasPrefix("/") {
             let absoluteURL = URL(fileURLWithPath: storedPath)
-            return fileManager.fileExists(atPath: absoluteURL.path()) ? absoluteURL : nil
+            return fileManager.fileExists(atPath: absoluteURL.path(percentEncoded: false)) ? absoluteURL : nil
         }
 
         let localURL = recordingsDirectory.appendingPathComponent(storedPath)
-        return fileManager.fileExists(atPath: localURL.path()) ? localURL : nil
+        return fileManager.fileExists(atPath: localURL.path(percentEncoded: false)) ? localURL : nil
     }
 
     static func hasAudioFile(for storedPath: String) -> Bool {
