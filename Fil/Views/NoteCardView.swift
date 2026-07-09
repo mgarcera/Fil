@@ -146,7 +146,7 @@ struct NoteCardView: View {
     private var tintedBadgeTextColor: Color {
         let start = Color(hex: note.gradientStartHex).luminance
         let end = Color(hex: note.gradientEndHex).luminance
-        return (start + end) / 2 > 0.42 ? .black : .white
+        return (start + end) / 2 > 0.55 ? .black : .white
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
