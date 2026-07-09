@@ -101,16 +101,12 @@ struct SettingsView: View {
             case .writing:
                 settingToggle(
                     "use lowercase",
-                    description: "fil renders titles and transcripts in lowercase for a more casual voice.",
+                    description: "render titles and transcripts in lowercase for a more casual voice.",
                     isOn: $prefersLowercase
                 )
 
             case .sound:
-                settingToggle(
-                    "sound effects",
-                    description: "play clicks, chimes, and transitions. turn off for silence.",
-                    isOn: $soundEnabled
-                )
+                settingToggle("sound effects", isOn: $soundEnabled)
 
             case .appearance:
                 appearanceSection
@@ -167,22 +163,17 @@ struct SettingsView: View {
                     }
                 }
                 .scrollIndicators(.hidden)
-
-                Text("choose how the fil badges look on the grid. glass and tinted use liquid glass; solid is the classic chip.")
-                    .font(Theme.dmSans(13))
-                    .foregroundStyle(.white.opacity(0.7))
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             settingToggle(
                 "auto screensaver",
-                description: "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery. unlocks after at least 10 fils.",
+                description: "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery.",
                 isOn: $autoScreensaverEnabled
             )
         }
     }
 
-    private func settingToggle(_ title: String, description: String, isOn: Binding<Bool>) -> some View {
+    private func settingToggle(_ title: String, description: String? = nil, isOn: Binding<Bool>) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: isOn) {
                 Text(title)
@@ -191,10 +182,12 @@ struct SettingsView: View {
             }
             .tint(section.backgroundColors[0])
 
-            Text(description)
-                .font(Theme.dmSans(13))
-                .foregroundStyle(.white.opacity(0.7))
-                .fixedSize(horizontal: false, vertical: true)
+            if let description {
+                Text(description)
+                    .font(Theme.dmSans(13))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
