@@ -77,6 +77,7 @@ struct NoteCardView: View {
                     strokeColor: note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5),
                     style: badgeStyle,
                     glassTint: note.isLinkFil ? linkBadgeColor : Color(hex: note.gradientStartHex),
+                    adaptiveTextColor: tintedBadgeTextColor,
                     isLink: note.isLinkFil,
                     isRegenerating: !note.isLinkFil && TitleRegenerationTracker.shared.isRegenerating(note.uuid)
                 )
@@ -139,6 +140,15 @@ struct NoteCardView: View {
         return (start + end) / 2 > 0.55 ? .black : .white
     }
 
+    /// Black/white for the tinted glass badge, chosen from the fil's gradient like `blobTextColor`
+    /// but with a lower threshold (the glass frost lightens the badge, so it should lean black
+    /// sooner). This constant is the knob to tune.
+    private var tintedBadgeTextColor: Color {
+        let start = Color(hex: note.gradientStartHex).luminance
+        let end = Color(hex: note.gradientEndHex).luminance
+        return (start + end) / 2 > 0.42 ? .black : .white
+    }
+
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
@@ -157,6 +167,8 @@ private struct KeywordBadgeLabel: View {
     let strokeColor: Color
     let style: BadgeStyle
     let glassTint: Color
+    /// Black/white for the tinted badge, decided from the fil's gradient with a badge-tuned threshold.
+    let adaptiveTextColor: Color
     let isLink: Bool
     let isRegenerating: Bool
 
@@ -171,9 +183,9 @@ private struct KeywordBadgeLabel: View {
             if isLink { return .white }
             return colorScheme == .dark ? .white : .black
         case .glassTinted:
-            // Links (blue tint) always read white; other fils pick the higher-contrast text
-            // (black/white) against the badge's actual tint color.
-            return isLink ? .white : glassTint.contrastingTextColor()
+            // Links (blue tint) always read white; other fils use the gradient-based decision
+            // with the badge-tuned threshold.
+            return isLink ? .white : adaptiveTextColor
         }
     }
 
