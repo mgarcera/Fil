@@ -115,13 +115,6 @@ struct SettingsView: View {
             case .appearance:
                 appearanceSection
 
-            case .screensaver:
-                settingToggle(
-                    "auto screensaver",
-                    description: "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery. unlocks after at least 10 fils.",
-                    isOn: $autoScreensaverEnabled
-                )
-
             case .about:
                 aboutContent
             }
@@ -144,40 +137,48 @@ struct SettingsView: View {
     }
 
     private var appearanceSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("fil badges")
-                .font(Theme.dmSans(16, weight: .medium))
-                .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("fil badges")
+                    .font(Theme.dmSans(16, weight: .medium))
+                    .foregroundStyle(.white)
 
-            ScrollView(.horizontal) {
-                HStack(spacing: 8) {
-                    ForEach(BadgeStyle.allCases) { style in
-                        Button {
-                            guard badgeStyle != style else { return }
-                            SoundscapeManager.shared.playTabSound()
-                            withAnimation(.snappy) { badgeStyle = style }
-                        } label: {
-                            let isSelected = badgeStyle == style
-                            Text(style.title)
-                                .font(Theme.dmSans(14, weight: .semibold))
-                                .foregroundStyle(isSelected ? Color.black : .white)
-                                .padding(.horizontal, 14)
-                                .frame(height: 38)
-                                .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
-                                .overlay {
-                                    Capsule().stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
-                                }
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(BadgeStyle.allCases) { style in
+                            Button {
+                                guard badgeStyle != style else { return }
+                                SoundscapeManager.shared.playTabSound()
+                                withAnimation(.snappy) { badgeStyle = style }
+                            } label: {
+                                let isSelected = badgeStyle == style
+                                Text(style.title)
+                                    .font(Theme.dmSans(14, weight: .semibold))
+                                    .foregroundStyle(isSelected ? Color.black : .white)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 38)
+                                    .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
+                                    .overlay {
+                                        Capsule().stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
+                                    }
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
-            }
-            .scrollIndicators(.hidden)
+                .scrollIndicators(.hidden)
 
-            Text("choose how the fil badges look on the grid. glass and tinted use liquid glass; solid is the classic chip.")
-                .font(Theme.dmSans(13))
-                .foregroundStyle(.white.opacity(0.7))
-                .fixedSize(horizontal: false, vertical: true)
+                Text("choose how the fil badges look on the grid. glass and tinted use liquid glass; solid is the classic chip.")
+                    .font(Theme.dmSans(13))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            settingToggle(
+                "auto screensaver",
+                description: "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery. unlocks after at least 10 fils.",
+                isOn: $autoScreensaverEnabled
+            )
         }
     }
 
@@ -281,7 +282,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case writing
     case sound
     case appearance
-    case screensaver
     case about
 
     var id: String { rawValue }
@@ -291,7 +291,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .writing: "Writing"
         case .sound: "Sound"
         case .appearance: "Appearance"
-        case .screensaver: "Screensaver"
         case .about: "About"
         }
     }
@@ -304,8 +303,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .sound:
             [Color(hex: "#4F46E5"), Color(hex: "#7C3AED"), Color(hex: "#2563EB")]
         case .appearance:
-            [Color(hex: "#22D3EE"), Color(hex: "#818CF8"), Color(hex: "#A78BFA")]
-        case .screensaver:
             [Color(hex: "#0EA5E9"), Color(hex: "#14B8A6"), Color(hex: "#22C55E")]
         case .about:
             [Color(hex: "#F59E0B"), Color(hex: "#F97316"), Color(hex: "#EAB308")]
