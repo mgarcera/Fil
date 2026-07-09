@@ -175,8 +175,8 @@ private struct KeywordBadgeLabel: View {
             if isLink { return .white }
             return colorScheme == .dark ? .white : .black
         case .glassTinted:
-            // Adapt to the badge's tint the way the blob adapts to its gradient.
-            return adaptiveTextColor
+            // Links (blue tint) always read white; other fils adapt like the blob does.
+            return isLink ? .white : adaptiveTextColor
         }
     }
 
