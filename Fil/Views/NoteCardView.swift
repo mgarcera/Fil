@@ -77,7 +77,6 @@ struct NoteCardView: View {
                     strokeColor: note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5),
                     style: badgeStyle,
                     glassTint: note.isLinkFil ? linkBadgeColor : Color(hex: note.gradientStartHex),
-                    adaptiveTextColor: blobTextColor,
                     isLink: note.isLinkFil,
                     isRegenerating: !note.isLinkFil && TitleRegenerationTracker.shared.isRegenerating(note.uuid)
                 )
@@ -158,9 +157,6 @@ private struct KeywordBadgeLabel: View {
     let strokeColor: Color
     let style: BadgeStyle
     let glassTint: Color
-    /// The fil's own black/white text decision (from its blob gradient) — used by the tinted badge
-    /// so its text adapts to its color the same way the blob's word-count does.
-    let adaptiveTextColor: Color
     let isLink: Bool
     let isRegenerating: Bool
 
@@ -175,8 +171,9 @@ private struct KeywordBadgeLabel: View {
             if isLink { return .white }
             return colorScheme == .dark ? .white : .black
         case .glassTinted:
-            // Links (blue tint) always read white; other fils adapt like the blob does.
-            return isLink ? .white : adaptiveTextColor
+            // Links (blue tint) always read white; other fils pick the higher-contrast text
+            // (black/white) against the badge's actual tint color.
+            return isLink ? .white : glassTint.contrastingTextColor()
         }
     }
 

@@ -228,6 +228,24 @@ extension Color {
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
     }
 
+    /// Black or white — whichever has the higher WCAG contrast against this color. Uses
+    /// gamma-correct relative luminance, so it reads the color the way the eye does.
+    func contrastingTextColor() -> Color {
+        let resolved = UIColor(self)
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+        resolved.getRed(&r, green: &g, blue: &b, alpha: nil)
+
+        func linear(_ channel: CGFloat) -> Double {
+            let c = Double(channel)
+            return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        let l = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+
+        let contrastWithBlack = (l + 0.05) / 0.05
+        let contrastWithWhite = 1.05 / (l + 0.05)
+        return contrastWithBlack >= contrastWithWhite ? .black : .white
+    }
+
     func mix(with other: Color, by progress: Double) -> Color {
         let start = UIColor(self)
         let end = UIColor(other)
