@@ -77,6 +77,7 @@ struct NoteCardView: View {
                     strokeColor: note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5),
                     style: badgeStyle,
                     glassTint: note.isLinkFil ? linkBadgeColor : Color(hex: note.gradientStartHex),
+                    isLink: note.isLinkFil,
                     isRegenerating: !note.isLinkFil && TitleRegenerationTracker.shared.isRegenerating(note.uuid)
                 )
                     // The badge is a compact chip on a fixed-size card; cap its Dynamic Type growth
@@ -156,7 +157,13 @@ private struct KeywordBadgeLabel: View {
     let strokeColor: Color
     let style: BadgeStyle
     let glassTint: Color
+    let isLink: Bool
     let isRegenerating: Bool
+
+    /// Glass badges read white in both light and dark mode; the solid chip keeps its passed color.
+    private var effectiveTextColor: Color {
+        style.isGlass ? .white : textColor
+    }
 
     @State private var isRevealing = false
     /// Pulsing blur applied to the old title while it's being regenerated.
@@ -173,22 +180,22 @@ private struct KeywordBadgeLabel: View {
                 // The new title sharpens out of blur (the reveal renderer starts each
                 // glyph blurred), so it emerges seamlessly from the "thinking" blur.
                 AnimatedGradientRevealText(text: text, maxDuration: 1.1)
-                    .foregroundStyle(textColor)
+                    .foregroundStyle(effectiveTextColor)
             } else if isRegenerating {
                 // "Thinking": the current title softens into a pulsing blur.
                 Text(text)
-                    .foregroundStyle(textColor)
+                    .foregroundStyle(effectiveTextColor)
                     .blur(radius: blurRadius)
                     .opacity(0.7)
             } else {
                 Text(text)
-                    .foregroundStyle(textColor)
+                    .foregroundStyle(effectiveTextColor)
             }
         }
         .font(Theme.dmSans(9, weight: .semibold))
         .padding(.horizontal, horizontalPadding)
         .padding(.vertical, verticalPadding)
-        .modifier(BadgeChrome(style: style, backgroundColor: backgroundColor, strokeColor: strokeColor, glassTint: glassTint))
+        .modifier(BadgeChrome(style: style, backgroundColor: backgroundColor, strokeColor: strokeColor, glassTint: glassTint, isLink: isLink))
         // Capsule eases between the old and new title widths as the new one reveals,
         // rather than snapping. One motion — no intermediate resize step.
         .animation(.spring(response: 0.4, dampingFraction: 0.85), value: text)
@@ -221,7 +228,9 @@ private struct BadgeChrome: ViewModifier {
     let style: BadgeStyle
     let backgroundColor: Color
     let strokeColor: Color
+    /// For links this is the link blue; for other fils it's the fil's gradient color.
     let glassTint: Color
+    let isLink: Bool
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -232,11 +241,14 @@ private struct BadgeChrome: ViewModifier {
                 .overlay(Capsule().stroke(strokeColor, lineWidth: 1.5))
                 .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
         case .glassRegular:
-            content.glassEffect(.regular, in: Capsule())
+            // Neutral glass, except links stay blue-tinted so they keep their identity.
+            if isLink {
+                content.glassEffect(.regular.tint(glassTint), in: Capsule())
+            } else {
+                content.glassEffect(.regular, in: Capsule())
+            }
         case .glassTinted:
             content.glassEffect(.regular.tint(glassTint), in: Capsule())
-        case .glassClear:
-            content.glassEffect(.clear, in: Capsule())
         }
     }
 }

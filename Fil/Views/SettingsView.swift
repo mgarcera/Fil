@@ -174,7 +174,7 @@ struct SettingsView: View {
             }
             .scrollIndicators(.hidden)
 
-            Text("choose how the fil badges look on the grid. glass options use liquid glass — all three are here to compare, and we'll settle on one.")
+            Text("choose how the fil badges look on the grid. glass and tinted use liquid glass; solid is the classic chip.")
                 .font(Theme.dmSans(13))
                 .foregroundStyle(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)

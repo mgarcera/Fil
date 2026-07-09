@@ -10,18 +10,19 @@ import AppKit
 /// before locking one in.
 enum BadgeStyle: String, CaseIterable, Identifiable {
     case solid          // the classic opaque chip
-    case glassRegular   // regular liquid glass, neutral
+    case glassRegular   // regular liquid glass (link fils stay blue-tinted)
     case glassTinted    // regular liquid glass, tinted with the fil's color
-    case glassClear     // clear liquid glass, most translucent
 
     var id: String { rawValue }
+
+    /// True for the liquid-glass styles, which use white text and glass chrome.
+    var isGlass: Bool { self != .solid }
 
     var title: String {
         switch self {
         case .solid: "Solid"
         case .glassRegular: "Glass"
         case .glassTinted: "Tinted"
-        case .glassClear: "Clear"
         }
     }
 }
