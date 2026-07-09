@@ -197,6 +197,7 @@ struct SettingsView: View {
 
             Divider().overlay(Color.white.opacity(0.14))
 
+            aboutRow("support") { openURL(FilLinks.support) }
             aboutRow("privacy policy") { openURL(FilLinks.privacyPolicy) }
             aboutRow("terms of service") { openURL(FilLinks.termsOfService) }
             aboutRow("contact & feedback") { openURL(FilLinks.contactEmail) }

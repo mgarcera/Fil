@@ -2,16 +2,13 @@ import Foundation
 
 /// Single source of truth for Fil's external links.
 ///
-/// The web pages aren't hosted yet. Once they're live, replace the three placeholder URLs
-/// below with the real hosted addresses, and set `appStoreID` after the app record exists in
-/// App Store Connect. Nothing else in the app needs to change.
+/// Set `appStoreID` after the app record exists in App Store Connect. Nothing else needs to change.
 ///
 /// Draft page content lives in the repo under `docs/legal/` and `docs/support/`.
 enum FilLinks {
-    // TODO(launch): replace with the real hosted URLs.
-    static let privacyPolicy = URL(string: "https://fil.example.com/privacy")!
-    static let termsOfService = URL(string: "https://fil.example.com/terms")!
-    static let support = URL(string: "https://fil.example.com/support")!
+    static let privacyPolicy = URL(string: "https://rootcause.ltd/fil/privacy")!
+    static let termsOfService = URL(string: "https://rootcause.ltd/fil/terms")!
+    static let support = URL(string: "https://rootcause.ltd/fil/support")!
 
     /// Contact / feedback address (also the App Store Connect support contact).
     static let contactEmail = URL(string: "mailto:mason@garcera.us")!
