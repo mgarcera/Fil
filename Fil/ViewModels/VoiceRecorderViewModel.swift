@@ -33,6 +33,7 @@ final class VoiceRecorderViewModel {
         do {
             audioRecorder = try AVAudioRecorder(url: url, settings: settings)
             audioRecorder?.record()
+            FileProtection.protectAtRest(url)
             currentRecordingURL = url
             isRecording = true
             recordingDuration = 0

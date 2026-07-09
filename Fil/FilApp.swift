@@ -8,6 +8,16 @@ struct FilApp: App {
 
     init() {
         modelContainer = Self.makeModelContainer()
+        Self.protectStoreFiles()
+    }
+
+    /// Encrypt the SwiftData store (and its -wal/-shm sidecars) at rest.
+    static func protectStoreFiles() {
+        let directory = storeURL.deletingLastPathComponent()
+        let name = storeURL.lastPathComponent
+        for suffix in ["", "-wal", "-shm"] {
+            FileProtection.protectAtRest(directory.appendingPathComponent(name + suffix))
+        }
     }
 
     var body: some Scene {

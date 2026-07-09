@@ -1048,6 +1048,7 @@ struct ContentView: View {
             let destPath = dest.path(percentEncoded: false)
             if !FileManager.default.fileExists(atPath: destPath) {
                 try? FileManager.default.copyItem(at: bundledVideo, to: dest)
+                FileProtection.protectAtRest(dest)
             }
             if FileManager.default.fileExists(atPath: destPath) {
                 example.entries = [AttachmentEntry.video(path: filename)]

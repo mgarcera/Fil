@@ -515,6 +515,7 @@ struct KeywordPopup: View {
         } catch {
             return
         }
+        FileProtection.protectAtRest(dest)
         appendEntry(.video(path: filename))
     }
 
@@ -622,6 +623,7 @@ struct KeywordPopup: View {
         Task { @MainActor in
             guard let recorder = await MemoRecordingController.makeRecorder() else { return }
             recorder.record()
+            FileProtection.protectAtRest(recorder.url)
             memoRecorder = recorder
             memoDuration = 0
 
