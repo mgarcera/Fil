@@ -63,6 +63,9 @@ struct NoteCardView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.top, note.audioFilePath.isEmpty ? 0 : 16)
+            // The card is a fixed 98pt; clamp its blob content (word count / duration) so it can't
+            // clip at large accessibility text sizes.
+            .dynamicTypeSize(...DynamicTypeSize.xLarge)
         }
         .frame(height: 98)
         .overlay(selectionStroke)
@@ -146,7 +149,7 @@ struct NoteCardView: View {
     private var tintedBadgeTextColor: Color {
         let start = Color(hex: note.gradientStartHex).luminance
         let end = Color(hex: note.gradientEndHex).luminance
-        return (start + end) / 2 > 0.55 ? .black : .white
+        return (start + end) / 2 > 0.56 ? .black : .white
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
