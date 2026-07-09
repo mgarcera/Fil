@@ -15,9 +15,6 @@ enum BadgeStyle: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// True for the liquid-glass styles, which use white text and glass chrome.
-    var isGlass: Bool { self != .solid }
-
     var title: String {
         switch self {
         case .solid: "Solid"
