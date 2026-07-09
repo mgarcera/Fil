@@ -375,10 +375,10 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 17. [x] Warm/reuse + prewarm the FoundationModels session — `apple-skills:apple-intelligence`
 18. [x] Add VoiceOver labels (dark-mode toggle, composer buttons, note cards + selection action); hide decorative canvases — `xcode-integration:accessibility-voiceover-specialist`
 19. [x] Replace `fatalError` with graceful fallback; tighten the store-reset heuristic (move-aside, not delete) — `apple-skills:swiftdata`
-20. [~] Apply `.completeFileProtection` and truncate the pinned-snapshot `previewText`; protect shared-draft + audio files; add app-switcher privacy blur — `apple-skills:security` *(previewText truncated ✅; file-protection classes + privacy blur deferred — need device-locked testing, see worklog)*
+20. [x] Apply `.completeFileProtection` and truncate the pinned-snapshot `previewText`; protect shared-draft + audio files; add app-switcher privacy blur — `apple-skills:security` *(previewText truncated ✅; `.complete` file protection applied to store + audio + video via `FileProtection` (2026-07-08); **app-switcher privacy blur dropped by decision**. Still needs a device-locked spot-check.)*
 21. [~] Adopt Swift 6 / strict concurrency; remove force-unwraps; wrap meaningful saves with logging — `apple-skills:swift` + `apple-skills:ios` *(force-unwraps removed + saveOrLog logging ✅; full Swift 6 / strict-concurrency flip deferred to a dedicated post-launch effort)*
 22. [~] Warm SoundscapeManager off-main; debounce the idle detector — `apple-skills:performance` *(idle-detector debounce ✅; off-main sound decode deferred with #21 — concurrency care)*
-23. [ ] Clamp Dynamic Type / add `ViewThatFits` for dense grid + header/composer rows — `xcode-integration:accessibility-dynamic-type-specialist`
+23. [x] Clamp Dynamic Type / add `ViewThatFits` for dense grid + header/composer rows — `xcode-integration:accessibility-dynamic-type-specialist` *(2026-07-08: clamped the fixed 98pt grid card's blob content to xLarge — the real clip risk; composer uses fixed icon frames + a growing text field, date headers wrap, both assessed safe.)*
 
 **Phase 4 — Growth infrastructure (pre-launch → launch)**
 24. [ ] Build website + press kit + promo video — `apple-skills:app-store` + `apple-skills:growth`
