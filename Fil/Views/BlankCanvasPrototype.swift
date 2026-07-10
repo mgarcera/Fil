@@ -16,12 +16,34 @@ struct BlankCanvasPrototype: View {
 
     private enum Phase { case idle, composing, creating, formed }
 
+    /// TEMP: three candidate entry animations for the settled fil blob, switchable live so Mason can
+    /// feel each. Collapse to the winner once chosen.
+    private enum EntryStyle: String, CaseIterable, Identifiable {
+        case plop, pop, drop
+        var id: String { rawValue }
+
+        var transition: AnyTransition {
+            switch self {
+            case .plop: .scale(scale: 0.3).combined(with: .opacity)
+            case .pop:  .scale(scale: 0.01).combined(with: .opacity)
+            case .drop: .offset(y: -70).combined(with: .opacity)
+            }
+        }
+
+        var animation: Animation {
+            switch self {
+            case .plop: .spring(response: 0.34, dampingFraction: 0.52)   // gentle overshoot
+            case .pop:  .spring(response: 0.24, dampingFraction: 0.46)   // snappy, punchy
+            case .drop: .spring(response: 0.46, dampingFraction: 0.58)   // drops in and bounces
+            }
+        }
+    }
+
     @State private var phase: Phase = .idle
     @State private var text = ""
-    /// The just-made fil's gradient, so the blob that plops in wears the fil's own colors.
-    @State private var creatingGradient: [Color] = Theme.accentGradientColors
     /// The just-made fil, so the gooey creating blob can settle into its final randomized blob.
     @State private var formedNote: Note?
+    @State private var entryStyle: EntryStyle = .plop
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
@@ -38,6 +60,7 @@ struct BlankCanvasPrototype: View {
             }
 
             closeButton
+            entryStylePicker
         }
     }
 
@@ -92,7 +115,7 @@ struct BlankCanvasPrototype: View {
     }
 
     private var creatingBlob: some View {
-        CreatingFilBlobView(gradientColors: creatingGradient)
+        CreatingFilBlobView()
             .frame(width: 130, height: 130)
             // Plop in from small (bouncy spring, set in createFil); on removal it crossfades out as
             // the settled blob crossfades in — the gooey blob "turning into" the fil.
@@ -110,7 +133,22 @@ struct BlankCanvasPrototype: View {
             NoteBlobShape(seed: note.blobShapeSeed)
                 .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                 .frame(width: 130, height: 130)
-                .transition(.opacity)
+                .transition(entryStyle.transition)
+        }
+    }
+
+    /// TEMP prototype control — switch the settled-blob entry animation to compare feels.
+    private var entryStylePicker: some View {
+        VStack {
+            Spacer()
+            Picker("entry", selection: $entryStyle) {
+                ForEach(EntryStyle.allCases) { style in
+                    Text(style.rawValue).tag(style)
+                }
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 240)
+            .padding(.bottom, 12)
         }
     }
 
@@ -158,15 +196,12 @@ struct BlankCanvasPrototype: View {
         text = ""
         fieldFocused = false
 
-        // Randomize the fil's gradient up front so the blob that plops in already wears its colors.
-        let gradient = Theme.randomGradientPair()
-        creatingGradient = [Color(hex: gradient.start), Color(hex: gradient.end)]
-
-        // Plop: bouncy spring so the blob overshoots as it lands.
+        // Gooey creating blob plops in (its own regular color), holds while the fil forms.
         withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
         SoundscapeManager.shared.startMeshDuringProcessSound()
 
         let title = await ArticleGenerationService.shared.generateTitle(from: thought)
+        let gradient = Theme.randomGradientPair()
         let note = Note(
             title: title,
             transcript: thought,
@@ -180,10 +215,10 @@ struct BlankCanvasPrototype: View {
         SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        // The gooey blob settles into the fil's final randomized blob (crossfade morph), holds a
-        // beat, then fades cleanly away to the blank canvas.
+        // The gooey blob gives way to the fil's final randomized blob, which enters with the selected
+        // entry style, holds a beat, then fades cleanly away to the blank canvas.
         formedNote = note
-        withAnimation(.smooth(duration: 0.45)) { phase = .formed }
+        withAnimation(entryStyle.animation) { phase = .formed }
         try? await Task.sleep(for: .milliseconds(750))
         withAnimation(.easeOut(duration: 0.4)) { phase = .idle }
     }
