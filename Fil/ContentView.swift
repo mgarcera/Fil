@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var showMicPriming = false
     @State private var showTodoSheet = false
     @State private var showFilSetup = false
+    @State private var showThemePrototype = false   // TEMP: theme-home prototype
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -311,6 +312,19 @@ struct ContentView: View {
                     .opacity(notes.isEmpty ? 0.45 : 1)
                     .accessibilityLabel("Search")
 
+                    // TEMP: theme-home prototype entry — remove with ThemeHomePrototype.swift.
+                    Button {
+                        showThemePrototype = true
+                    } label: {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Theme prototype")
+
                     Menu {
                         Section("Screensavers") {
                             screensaverMenuButton("filosophy", systemImage: "camera.filters", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) }
@@ -364,6 +378,8 @@ struct ContentView: View {
         .padding(.top, 8)
         .padding(.bottom, 4)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isSearching)
+        // TEMP: theme-home prototype — remove with ThemeHomePrototype.swift.
+        .fullScreenCover(isPresented: $showThemePrototype) { ThemeHomePrototype() }
     }
 
     private var searchBar: some View {
