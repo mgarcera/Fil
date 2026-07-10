@@ -1,5 +1,6 @@
 import Foundation
 import NaturalLanguage
+import OSLog
 
 /// Groups fils into emergent, on-device semantic themes. See docs/features/theme-clustering.md.
 ///
@@ -32,21 +33,29 @@ actor FilClusteringService {
     /// In-memory embedding cache (per launch), keyed by fil id → (vector, textHash).
     private var cache: [UUID: (vector: [Double], hash: Int)] = [:]
 
+    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "clustering")
+
     /// Produces theme clusters for the given fils, newest-first inputs preserved within each cluster.
     func clusters(for inputs: [FilClusterInput]) -> [FilCluster] {
         guard !inputs.isEmpty else { return [] }
 
-        guard let vectors = embed(inputs) else {
-            return keywordFallback(inputs)   // no embeddings for this language → deterministic grouping
+        let result: [FilCluster]
+        if let vectors = embed(inputs) {
+            result = semanticClusters(inputs, vectors: vectors)
+        } else {
+            result = keywordFallback(inputs)   // no embeddings for this language → deterministic grouping
         }
 
-        return semanticClusters(inputs, vectors: vectors)
+        log.notice("clusters(\(inputs.count, privacy: .public) fils): \(result.map { "\($0.name)×\($0.filIDs.count)" }.joined(separator: ", "), privacy: .public)")
+        return result
     }
 
     // MARK: - Embedding
 
     private func embed(_ inputs: [FilClusterInput]) -> [UUID: [Double]]? {
-        guard let embedding = NLEmbedding.sentenceEmbedding(for: dominantLanguage(inputs)) else {
+        let language = dominantLanguage(inputs)
+        guard let embedding = NLEmbedding.sentenceEmbedding(for: language) else {
+            log.notice("no sentence embedding for \(language.rawValue, privacy: .public) — keyword fallback (expected on Simulator)")
             return nil
         }
 
