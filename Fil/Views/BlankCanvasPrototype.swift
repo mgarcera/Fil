@@ -18,6 +18,8 @@ struct BlankCanvasPrototype: View {
 
     @State private var phase: Phase = .idle
     @State private var text = ""
+    /// The just-made fil's gradient, so the blob that plops in wears the fil's own colors.
+    @State private var creatingGradient: [Color] = Theme.accentGradientColors
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
@@ -34,7 +36,6 @@ struct BlankCanvasPrototype: View {
 
             closeButton
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.85), value: phase)
     }
 
     // MARK: - States
@@ -88,9 +89,13 @@ struct BlankCanvasPrototype: View {
     }
 
     private var creatingBlob: some View {
-        CreatingFilBlobView()
+        CreatingFilBlobView(gradientColors: creatingGradient)
             .frame(width: 130, height: 130)
-            .transition(.scale(scale: 0.6).combined(with: .opacity))
+            // Plop in from small (bouncy spring, set in createFil), then fade cleanly away.
+            .transition(.asymmetric(
+                insertion: .scale(scale: 0.2).combined(with: .opacity),
+                removal: .opacity
+            ))
     }
 
     private var closeButton: some View {
@@ -116,13 +121,15 @@ struct BlankCanvasPrototype: View {
     private func onCanvasTap() {
         switch phase {
         case .idle:
-            phase = .composing
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
             fieldFocused = true
         case .composing:
             // Tapping the canvas while composing dismisses the keyboard; if nothing was written,
             // fall back to blank so the canvas is never stuck in an empty composing state.
             fieldFocused = false
-            if !hasText { phase = .idle }
+            if !hasText {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
+            }
         case .creating:
             break
         }
@@ -134,11 +141,16 @@ struct BlankCanvasPrototype: View {
 
         text = ""
         fieldFocused = false
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .creating }
+
+        // Randomize the fil's gradient up front so the blob that plops in already wears its colors.
+        let gradient = Theme.randomGradientPair()
+        creatingGradient = [Color(hex: gradient.start), Color(hex: gradient.end)]
+
+        // Plop: bouncy spring so the blob overshoots as it lands.
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
         SoundscapeManager.shared.startMeshDuringProcessSound()
 
         let title = await ArticleGenerationService.shared.generateTitle(from: thought)
-        let gradient = Theme.randomGradientPair()
         let note = Note(
             title: title,
             transcript: thought,
@@ -152,8 +164,8 @@ struct BlankCanvasPrototype: View {
         SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        // Let the blob breathe for a beat as the fil "forms", then return to the blank canvas.
+        // Let the plopped blob hold for a beat as the fil "forms", then fade cleanly away.
         try? await Task.sleep(for: .milliseconds(650))
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
+        withAnimation(.easeOut(duration: 0.4)) { phase = .idle }
     }
 }
