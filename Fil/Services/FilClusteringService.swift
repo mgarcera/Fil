@@ -26,6 +26,19 @@ struct FilCluster: Sendable, Identifiable {
     let filIDs: [UUID]   // newest-first, mirroring the input order
 }
 
+/// Which engine produced a grouping — surfaced so a silent fallback can never masquerade as the
+/// real (LLM) result during iteration.
+enum FilClusteringEngine: String, Sendable {
+    case model        // on-device LLM — the real kind-of-thought grouping
+    case embeddings   // topical similarity fallback (LLM unavailable/failed)
+    case keyword      // deterministic keyword fallback (no ML available)
+}
+
+struct FilClusteringResult: Sendable {
+    let clusters: [FilCluster]
+    let engine: FilClusteringEngine
+}
+
 // MARK: - Emergent LLM grouping (guided generation)
 
 @Generable(description: "A grouping of a person's short personal notes by the kind of thinking each note is")
@@ -67,13 +80,14 @@ actor FilClusteringService {
     /// Smaller changes reuse the cached grouping so themes don't reshuffle on every new fil.
     private var lastGrouping: [FilCluster] = []
     private var lastGroupingIDs: Set<UUID> = []
+    private var lastEngine: FilClusteringEngine = .keyword
     private let recomputeThreshold = 4
 
     private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "clustering")
 
     /// Produces theme clusters for the given fils, newest-first inputs preserved within each cluster.
-    func clusters(for inputs: [FilClusterInput]) async -> [FilCluster] {
-        guard !inputs.isEmpty else { return [] }
+    func clusters(for inputs: [FilClusterInput]) async -> FilClusteringResult {
+        guard !inputs.isEmpty else { return FilClusteringResult(clusters: [], engine: lastEngine) }
 
         // Reuse the cached grouping unless the note set has changed past the threshold — keeps themes
         // stable across new fils and avoids re-running the engine (and its non-determinism) constantly.
@@ -82,34 +96,40 @@ actor FilClusteringService {
             let changed = currentIDs.symmetricDifference(lastGroupingIDs).count
             if changed < recomputeThreshold {
                 let reconciled = reconcile(lastGrouping, with: inputs)
-                log.notice("clusters(\(inputs.count, privacy: .public) fils): reusing cached grouping (Δ\(changed, privacy: .public))")
-                return reconciled
+                log.notice("clusters(\(inputs.count, privacy: .public) fils): reusing cached grouping (Δ\(changed, privacy: .public), \(self.lastEngine.rawValue, privacy: .public))")
+                return FilClusteringResult(clusters: reconciled, engine: lastEngine)
             }
         }
 
         // Tiered: on-device LLM (groups by *kind of thought*, the real goal) → embeddings (topical
         // similarity) → deterministic keyword grouping. Each tier degrades gracefully to the next.
         let result: [FilCluster]
+        let engine: FilClusteringEngine
         do {
             if let grouped = try await llmGrouping(inputs) {
                 result = grouped
+                engine = .model
             } else if let vectors = await embed(inputs) {
                 result = semanticClusters(inputs, vectors: meanCentered(vectors))
+                engine = .embeddings
             } else {
                 result = keywordFallback(inputs)
+                engine = .keyword
             }
         } catch {
             // Cancelled mid-run (e.g. the prototype was closed). Do NOT fall back to embeddings and do
             // NOT cache — a cancellation must never poison the cache with a worse grouping. Return the
             // prior grouping if we have one so nothing flashes; next open recomputes cleanly.
             log.notice("grouping cancelled — keeping prior grouping, not caching")
-            return lastGrouping.isEmpty ? keywordFallback(inputs) : reconcile(lastGrouping, with: inputs)
+            let salvaged = lastGrouping.isEmpty ? keywordFallback(inputs) : reconcile(lastGrouping, with: inputs)
+            return FilClusteringResult(clusters: salvaged, engine: lastGrouping.isEmpty ? .keyword : lastEngine)
         }
 
         lastGrouping = result
         lastGroupingIDs = currentIDs
-        log.notice("clusters(\(inputs.count, privacy: .public) fils): \(result.map { "\($0.name)×\($0.filIDs.count)" }.joined(separator: ", "), privacy: .public)")
-        return result
+        lastEngine = engine
+        log.notice("clusters(\(inputs.count, privacy: .public) fils, \(engine.rawValue, privacy: .public)): \(result.map { "\($0.name)×\($0.filIDs.count)" }.joined(separator: ", "), privacy: .public)")
+        return FilClusteringResult(clusters: result, engine: engine)
     }
 
     /// Applies a cached grouping to the current fils without re-running the engine: drops fils that
@@ -143,10 +163,10 @@ actor FilClusteringService {
         different topics can be the same kind of thought.
 
         Examples of the distinctions to draw:
-        - "i'm in love and things are going well" + "great day for new music" → a light, good-feeling check-in
+        - "i'm in love and things are going well" + "great day for new music" → self check ins
         - "feeling stressed but i'll figure it out" + "where do i even fit" → uncertainty and searching
-        - "remember how small i am, let magic strike" → a quiet philosophical reflection
-        - "look up alice walker's books" + "invisible cities" → things to read or explore later
+        - "remember how small i am" → inside thoughts
+        - "look up alice walker's books" → things to explore
         - "respond to dave" + "plan the rooftop party" → things to do
 
         Notice how good feelings, anxious feelings, and philosophical reflections are SEPARATE kinds,

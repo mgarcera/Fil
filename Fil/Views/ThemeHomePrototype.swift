@@ -13,6 +13,7 @@ struct ThemeHomePrototype: View {
 
     @State private var selectedNote: Note?
     @State private var clusters: [FilCluster] = []
+    @State private var engine: FilClusteringEngine = .model
     @State private var hasComputed = false
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
@@ -62,19 +63,35 @@ struct ThemeHomePrototype: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("themes")
-                .font(Theme.dmSans(24, weight: .bold))
-                .foregroundStyle(Theme.primaryText)
-            Text("prototype")
-                .font(Theme.dmMono(11))
-                .foregroundStyle(Theme.tertiaryText)
-            Spacer()
-            Button("close") { dismiss() }
-                .font(Theme.dmSans(14, weight: .semibold))
-                .foregroundStyle(Theme.secondaryText)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("themes")
+                    .font(Theme.dmSans(24, weight: .bold))
+                    .foregroundStyle(Theme.primaryText)
+                Text("prototype")
+                    .font(Theme.dmMono(11))
+                    .foregroundStyle(Theme.tertiaryText)
+                Spacer()
+                Button("close") { dismiss() }
+                    .font(Theme.dmSans(14, weight: .semibold))
+                    .foregroundStyle(Theme.secondaryText)
+            }
+            if hasComputed {
+                Text(engineLabel)
+                    .font(Theme.dmMono(10))
+                    .foregroundStyle(engine == .model ? Theme.tertiaryText : Color.orange)
+            }
         }
         .padding(.vertical, 8)
+    }
+
+    /// So a silent fallback can never be mistaken for the real LLM grouping while iterating.
+    private var engineLabel: String {
+        switch engine {
+        case .model:      return "grouped by on-device model"
+        case .embeddings: return "⚠ model unavailable — rough grouping (similarity)"
+        case .keyword:    return "⚠ model unavailable — rough grouping (keyword)"
+        }
     }
 
     @ViewBuilder
@@ -121,16 +138,18 @@ struct ThemeHomePrototype: View {
         let inputs = textFils.map { note in
             FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note))
         }
-        var result = await FilClusteringService.shared.clusters(for: inputs)
+        let outcome = await FilClusteringService.shared.clusters(for: inputs)
+        var sections = outcome.clusters
 
         if !linkFils.isEmpty {
-            result.append(FilCluster(name: "links", filIDs: linkFils.map(\.uuid)))
+            sections.append(FilCluster(name: "links", filIDs: linkFils.map(\.uuid)))
         }
         if !photoFils.isEmpty {
-            result.append(FilCluster(name: "photos", filIDs: photoFils.map(\.uuid)))
+            sections.append(FilCluster(name: "photos", filIDs: photoFils.map(\.uuid)))
         }
 
-        clusters = result
+        clusters = sections
+        engine = outcome.engine
         hasComputed = true
     }
 
