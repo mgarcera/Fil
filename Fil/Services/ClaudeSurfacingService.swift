@@ -31,7 +31,7 @@ actor ClaudeSurfacingService {
         }
     }
 
-    private let model = "claude-sonnet-4-6"
+    private let model = "claude-haiku-4-5"
     private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
     private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "claude-spike")
 
@@ -55,13 +55,19 @@ actor ClaudeSurfacingService {
             Respond with ONLY a JSON object, no prose or code fences:
             {"summary": "...", "relevant": [numbers]}
             """
-        let userMessage = "Query: \(query)\n\nNotes:\n\(numbered)"
-
+        // Cache the stable prefix (the fil corpus); the query varies and trails after the breakpoint,
+        // so repeat queries within the TTL read the corpus from cache at 0.1x. (Only engages once the
+        // prefix clears the model's minimum cacheable length — 4,096 tokens for Haiku.)
         let requestBody = RequestBody(
             model: model,
             max_tokens: 800,
             system: system,
-            messages: [.init(role: "user", content: userMessage)]
+            messages: [
+                Message(role: "user", content: [
+                    ContentPart(text: "Notes:\n\(numbered)", cache: true),
+                    ContentPart(text: "Query: \(query)")
+                ])
+            ]
         )
 
         var request = URLRequest(url: endpoint)
@@ -89,7 +95,8 @@ actor ClaudeSurfacingService {
             let index = number - 1
             return fils.indices.contains(index) ? fils[index].id : nil
         }
-        log.notice("claude surface(\"\(query, privacy: .public)\"): \(ids.count, privacy: .public) fils")
+        let usage = decoded.usage
+        log.notice("claude surface(\"\(query, privacy: .public)\"): \(ids.count, privacy: .public) fils | in \(usage?.input_tokens ?? 0, privacy: .public) out \(usage?.output_tokens ?? 0, privacy: .public) cacheWrite \(usage?.cache_creation_input_tokens ?? 0, privacy: .public) cacheRead \(usage?.cache_read_input_tokens ?? 0, privacy: .public)")
         return Surfacing(summary: parsed.summary, relevantIDs: ids)
     }
 
@@ -115,14 +122,36 @@ actor ClaudeSurfacingService {
     }
     private struct Message: Encodable {
         let role: String
-        let content: String
+        let content: [ContentPart]
     }
+    private struct ContentPart: Encodable {
+        let type: String
+        let text: String
+        let cacheControl: CacheControl?
+
+        enum CodingKeys: String, CodingKey { case type, text, cacheControl = "cache_control" }
+
+        init(text: String, cache: Bool = false) {
+            self.type = "text"
+            self.text = text
+            self.cacheControl = cache ? CacheControl() : nil
+        }
+    }
+    private struct CacheControl: Encodable { let type = "ephemeral" }
+
     private struct APIResponse: Decodable {
         let content: [ContentBlock]
+        let usage: Usage?
     }
     private struct ContentBlock: Decodable {
         let type: String
         let text: String?
+    }
+    private struct Usage: Decodable {
+        let input_tokens: Int?
+        let output_tokens: Int?
+        let cache_creation_input_tokens: Int?
+        let cache_read_input_tokens: Int?
     }
     private struct Parsed: Decodable {
         let summary: String
