@@ -2,8 +2,8 @@ import SwiftUI
 import SwiftData
 
 /// TEMPORARY prototype — reimagines the home as theme-grouped sections instead of the day timeline:
-/// a vertical stack of named clusters, each surfacing its open to-dos up top with the fil blobs
-/// tucked below (minimized; tap the header to reveal). Theme is the spine, newest-first within.
+/// a vertical stack of named clusters, each an always-open grid of small fil blobs. Theme is the
+/// spine, newest-first within.
 ///
 /// Clusters are MOCK (stable UUID hash into fixed buckets) so we can verdict the *feel* before
 /// building the real on-device semantic clustering. Delete this file + its ContentView entry point
@@ -11,11 +11,8 @@ import SwiftData
 struct ThemeHomePrototype: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
 
     @State private var selectedNote: Note?
-    /// Themes whose fil grid is revealed. Empty by default → fils stay minimized.
-    @State private var expanded: Set<String> = []
 
     private struct MockTheme: Identifiable {
         let id = UUID()
@@ -28,13 +25,6 @@ struct ThemeHomePrototype: View {
         .init(name: "people i love"),
         .init(name: "everything else")
     ]
-
-    private struct ThemeTodo: Identifiable {
-        let id: UUID
-        let note: Note
-        let index: Int
-        let text: String
-    }
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
 
@@ -82,50 +72,18 @@ struct ThemeHomePrototype: View {
     private func section(for theme: MockTheme) -> some View {
         let fils = fils(in: theme)
         if !fils.isEmpty {
-            let isExpanded = expanded.contains(theme.name)
-            let todos = openTodos(in: fils)
+            VStack(alignment: .leading, spacing: 14) {
+                Text(theme.name)
+                    .font(Theme.dmSans(18, weight: .bold))
+                    .foregroundStyle(Theme.primaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 12) {
-                Button {
-                    SoundscapeManager.shared.playCollapsingSound()
-                    withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
-                        if isExpanded { expanded.remove(theme.name) } else { expanded.insert(theme.name) }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Text(theme.name)
-                            .font(Theme.dmSans(18, weight: .bold))
-                            .foregroundStyle(Theme.primaryText)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(Theme.tertiaryText)
-                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-
-                // The theme's open to-dos, surfaced up top.
-                if !todos.isEmpty {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(todos) { todo in
-                            TodoRowContent(text: todo.text, isCompleted: false) {
-                                toggle(todo)
-                            }
+                LazyVGrid(columns: columns, spacing: 26) {
+                    ForEach(fils, id: \.uuid) { note in
+                        Button { selectedNote = note } label: {
+                            NoteCardView(note: note)
                         }
-                    }
-                }
-
-                // The fils themselves — minimized until the header is tapped.
-                if isExpanded {
-                    LazyVGrid(columns: columns, spacing: 26) {
-                        ForEach(fils, id: \.uuid) { note in
-                            Button { selectedNote = note } label: {
-                                NoteCardView(note: note)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -143,21 +101,5 @@ struct ThemeHomePrototype: View {
     private func bucket(for note: Note) -> Int {
         let sum = note.uuid.uuidString.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
         return sum % themes.count
-    }
-
-    private func openTodos(in fils: [Note]) -> [ThemeTodo] {
-        fils.flatMap { note in
-            note.todoRowItems
-                .filter { !$0.done }
-                .map { ThemeTodo(id: $0.id, note: note, index: $0.index, text: $0.text) }
-        }
-    }
-
-    private func toggle(_ todo: ThemeTodo) {
-        todo.note.normalizeCompletedTodos()
-        guard todo.note.completedTodos.indices.contains(todo.index) else { return }
-        SoundscapeManager.shared.playTodoArticleToggleSound()
-        withAnimation(.snappy) { todo.note.completedTodos[todo.index].toggle() }
-        modelContext.saveOrLog()
     }
 }
