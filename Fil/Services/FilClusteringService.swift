@@ -177,8 +177,8 @@ actor FilClusteringService {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty, !inputs.isEmpty else { return FilRetrievalResult(filIDs: [], engine: .keyword) }
 
-        let language = dominantLanguage(inputs)
-        if let model = await loadContextual(language),
+        if let model = await loadContextual(dominantLanguage(inputs)),
+           case let language = contextualLanguage ?? .english,
            let queryVector = pooledVector(model, text: q, language: language) {
 
             var ids: [UUID] = []
@@ -339,8 +339,9 @@ actor FilClusteringService {
     // MARK: - Embedding
 
     private func embed(_ inputs: [FilClusterInput]) async -> [UUID: [Double]]? {
-        let language = dominantLanguage(inputs)
-        guard let model = await loadContextual(language) else { return nil }
+        guard let model = await loadContextual(dominantLanguage(inputs)) else { return nil }
+        // Use the language the model actually loaded for (may have fallen back to english).
+        let language = contextualLanguage ?? .english
 
         var vectors: [UUID: [Double]] = [:]
         for input in inputs {
@@ -363,6 +364,13 @@ actor FilClusteringService {
         if let contextual, contextualLanguage == language { return contextual }
 
         guard let model = NLContextualEmbedding(language: language) else {
+            // NLLanguageRecognizer sometimes misdetects short English text as an uncommon language
+            // (e.g. Catalan "ca") that has no contextual model. English does, and the corpus is
+            // almost always English — fall back to it before giving up on embeddings.
+            if language != .english {
+                log.notice("no contextual embedding model for \(language.rawValue, privacy: .public) — falling back to english")
+                return await loadContextual(.english)
+            }
             log.notice("no contextual embedding model for \(language.rawValue, privacy: .public) — keyword fallback")
             return nil
         }
