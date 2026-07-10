@@ -51,15 +51,19 @@ actor ClaudeSurfacingService {
             best first. Be selective; omit notes that don't truly relate. If none relate, return an \
             empty list.
 
-            2. Reflect back what they've been thinking about this, the way a perceptive friend would, \
-            not an analyst. 2 to 4 sentences, second person, lowercase, in their own voice. Warm, \
-            plain, and specific. Ground it ONLY in the notes; invent nothing.
+            2. Reflect back what they've been circling, the way someone who knows them well would say \
+            it. 2 to 4 sentences, second person, in their own voice. Warm and a little tender, but \
+            grounded in what's actually in the notes. Notice the feeling underneath, not just the \
+            facts. Invent nothing.
 
             Voice rules:
-            - Sound human, not like a summary or a report. Avoid clinical framing like "there's a \
-            tension between", "navigating with intention", or "mixed with practical insights about".
+            - Sound like a caring friend who gets them, not a summary, a report, or a therapist. \
+            Avoid clinical framing ("there's a tension between", "navigating with intention", "mixed \
+            with practical insights about") and never give advice or nudges.
+            - Warmth over neutrality: it's okay to sound glad, gentle, or moved by what you see.
             - Never use em dashes. Use commas, periods, or "and".
             - Contractions are good. Vary the rhythm; short sentences are fine.
+            - Write in natural sentence case (the app handles lowercasing).
 
             Respond with ONLY a JSON object, no prose or code fences:
             {"summary": "...", "relevant": [numbers]}

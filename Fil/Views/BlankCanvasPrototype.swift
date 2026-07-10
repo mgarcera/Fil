@@ -201,7 +201,7 @@ struct BlankCanvasPrototype: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         if !summary.isEmpty {
-                            Text(summary)
+                            Text(prefersLowercase ? summary.lowercased() : summary)
                                 .font(Theme.dmSans(16, weight: .medium))
                                 .foregroundStyle(Theme.primaryText)
                                 .fixedSize(horizontal: false, vertical: true)
