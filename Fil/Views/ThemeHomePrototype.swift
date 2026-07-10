@@ -13,6 +13,7 @@ struct ThemeHomePrototype: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedNote: Note?
+    @AppStorage("prefersLowercase") private var prefersLowercase = false
 
     private struct MockTheme: Identifiable {
         let id = UUID()
@@ -70,19 +71,27 @@ struct ThemeHomePrototype: View {
     private func section(for theme: MockTheme) -> some View {
         let fils = fils(in: theme)
         if !fils.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text(theme.name)
                     .font(Theme.dmSans(18, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Fils at their collapsed dot size (same as the day grid's collapsed row).
-                FlowLayout(spacing: 10, lineSpacing: 10) {
+                // Each fil as a small blob + its title, so you can tell them apart at a glance.
+                VStack(spacing: 10) {
                     ForEach(fils, id: \.uuid) { note in
                         Button { selectedNote = note } label: {
-                            CollapsedBlobDotShape(seed: note.blobDotSeed)
-                                .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                                .frame(width: 24, height: 24)
+                            HStack(spacing: 12) {
+                                NoteBlobShape(seed: note.blobShapeSeed)
+                                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                                    .frame(width: 24, height: 24)
+                                Text(displayTitle(note))
+                                    .font(Theme.dmSans(15, weight: .medium))
+                                    .foregroundStyle(Theme.primaryText)
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -102,5 +111,11 @@ struct ThemeHomePrototype: View {
     private func bucket(for note: Note) -> Int {
         let sum = note.uuid.uuidString.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
         return sum % themes.count
+    }
+
+    private func displayTitle(_ note: Note) -> String {
+        let trimmed = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = trimmed.isEmpty ? "fil" : trimmed
+        return prefersLowercase ? title.lowercased() : title
     }
 }
