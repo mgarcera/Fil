@@ -14,12 +14,14 @@ struct BlankCanvasPrototype: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    private enum Phase { case idle, composing, creating }
+    private enum Phase { case idle, composing, creating, formed }
 
     @State private var phase: Phase = .idle
     @State private var text = ""
     /// The just-made fil's gradient, so the blob that plops in wears the fil's own colors.
     @State private var creatingGradient: [Color] = Theme.accentGradientColors
+    /// The just-made fil, so the gooey creating blob can settle into its final randomized blob.
+    @State private var formedNote: Note?
     @FocusState private var fieldFocused: Bool
 
     var body: some View {
@@ -32,6 +34,7 @@ struct BlankCanvasPrototype: View {
             case .idle:      idleHint
             case .composing: composer
             case .creating:  creatingBlob
+            case .formed:    formedBlob
             }
 
             closeButton
@@ -91,11 +94,24 @@ struct BlankCanvasPrototype: View {
     private var creatingBlob: some View {
         CreatingFilBlobView(gradientColors: creatingGradient)
             .frame(width: 130, height: 130)
-            // Plop in from small (bouncy spring, set in createFil), then fade cleanly away.
+            // Plop in from small (bouncy spring, set in createFil); on removal it crossfades out as
+            // the settled blob crossfades in — the gooey blob "turning into" the fil.
             .transition(.asymmetric(
                 insertion: .scale(scale: 0.2).combined(with: .opacity),
                 removal: .opacity
             ))
+    }
+
+    /// The fil's final, settled randomized blob — same shape/gradient the grid card shows. It
+    /// crossfades in over the gooey creating blob (the "blob turns into a fil" morph), holds, fades.
+    @ViewBuilder
+    private var formedBlob: some View {
+        if let note = formedNote {
+            NoteBlobShape(seed: note.blobShapeSeed)
+                .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                .frame(width: 130, height: 130)
+                .transition(.opacity)
+        }
     }
 
     private var closeButton: some View {
@@ -130,7 +146,7 @@ struct BlankCanvasPrototype: View {
             if !hasText {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
             }
-        case .creating:
+        case .creating, .formed:
             break
         }
     }
@@ -164,8 +180,11 @@ struct BlankCanvasPrototype: View {
         SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        // Let the plopped blob hold for a beat as the fil "forms", then fade cleanly away.
-        try? await Task.sleep(for: .milliseconds(650))
+        // The gooey blob settles into the fil's final randomized blob (crossfade morph), holds a
+        // beat, then fades cleanly away to the blank canvas.
+        formedNote = note
+        withAnimation(.smooth(duration: 0.45)) { phase = .formed }
+        try? await Task.sleep(for: .milliseconds(750))
         withAnimation(.easeOut(duration: 0.4)) { phase = .idle }
     }
 }
