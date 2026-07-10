@@ -90,12 +90,20 @@ actor FilClusteringService {
         // Tiered: on-device LLM (groups by *kind of thought*, the real goal) → embeddings (topical
         // similarity) → deterministic keyword grouping. Each tier degrades gracefully to the next.
         let result: [FilCluster]
-        if let grouped = await llmGrouping(inputs) {
-            result = grouped
-        } else if let vectors = await embed(inputs) {
-            result = semanticClusters(inputs, vectors: meanCentered(vectors))
-        } else {
-            result = keywordFallback(inputs)
+        do {
+            if let grouped = try await llmGrouping(inputs) {
+                result = grouped
+            } else if let vectors = await embed(inputs) {
+                result = semanticClusters(inputs, vectors: meanCentered(vectors))
+            } else {
+                result = keywordFallback(inputs)
+            }
+        } catch {
+            // Cancelled mid-run (e.g. the prototype was closed). Do NOT fall back to embeddings and do
+            // NOT cache — a cancellation must never poison the cache with a worse grouping. Return the
+            // prior grouping if we have one so nothing flashes; next open recomputes cleanly.
+            log.notice("grouping cancelled — keeping prior grouping, not caching")
+            return lastGrouping.isEmpty ? keywordFallback(inputs) : reconcile(lastGrouping, with: inputs)
         }
 
         lastGrouping = result
@@ -150,7 +158,8 @@ actor FilClusteringService {
 
     /// Emergent grouping via the on-device model: it reads the notes and invents the groups + names.
     /// Returns nil (→ embedding fallback) when Apple Intelligence is unavailable or generation fails.
-    private func llmGrouping(_ inputs: [FilClusterInput]) async -> [FilCluster]? {
+    /// Rethrows `CancellationError` so the caller can skip the fallback and avoid caching a partial run.
+    private func llmGrouping(_ inputs: [FilClusterInput]) async throws -> [FilCluster]? {
         guard SystemLanguageModel.default.isAvailable else {
             log.notice("on-device model unavailable — embedding/keyword fallback")
             return nil
@@ -168,6 +177,8 @@ actor FilClusteringService {
             )
             return mapGrouping(response.content, inputs: inputs)
         } catch {
+            // Cancellation is not a failure to fall back from — propagate it so the run is discarded.
+            if error is CancellationError || Task.isCancelled { throw CancellationError() }
             log.notice("LLM grouping failed (\(error.localizedDescription, privacy: .public)) — embedding fallback")
             return nil
         }

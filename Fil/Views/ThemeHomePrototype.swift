@@ -28,10 +28,13 @@ struct ThemeHomePrototype: View {
                 VStack(alignment: .leading, spacing: 8) {
                     header
                     if !hasComputed {
-                        Text("reading your fils…")
-                            .font(Theme.dmSans(15))
-                            .foregroundStyle(Theme.secondaryText)
-                            .padding(.top, 24)
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("reading your fils…")
+                                .font(Theme.dmSans(15))
+                                .foregroundStyle(Theme.secondaryText)
+                        }
+                        .padding(.top, 24)
                     } else if clusters.isEmpty {
                         Text("keep filling — themes emerge as you go.")
                             .font(Theme.dmSans(15))
@@ -138,9 +141,9 @@ struct ThemeHomePrototype: View {
         let title = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         switch (title.isEmpty, body.isEmpty) {
-        case (false, false): return "\(title): \(String(body.prefix(140)))"
+        case (false, false): return "\(title): \(String(body.prefix(80)))"
         case (false, true):  return title
-        case (true, false):  return String(body.prefix(140))
+        case (true, false):  return String(body.prefix(80))
         case (true, true):   return "fil"
         }
     }
