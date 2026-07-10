@@ -1,4 +1,5 @@
 import Foundation
+import FoundationModels
 import NaturalLanguage
 import OSLog
 
@@ -23,6 +24,22 @@ struct FilCluster: Sendable, Identifiable {
     let id = UUID()
     let name: String
     let filIDs: [UUID]   // newest-first, mirroring the input order
+}
+
+// MARK: - Emergent LLM grouping (guided generation)
+
+@Generable(description: "A grouping of a person's short personal notes by the kind of thinking each note is")
+struct FilGroupingResponse {
+    @Guide(description: "The groups. Every note number belongs to exactly one group.", .count(2...7))
+    var groups: [FilGroupResult]
+}
+
+@Generable
+struct FilGroupResult {
+    @Guide(description: "A short, lowercase, human name for the kind of thought or feeling these notes share — at most three words. Not a topic label.")
+    var name: String
+    @Guide(description: "The numbers of the notes that belong in this group")
+    var noteNumbers: [Int]
 }
 
 actor FilClusteringService {
@@ -51,15 +68,88 @@ actor FilClusteringService {
     func clusters(for inputs: [FilClusterInput]) async -> [FilCluster] {
         guard !inputs.isEmpty else { return [] }
 
+        // Tiered: on-device LLM (groups by *kind of thought*, the real goal) → embeddings (topical
+        // similarity) → deterministic keyword grouping. Each tier degrades gracefully to the next.
         let result: [FilCluster]
-        if let vectors = await embed(inputs) {
+        if let grouped = await llmGrouping(inputs) {
+            result = grouped
+        } else if let vectors = await embed(inputs) {
             result = semanticClusters(inputs, vectors: meanCentered(vectors))
         } else {
-            result = keywordFallback(inputs)   // no embeddings for this language → deterministic grouping
+            result = keywordFallback(inputs)
         }
 
         log.notice("clusters(\(inputs.count, privacy: .public) fils): \(result.map { "\($0.name)×\($0.filIDs.count)" }.joined(separator: ", "), privacy: .public)")
         return result
+    }
+
+    // MARK: - LLM grouping
+
+    private static let groupingInstructions = """
+        You organize a person's short personal notes by the KIND of thinking each one is —
+        the mood, stance, or purpose behind it — not by its topic.
+
+        Notes that are different topics can still be the same kind of thought. For example:
+        light emotional check-ins belong together even when they are about different things;
+        quick things-to-look-up belong together; reflective inner questions belong together;
+        plans and to-dos belong together; passing observations belong together.
+
+        Read every note, then sort each one into exactly one group. Give each group a short,
+        lowercase, human name for that kind of thought (for example: "moods", "inner thoughts",
+        "things to look up", "observations", "plans"). Prefer a handful of meaningful groups over
+        many tiny ones. Never leave a note out.
+        """
+
+    /// Emergent grouping via the on-device model: it reads the notes and invents the groups + names.
+    /// Returns nil (→ embedding fallback) when Apple Intelligence is unavailable or generation fails.
+    private func llmGrouping(_ inputs: [FilClusterInput]) async -> [FilCluster]? {
+        guard SystemLanguageModel.default.isAvailable else {
+            log.notice("on-device model unavailable — embedding/keyword fallback")
+            return nil
+        }
+
+        let numbered = inputs.enumerated()
+            .map { "\($0.offset + 1). \($0.element.text)" }
+            .joined(separator: "\n")
+
+        let session = LanguageModelSession(instructions: Self.groupingInstructions)
+        do {
+            let response = try await session.respond(
+                to: Prompt { numbered },
+                generating: FilGroupingResponse.self
+            )
+            return mapGrouping(response.content, inputs: inputs)
+        } catch {
+            log.notice("LLM grouping failed (\(error.localizedDescription, privacy: .public)) — embedding fallback")
+            return nil
+        }
+    }
+
+    /// Maps the model's note-number groups back to fils, defending against hallucinated, duplicate, or
+    /// out-of-range numbers. Any note the model didn't place falls into "everything else".
+    private func mapGrouping(_ response: FilGroupingResponse, inputs: [FilClusterInput]) -> [FilCluster] {
+        var assigned = Set<Int>()
+        var clusters: [FilCluster] = []
+
+        for group in response.groups {
+            var indices: [Int] = []
+            for number in group.noteNumbers {
+                let index = number - 1
+                guard inputs.indices.contains(index), !assigned.contains(index) else { continue }
+                assigned.insert(index)
+                indices.append(index)
+            }
+            guard !indices.isEmpty else { continue }
+            indices.sort()   // input order is newest-first, so keep it that way within the group
+            let name = group.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            clusters.append(FilCluster(name: name.isEmpty ? "thoughts" : name, filIDs: indices.map { inputs[$0].id }))
+        }
+
+        let leftover = inputs.indices.filter { !assigned.contains($0) }
+        if !leftover.isEmpty {
+            clusters.append(FilCluster(name: "everything else", filIDs: leftover.map { inputs[$0].id }))
+        }
+        return clusters
     }
 
     // MARK: - Embedding

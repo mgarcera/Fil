@@ -27,7 +27,12 @@ struct ThemeHomePrototype: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     header
-                    if hasComputed && clusters.isEmpty {
+                    if !hasComputed {
+                        Text("reading your fils…")
+                            .font(Theme.dmSans(15))
+                            .foregroundStyle(Theme.secondaryText)
+                            .padding(.top, 24)
+                    } else if clusters.isEmpty {
                         Text("keep filling — themes emerge as you go.")
                             .font(Theme.dmSans(15))
                             .foregroundStyle(Theme.secondaryText)
@@ -104,23 +109,40 @@ struct ThemeHomePrototype: View {
     }
 
     private func recomputeClusters() async {
-        let inputs = notes.map { note in
-            FilClusterInput(id: note.uuid, text: embedText(note), keyword: displayTitle(note))
+        // Links and photos are identity-based, not meaning-based — they get their own fixed sections
+        // and are excluded from the semantic grouping so they don't pollute the note themes.
+        let linkFils = notes.filter { $0.isLinkFil }
+        let photoFils = notes.filter { !$0.isLinkFil && $0.isImageFil }
+        let textFils = notes.filter { !$0.isLinkFil && !$0.isImageFil }
+
+        let inputs = textFils.map { note in
+            FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note))
         }
-        let result = await FilClusteringService.shared.clusters(for: inputs)
+        var result = await FilClusteringService.shared.clusters(for: inputs)
+
+        if !linkFils.isEmpty {
+            result.append(FilCluster(name: "links", filIDs: linkFils.map(\.uuid)))
+        }
+        if !photoFils.isEmpty {
+            result.append(FilCluster(name: "photos", filIDs: photoFils.map(\.uuid)))
+        }
+
         clusters = result
         hasComputed = true
     }
 
-    /// Text handed to the embedder: the fil's distilled topic (title/keyword), not the full article.
-    /// LLM-generated transcripts are long and full of generic connective prose, which mean-pools into
-    /// mushy look-alike vectors; the title is the crisp topical signal that actually separates themes.
-    private func embedText(_ note: Note) -> String {
-        for candidate in [note.title, note.keyword, note.transcript] {
-            let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !trimmed.isEmpty { return trimmed }
+    /// Text handed to the grouping model: the fil's title plus a short content snippet, so the model
+    /// can read the note's tone and stance (which is what the "kind of thought" grouping keys on),
+    /// not just a bare topic label.
+    private func clusterText(_ note: Note) -> String {
+        let title = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch (title.isEmpty, body.isEmpty) {
+        case (false, false): return "\(title): \(String(body.prefix(140)))"
+        case (false, true):  return title
+        case (true, false):  return String(body.prefix(140))
+        case (true, true):   return "fil"
         }
-        return note.displayBadgeText
     }
 
     private func displayTitle(_ note: Note) -> String {
