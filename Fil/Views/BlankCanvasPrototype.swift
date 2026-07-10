@@ -28,12 +28,16 @@ struct BlankCanvasPrototype: View {
     /// The just-made fil, so the gooey creating blob can settle into its final randomized blob.
     @State private var formedNote: Note?
 
-    // Surfacing
+    // Surfacing (dev-key Claude spike)
     @State private var query = ""
     @State private var results: [Note] = []
-    @State private var retrievalEngine: FilClusteringEngine = .embeddings
+    @State private var summary = ""
+    @State private var surfaceError: String?
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
+    @State private var showKeyEntry = false
+    /// TEMP: local-only Claude key for the spike. Never committed, never shipped.
+    @AppStorage("claudeDevKey") private var devKey = ""
 
     @FocusState private var fieldFocused: Bool
     @FocusState private var queryFocused: Bool
@@ -65,6 +69,7 @@ struct BlankCanvasPrototype: View {
                 .presentationDetents([.fraction(0.6), .large])
                 .presentationBackground(Theme.background)
         }
+        .sheet(isPresented: $showKeyEntry) { keyEntrySheet }
     }
 
     // MARK: - Capture states
@@ -186,20 +191,34 @@ struct BlankCanvasPrototype: View {
                 }
                 .padding(.top, 32)
                 .frame(maxWidth: .infinity)
-            } else if results.isEmpty {
-                Text("nothing surfaced for “\(query)”")
+            } else if let surfaceError {
+                Text(surfaceError)
                     .font(Theme.dmSans(15))
-                    .foregroundStyle(Theme.secondaryText)
+                    .foregroundStyle(.orange)
                     .padding(.top, 32)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ScrollView {
-                    VStack(spacing: 10) {
-                        ForEach(results, id: \.uuid) { note in
-                            resultRow(note)
+                    VStack(alignment: .leading, spacing: 16) {
+                        if !summary.isEmpty {
+                            Text(summary)
+                                .font(Theme.dmSans(16, weight: .medium))
+                                .foregroundStyle(Theme.primaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        if results.isEmpty {
+                            Text("nothing surfaced for “\(query)”")
+                                .font(Theme.dmSans(15))
+                                .foregroundStyle(Theme.secondaryText)
+                        } else {
+                            VStack(spacing: 10) {
+                                ForEach(results, id: \.uuid) { note in
+                                    resultRow(note)
+                                }
+                            }
                         }
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 12)
                     .padding(.bottom, 80)
                 }
                 .scrollIndicators(.hidden)
@@ -217,11 +236,10 @@ struct BlankCanvasPrototype: View {
             Text(query)
                 .font(Theme.dmSans(24, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
-            // TEMP validation tag — shows whether retrieval used embeddings or the keyword fallback.
-            if !isRetrieving {
-                Text(retrievalEngine == .embeddings ? "· \(results.count)" : "· \(results.count) · keyword")
+            if !isRetrieving && surfaceError == nil && !results.isEmpty {
+                Text("· \(results.count)")
                     .font(Theme.dmMono(11))
-                    .foregroundStyle(retrievalEngine == .embeddings ? Theme.tertiaryText : Color.orange)
+                    .foregroundStyle(Theme.tertiaryText)
             }
             Spacer()
             Button("new") {
@@ -232,6 +250,28 @@ struct BlankCanvasPrototype: View {
             .font(Theme.dmSans(14, weight: .semibold))
             .foregroundStyle(Theme.secondaryText)
         }
+    }
+
+    /// TEMP dev-key entry for the Claude spike. The key is stored only on-device (AppStorage).
+    private var keyEntrySheet: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("claude dev key")
+                .font(Theme.dmSans(18, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+            Text("temporary — for the surfacing spike only. stored on this device, never shipped.")
+                .font(Theme.dmSans(13))
+                .foregroundStyle(Theme.secondaryText)
+            SecureField("sk-ant-…", text: $devKey)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+            Button("done") { showKeyEntry = false }
+                .font(Theme.dmSans(15, weight: .semibold))
+            Spacer()
+        }
+        .padding(24)
+        .presentationDetents([.height(240)])
+        .presentationBackground(Theme.background)
     }
 
     private func resultRow(_ note: Note) -> some View {
@@ -254,8 +294,13 @@ struct BlankCanvasPrototype: View {
 
     private var closeButton: some View {
         VStack {
-            HStack {
+            HStack(spacing: 16) {
                 Spacer()
+                Button { showKeyEntry = true } label: {
+                    Image(systemName: devKey.isEmpty ? "key" : "key.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Theme.secondaryText)
+                }
                 Button("close") { dismiss() }
                     .font(Theme.dmSans(14, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
@@ -333,17 +378,26 @@ struct BlankCanvasPrototype: View {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
 
+        guard !devKey.isEmpty else { showKeyEntry = true; return }
+
         queryFocused = false
+        summary = ""
+        surfaceError = nil
+        results = []
         isRetrieving = true
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .results }
 
         let inputs = notes.map { note in
             FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note))
         }
-        let outcome = await FilClusteringService.shared.retrieve(query: q, from: inputs)
 
-        results = outcome.filIDs.compactMap { notesByID[$0] }
-        retrievalEngine = outcome.engine
+        do {
+            let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, apiKey: devKey)
+            summary = outcome.summary
+            results = outcome.relevantIDs.compactMap { notesByID[$0] }
+        } catch {
+            surfaceError = (error as? ClaudeSurfacingService.SurfacingError)?.errorDescription ?? error.localizedDescription
+        }
         isRetrieving = false
     }
 
