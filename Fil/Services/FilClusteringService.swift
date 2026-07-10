@@ -30,13 +30,13 @@ struct FilCluster: Sendable, Identifiable {
 
 @Generable(description: "A grouping of a person's short personal notes by the kind of thinking each note is")
 struct FilGroupingResponse {
-    @Guide(description: "The groups. Every note number belongs to exactly one group.", .count(2...7))
+    @Guide(description: "The groups. Every note number belongs to exactly one group.", .count(3...8))
     var groups: [FilGroupResult]
 }
 
 @Generable
 struct FilGroupResult {
-    @Guide(description: "A short, lowercase, human name for the kind of thought or feeling these notes share — at most three words. Not a topic label.")
+    @Guide(description: "Two to four natural lowercase words with spaces (e.g. \"quiet reflections\") naming the kind of thought or feeling these notes share. No underscores. Not a topic label.")
     var name: String
     @Guide(description: "The numbers of the notes that belong in this group")
     var noteNumbers: [Int]
@@ -142,18 +142,24 @@ actor FilClusteringService {
         the mood, stance, or purpose behind it — not by its topic. Two notes about completely
         different topics can be the same kind of thought.
 
-        Common kinds (use these when they fit, or name your own):
-        - moods & feelings — emotional check-ins about how life or the day is going
-        - inner thoughts — reflective or philosophical questions a person asks themselves
-        - things to look up — books to read, words, ideas, or people to explore later
-        - plans & to-dos — intentions, tasks, things to do
-        - observations — passing notices about the world, other people, or the day
-        - ideas — sparks, concepts, things to make or try
+        Examples of the distinctions to draw:
+        - "i'm in love and things are going well" + "great day for new music" → a light, good-feeling check-in
+        - "feeling stressed but i'll figure it out" + "where do i even fit" → uncertainty and searching
+        - "remember how small i am, let magic strike" → a quiet philosophical reflection
+        - "look up alice walker's books" + "invisible cities" → things to read or explore later
+        - "respond to dave" + "plan the rooftop party" → things to do
 
-        Sort every note into exactly one group. Make the groups genuinely distinct: do NOT put
-        most of the notes into one big vague group. If a group would hold most of the notes, split
-        it into finer, more specific kinds. Give each group a short, human name (one to three words).
-        Never leave a note out.
+        Notice how good feelings, anxious feelings, and philosophical reflections are SEPARATE kinds,
+        not one "feelings" pile. Draw distinctions at least that fine.
+
+        Rules:
+        - Sort every note into exactly one group.
+        - Aim for five to seven focused groups. No single group should hold more than about a quarter
+          of the notes — if one would, split it into finer, more specific kinds.
+        - Name each group with two to four natural words, lowercase, with spaces between them
+          (for example: "quiet reflections", "things to look up"). Never use underscores or run words
+          together.
+        - Never leave a note out.
         """
 
     /// Emergent grouping via the on-device model: it reads the notes and invents the groups + names.
@@ -200,8 +206,7 @@ actor FilClusteringService {
             }
             guard !indices.isEmpty else { continue }
             indices.sort()   // input order is newest-first, so keep it that way within the group
-            let name = group.name.trimmingCharacters(in: .whitespacesAndNewlines)
-            clusters.append(FilCluster(name: name.isEmpty ? "thoughts" : name, filIDs: indices.map { inputs[$0].id }))
+            clusters.append(FilCluster(name: cleanName(group.name), filIDs: indices.map { inputs[$0].id }))
         }
 
         let leftover = inputs.indices.filter { !assigned.contains($0) }
@@ -209,6 +214,17 @@ actor FilClusteringService {
             clusters.append(FilCluster(name: "everything else", filIDs: leftover.map { inputs[$0].id }))
         }
         return clusters
+    }
+
+    /// Turns a model-emitted label into a human name: snake_case/dashes → spaces, collapse whitespace.
+    private func cleanName(_ raw: String) -> String {
+        let spaced = raw
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        return spaced.isEmpty ? "thoughts" : spaced
     }
 
     // MARK: - Embedding
