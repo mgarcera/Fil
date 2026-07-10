@@ -18,7 +18,8 @@ final class ArticleGenerationService {
         Write one short, natural sentence — a complete independent clause, in the person's
         own voice — that captures what the note is about. Aim for about four to ten words.
 
-        Use natural punctuation (commas, dashes, question marks) so it reads as a real clause.
+        Use natural punctuation (commas, question marks) so it reads as a real clause, but never
+        use em dashes.
         Ground it in the transcript and do not invent themes or details that are not present.
         Keep it natural and specific enough to recognize the note later.
         """
@@ -85,7 +86,7 @@ final class ArticleGenerationService {
         // Titles now read as full independent clauses, so preserve the model's natural punctuation
         // (commas, dashes, question marks) instead of tokenizing them away — splitting on whitespace
         // keeps punctuation attached to each word. Just cap the length and capitalize the first letter.
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = text.withoutEmDashes.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return "" }
 
         let words = trimmed
@@ -222,4 +223,16 @@ final class ArticleGenerationService {
 private struct TranscriptAnalysis {
     let contentWords: Set<String>
     let requiresLiteralHandling: Bool
+}
+
+extension String {
+    /// Removes em dashes (—) from generated text, replacing them with a comma or space as reads
+    /// naturally. Leaves en dashes (–, used in ranges like "weber–fechner") intact.
+    var withoutEmDashes: String {
+        replacingOccurrences(of: " — ", with: ", ")
+            .replacingOccurrences(of: "—", with: ", ")
+            .replacingOccurrences(of: " ,", with: ",")
+            .replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+    }
 }

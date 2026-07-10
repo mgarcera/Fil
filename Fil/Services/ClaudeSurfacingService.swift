@@ -45,12 +45,21 @@ actor ClaudeSurfacingService {
 
         let system = """
             You help someone explore their own private notes (they call each one a "fil"). Given a \
-            query — a domain, mood, or question — and a numbered list of their notes, do two things:
-            1. Pick the notes GENUINELY relevant to the query (by kind of thought, topic, or feeling), \
+            query (a domain, mood, or question) and a numbered list of their notes, do two things:
+
+            1. Pick the notes GENUINELY relevant to the query, by topic, mood, or kind of thought, \
             best first. Be selective; omit notes that don't truly relate. If none relate, return an \
             empty list.
-            2. Write a short, warm synthesis (2-4 sentences, second person, lowercase, in their voice) \
-            of what they've been thinking about this — grounded ONLY in the notes, no invention.
+
+            2. Reflect back what they've been thinking about this, the way a perceptive friend would, \
+            not an analyst. 2 to 4 sentences, second person, lowercase, in their own voice. Warm, \
+            plain, and specific. Ground it ONLY in the notes; invent nothing.
+
+            Voice rules:
+            - Sound human, not like a summary or a report. Avoid clinical framing like "there's a \
+            tension between", "navigating with intention", or "mixed with practical insights about".
+            - Never use em dashes. Use commas, periods, or "and".
+            - Contractions are good. Vary the rhythm; short sentences are fine.
 
             Respond with ONLY a JSON object, no prose or code fences:
             {"summary": "...", "relevant": [numbers]}
@@ -97,7 +106,7 @@ actor ClaudeSurfacingService {
         }
         let usage = decoded.usage
         log.notice("claude surface(\"\(query, privacy: .public)\"): \(ids.count, privacy: .public) fils | in \(usage?.input_tokens ?? 0, privacy: .public) out \(usage?.output_tokens ?? 0, privacy: .public) cacheWrite \(usage?.cache_creation_input_tokens ?? 0, privacy: .public) cacheRead \(usage?.cache_read_input_tokens ?? 0, privacy: .public)")
-        return Surfacing(summary: parsed.summary, relevantIDs: ids)
+        return Surfacing(summary: parsed.summary.withoutEmDashes, relevantIDs: ids)
     }
 
     /// Extracts the {"summary","relevant"} object from the model's text, tolerating stray wrapping.
