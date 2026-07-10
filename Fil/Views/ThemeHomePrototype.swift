@@ -26,8 +26,6 @@ struct ThemeHomePrototype: View {
         .init(name: "everything else")
     ]
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
-
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
@@ -78,10 +76,13 @@ struct ThemeHomePrototype: View {
                     .foregroundStyle(Theme.primaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                LazyVGrid(columns: columns, spacing: 26) {
+                // Fils at their collapsed dot size (same as the day grid's collapsed row).
+                FlowLayout(spacing: 10, lineSpacing: 10) {
                     ForEach(fils, id: \.uuid) { note in
                         Button { selectedNote = note } label: {
-                            NoteCardView(note: note)
+                            CollapsedBlobDotShape(seed: note.blobDotSeed)
+                                .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                                .frame(width: 24, height: 24)
                         }
                         .buttonStyle(.plain)
                     }

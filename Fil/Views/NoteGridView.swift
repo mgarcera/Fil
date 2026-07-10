@@ -365,7 +365,7 @@ private struct DaySectionView: View {
     }()
 }
 
-private struct FlowLayout: Layout {
+struct FlowLayout: Layout {
     var spacing: CGFloat = 8
     var lineSpacing: CGFloat = 8
 
@@ -425,7 +425,7 @@ private struct FlowLayout: Layout {
     }
 }
 
-private struct CollapsedBlobDotShape: Shape {
+struct CollapsedBlobDotShape: Shape {
     let seed: Double
 
     func path(in rect: CGRect) -> Path {
@@ -488,7 +488,7 @@ private struct CollapsedBlobDotShape: Shape {
     }
 }
 
-private extension Note {
+extension Note {
     var blobDotSeed: Double {
         let scalars = uuid.uuidString.unicodeScalars
         let hash = scalars.reduce(UInt32(2166136261)) { partial, scalar in
