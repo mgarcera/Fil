@@ -112,9 +112,11 @@ struct ThemeHomePrototype: View {
         hasComputed = true
     }
 
-    /// Text handed to the embedder: the transcript, falling back to the title/keyword.
+    /// Text handed to the embedder: the fil's distilled topic (title/keyword), not the full article.
+    /// LLM-generated transcripts are long and full of generic connective prose, which mean-pools into
+    /// mushy look-alike vectors; the title is the crisp topical signal that actually separates themes.
     private func embedText(_ note: Note) -> String {
-        for candidate in [note.transcript, note.title, note.keyword] {
+        for candidate in [note.title, note.keyword, note.transcript] {
             let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty { return trimmed }
         }

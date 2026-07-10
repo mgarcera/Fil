@@ -145,30 +145,49 @@ actor FilClusteringService {
         return recognizer.dominantLanguage ?? .english
     }
 
-    // MARK: - Semantic clustering (greedy, threshold-based)
+    // MARK: - Semantic clustering (agglomerative, average-linkage)
 
     private func semanticClusters(_ inputs: [FilClusterInput], vectors: [UUID: [Double]]) -> [FilCluster] {
-        struct Bucket { var centroid: [Double]; var members: [FilClusterInput] }
-        var buckets: [Bucket] = []
+        let items = inputs.filter { vectors[$0.id] != nil }
+        guard !items.isEmpty else { return keywordFallback(inputs) }
+        let vecs = items.map { vectors[$0.id]! }
+        let n = items.count
 
-        for input in inputs {
-            guard let vector = vectors[input.id] else { continue }
-            var bestIndex = -1
-            var bestSimilarity = -1.0
-            for (index, bucket) in buckets.enumerated() {
-                let similarity = cosine(vector, bucket.centroid)
-                if similarity > bestSimilarity {
-                    bestSimilarity = similarity
-                    bestIndex = index
+        // Precompute the pairwise cosine matrix (n² is trivial at phone scale).
+        var sim = [[Double]](repeating: [Double](repeating: 0, count: n), count: n)
+        for i in 0..<n {
+            for j in (i + 1)..<n {
+                let s = cosine(vecs[i], vecs[j])
+                sim[i][j] = s
+                sim[j][i] = s
+            }
+        }
+
+        // Agglomerative average-linkage: repeatedly merge the two most-similar clusters until nothing
+        // exceeds the threshold. Order-independent (no greedy centroid drift), and average-linkage
+        // resists both single-linkage chaining and complete-linkage over-fragmentation.
+        var groups: [[Int]] = (0..<n).map { [$0] }
+        func averageLinkage(_ a: [Int], _ b: [Int]) -> Double {
+            var total = 0.0
+            for i in a { for j in b { total += sim[i][j] } }
+            return total / Double(a.count * b.count)
+        }
+        while groups.count > 1 {
+            var bestA = -1, bestB = -1, best = -1.0
+            for i in 0..<groups.count {
+                for j in (i + 1)..<groups.count {
+                    let s = averageLinkage(groups[i], groups[j])
+                    if s > best { best = s; bestA = i; bestB = j }
                 }
             }
-            if bestIndex >= 0, bestSimilarity >= similarityThreshold {
-                let count = Double(buckets[bestIndex].members.count)
-                buckets[bestIndex].centroid = runningMean(buckets[bestIndex].centroid, count: count, adding: vector)
-                buckets[bestIndex].members.append(input)
-            } else {
-                buckets.append(Bucket(centroid: vector, members: [input]))
-            }
+            guard best >= similarityThreshold else { break }
+            groups[bestA].append(contentsOf: groups[bestB])
+            groups.remove(at: bestB)
+        }
+
+        struct Bucket { var centroid: [Double]; var members: [FilClusterInput] }
+        let buckets: [Bucket] = groups.map { indices in
+            Bucket(centroid: centroid(of: indices.map { vecs[$0] }), members: indices.map { items[$0] })
         }
 
         // Singletons pool into "everything else"; the rest are named clusters.
@@ -267,9 +286,14 @@ actor FilClusteringService {
         return denominator > 0 ? dot / denominator : 0
     }
 
-    private func runningMean(_ centroid: [Double], count: Double, adding vector: [Double]) -> [Double] {
-        guard centroid.count == vector.count else { return centroid }
-        return zip(centroid, vector).map { ($0 * count + $1) / (count + 1) }
+    private func centroid(of vectors: [[Double]]) -> [Double] {
+        guard let dim = vectors.first?.count, dim > 0 else { return [] }
+        var sum = [Double](repeating: 0, count: dim)
+        for vector in vectors where vector.count == dim {
+            for i in 0..<dim { sum[i] += vector[i] }
+        }
+        let n = Double(vectors.count)
+        return sum.map { $0 / n }
     }
 
     private func firstIndex(of members: [FilClusterInput], in inputs: [FilClusterInput]) -> Int {
