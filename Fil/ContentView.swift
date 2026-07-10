@@ -378,8 +378,8 @@ struct ContentView: View {
         .padding(.top, 8)
         .padding(.bottom, 4)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isSearching)
-        // TEMP: theme-home prototype — remove with ThemeHomePrototype.swift.
-        .fullScreenCover(isPresented: $showThemePrototype) { ThemeHomePrototype() }
+        // TEMP: blank-canvas prototype — remove with BlankCanvasPrototype.swift.
+        .fullScreenCover(isPresented: $showThemePrototype) { BlankCanvasPrototype() }
     }
 
     private var searchBar: some View {
