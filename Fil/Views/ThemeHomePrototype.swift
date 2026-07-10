@@ -2,30 +2,23 @@ import SwiftUI
 import SwiftData
 
 /// TEMPORARY prototype — reimagines the home as theme-grouped sections instead of the day timeline:
-/// a vertical stack of named clusters, each an always-open grid of small fil blobs. Theme is the
-/// spine, newest-first within.
+/// a vertical stack of named clusters, each a list of blob + title rows. Theme is the spine,
+/// newest-first within. Now backed by the real on-device `FilClusteringService`.
 ///
-/// Clusters are MOCK (stable UUID hash into fixed buckets) so we can verdict the *feel* before
-/// building the real on-device semantic clustering. Delete this file + its ContentView entry point
-/// once the direction is locked.
+/// Reached via a temporary grid button in the ContentView home header; delete both once the theme
+/// home is promoted to replace the timeline.
 struct ThemeHomePrototype: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedNote: Note?
+    @State private var clusters: [FilCluster] = []
+    @State private var hasComputed = false
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
-    private struct MockTheme: Identifiable {
-        let id = UUID()
-        let name: String
+    private var notesByID: [UUID: Note] {
+        Dictionary(uniqueKeysWithValues: notes.map { ($0.uuid, $0) })
     }
-    private let themes: [MockTheme] = [
-        .init(name: "half-formed ideas"),
-        .init(name: "the lake house"),
-        .init(name: "work & the job"),
-        .init(name: "people i love"),
-        .init(name: "everything else")
-    ]
 
     var body: some View {
         ZStack {
@@ -34,8 +27,14 @@ struct ThemeHomePrototype: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     header
-                    ForEach(themes) { theme in
-                        section(for: theme)
+                    if hasComputed && clusters.isEmpty {
+                        Text("keep filling — themes emerge as you go.")
+                            .font(Theme.dmSans(15))
+                            .foregroundStyle(Theme.secondaryText)
+                            .padding(.top, 24)
+                    }
+                    ForEach(clusters) { cluster in
+                        section(for: cluster)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -43,6 +42,9 @@ struct ThemeHomePrototype: View {
                 .padding(.bottom, 80)
             }
             .scrollIndicators(.hidden)
+        }
+        .task(id: notes.map(\.uuid)) {
+            await recomputeClusters()
         }
         .sheet(item: $selectedNote) { note in
             NavigationStack { ArticleView(note: note) }
@@ -68,11 +70,11 @@ struct ThemeHomePrototype: View {
     }
 
     @ViewBuilder
-    private func section(for theme: MockTheme) -> some View {
-        let fils = fils(in: theme)
+    private func section(for cluster: FilCluster) -> some View {
+        let fils = cluster.filIDs.compactMap { notesByID[$0] }
         if !fils.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text(theme.name)
+                Text(cluster.name)
                     .font(Theme.dmSans(18, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -101,16 +103,22 @@ struct ThemeHomePrototype: View {
         }
     }
 
-    /// MOCK grouping: a stable hash of the fil's UUID string picks a bucket. Stands in for the real
-    /// semantic cluster assignment. Deterministic across launches so sections don't reshuffle.
-    private func fils(in theme: MockTheme) -> [Note] {
-        guard let index = themes.firstIndex(where: { $0.id == theme.id }) else { return [] }
-        return notes.filter { bucket(for: $0) == index }
+    private func recomputeClusters() async {
+        let inputs = notes.map { note in
+            FilClusterInput(id: note.uuid, text: embedText(note), keyword: displayTitle(note))
+        }
+        let result = await FilClusteringService.shared.clusters(for: inputs)
+        clusters = result
+        hasComputed = true
     }
 
-    private func bucket(for note: Note) -> Int {
-        let sum = note.uuid.uuidString.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
-        return sum % themes.count
+    /// Text handed to the embedder: the transcript, falling back to the title/keyword.
+    private func embedText(_ note: Note) -> String {
+        for candidate in [note.transcript, note.title, note.keyword] {
+            let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        return note.displayBadgeText
     }
 
     private func displayTitle(_ note: Note) -> String {
