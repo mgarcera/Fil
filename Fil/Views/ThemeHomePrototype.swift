@@ -115,7 +115,8 @@ struct ThemeHomePrototype: View {
                                 Text(displayTitle(note))
                                     .font(Theme.dmSans(15, weight: .medium))
                                     .foregroundStyle(Theme.primaryText)
-                                    .lineLimit(1)
+                                    .lineLimit(2)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Spacer(minLength: 0)
                             }
                             .contentShape(Rectangle())

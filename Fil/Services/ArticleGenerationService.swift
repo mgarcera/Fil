@@ -3,7 +3,7 @@ import FoundationModels
 
 @Generable(description: "Lightweight metadata extracted from a voice transcript")
 struct NoteMetadataResponse {
-    @Guide(description: "A short, natural title for the note — a brief phrase or clause that reads like a headline, up to six words, grounded in the transcript")
+    @Guide(description: "A short, natural title for the note — one complete sentence (an independent clause) in the person's own voice, about four to ten words, grounded in the transcript")
     var keyword: String
 }
 
@@ -12,15 +12,14 @@ final class ArticleGenerationService {
 
     /// Instructions shared by real generation and prewarming, so both warm the same model path.
     private static let instructions = """
-        You are extracting a lightweight title from one person's transcript.
+        You are writing a short title for one person's note, from their transcript.
         Always assume the transcript is spoken by the same person who will read the result.
         Do not generate a polished article.
-        Return only one short, natural title that captures the main topic — a brief
-        phrase or clause that reads like a headline, up to six words.
+        Write one short, natural sentence — a complete independent clause, in the person's
+        own voice — that captures what the note is about. Aim for about four to ten words.
 
-        The title should read naturally, be specific enough to recognize the note later,
-        and stay short — up to six words, grounded in the transcript.
-        Do not invent themes or details that are not present.
+        Ground it in the transcript and do not invent themes or details that are not present.
+        Keep it natural and specific enough to recognize the note later.
         """
 
     /// A prewarmed session, held so its asset loading completes and stays resident.
@@ -82,25 +81,10 @@ final class ArticleGenerationService {
     /// connective words so it never ends on a preposition, and capitalizes the
     /// first letter so it reads like a headline.
     private func shortLabel(from text: String) -> String {
-        var words = wordTokens(from: text)
-
-        // Drop leading filler first — before the word cap — so the label starts on a
-        // meaningful word ("it's okay to call" -> "call") and the cap keeps real words
-        // rather than the connectives. Mirrors the trailing trim below.
-        while let first = words.first,
-              words.count > 1,
-              isLabelStopWord(first) {
-            words.removeFirst()
-        }
-
-        words = Array(words.prefix(Self.maxLabelWords))
-
-        while let last = words.last,
-              words.count > 1,
-              isLabelStopWord(last) {
-            words.removeLast()
-        }
-
+        // Titles now read as full independent clauses, so keep the natural leading and trailing
+        // words (an opening "I", a closing "to figure out") instead of stripping them down to a
+        // terse fragment. Just cap the length and capitalize the first letter.
+        var words = Array(wordTokens(from: text).prefix(Self.maxLabelWords))
         guard let first = words.first else { return "" }
         words[0] = first.prefix(1).uppercased() + first.dropFirst()
         return words.joined(separator: " ")
@@ -188,8 +172,8 @@ final class ArticleGenerationService {
             .filter { !$0.isEmpty }
     }
 
-    /// Maximum number of words in a generated title/badge.
-    private static let maxLabelWords = 6
+    /// Maximum number of words in a generated title — now a full clause, not a terse badge.
+    private static let maxLabelWords = 12
 
     /// Filler, connective, and function words dropped when shaping a label so the
     /// two words that survive are the most meaningful ones
