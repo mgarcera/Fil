@@ -39,6 +39,12 @@ struct FilClusteringResult: Sendable {
     let engine: FilClusteringEngine
 }
 
+/// Ranked fils for a domain query (blank-canvas surfacing, docs/features/blank-canvas-home.md).
+struct FilRetrievalResult: Sendable {
+    let filIDs: [UUID]   // best match first
+    let engine: FilClusteringEngine
+}
+
 // MARK: - Emergent LLM grouping (guided generation)
 
 @Generable(description: "A grouping of a person's short personal notes by the kind of thinking each note is")
@@ -158,6 +164,78 @@ actor FilClusteringService {
             }
         }
         return result
+    }
+
+    // MARK: - Query retrieval (blank-canvas surfacing)
+
+    /// Ranks fils by relevance to a free-text domain query ("work", "times i felt lost"). Embeds the
+    /// query and each fil with the same contextual model, mean-centers to fight anisotropy, and sorts
+    /// by cosine to the query. Falls back to keyword substring matching when embeddings are absent.
+    /// Retrieval by topic is exactly what embeddings are good at — the right tool here, unlike the
+    /// register clustering. No summary yet (that's v2); this validates retrieval quality first.
+    func retrieve(query: String, from inputs: [FilClusterInput], limit: Int = 12) async -> FilRetrievalResult {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty, !inputs.isEmpty else { return FilRetrievalResult(filIDs: [], engine: .keyword) }
+
+        let language = dominantLanguage(inputs)
+        if let model = await loadContextual(language),
+           let queryVector = pooledVector(model, text: q, language: language) {
+
+            var ids: [UUID] = []
+            var vecs: [[Double]] = []
+            for input in inputs {
+                let text = String(input.text.prefix(maxEmbedChars))
+                let hash = text.hashValue
+                let vector: [Double]
+                if let cached = cache[input.id], cached.hash == hash {
+                    vector = cached.vector
+                } else if let v = pooledVector(model, text: text, language: language) {
+                    cache[input.id] = (v, hash)
+                    vector = v
+                } else { continue }
+                ids.append(input.id)
+                vecs.append(vector)
+            }
+
+            if !ids.isEmpty {
+                // Mean-center query + fils together, then rank fils by cosine to the query.
+                let mean = centroid(of: vecs + [queryVector])
+                let centeredQuery = subtracting(queryVector, mean)
+                let ranked = zip(ids, vecs)
+                    .map { (id: $0.0, score: cosine(subtracting($0.1, mean), centeredQuery)) }
+                    .sorted { $0.score > $1.score }
+
+                log.notice("retrieve(\"\(q, privacy: .public)\", \(ids.count, privacy: .public) fils) top: \(ranked.prefix(6).map { String(format: "%.2f", $0.score) }.joined(separator: ", "), privacy: .public)")
+
+                let floor = 0.08   // drop clearly-unrelated fils; tune against the score log
+                let kept = ranked.filter { $0.score > floor }.prefix(limit)
+                if !kept.isEmpty {
+                    return FilRetrievalResult(filIDs: kept.map(\.id), engine: .embeddings)
+                }
+            }
+        }
+
+        return keywordRetrieve(q, inputs, limit: limit)
+    }
+
+    private func keywordRetrieve(_ query: String, _ inputs: [FilClusterInput], limit: Int) -> FilRetrievalResult {
+        let terms = query.lowercased().split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
+        guard !terms.isEmpty else { return FilRetrievalResult(filIDs: [], engine: .keyword) }
+
+        let scored = inputs.compactMap { input -> (id: UUID, score: Int)? in
+            let hay = (input.text + " " + input.keyword).lowercased()
+            let score = terms.reduce(0) { $0 + (hay.contains($1) ? 1 : 0) }
+            return score > 0 ? (input.id, score) : nil
+        }
+        .sorted { $0.score > $1.score }
+        .prefix(limit)
+
+        return FilRetrievalResult(filIDs: scored.map(\.id), engine: .keyword)
+    }
+
+    private func subtracting(_ a: [Double], _ b: [Double]) -> [Double] {
+        guard a.count == b.count else { return a }
+        return zip(a, b).map(-)
     }
 
     // MARK: - LLM grouping

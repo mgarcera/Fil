@@ -2,19 +2,22 @@ import SwiftUI
 import SwiftData
 
 /// TEMPORARY prototype — the "blank canvas" home direction (2026-07-10, see
-/// docs/features/blank-canvas-home.md): the home is empty; you tap to capture a thought and
-/// (later) long-press to surface past fils by a query. Phase 1 here is capture only:
+/// docs/features/blank-canvas-home.md): the home is empty; you TAP to capture a thought and
+/// LONG-PRESS to surface past fils by a domain query.
 ///
-///   blank → tap → creation blob + centered field → type → fil forms → blank
+///   tap        → creation blob + centered field → type → fil pops into being → blank
+///   long-press → query field → type a domain → matching fils surface
 ///
-/// Reached via the temporary ▦ button in the ContentView header. Delete both when promoted.
-/// Creation mirrors ContentView.saveGeneratedNote (title generation + gradient + insert); kept
-/// self-contained so the prototype stays isolated from the current home.
+/// Phase-2 surfacing is retrieval only (no LLM summary yet) — validates that a query finds the
+/// right fils before we commit to "only via query". Reached via the temporary ▦ button in the
+/// ContentView header. Delete both when promoted.
 struct BlankCanvasPrototype: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
+    @AppStorage("prefersLowercase") private var prefersLowercase = false
 
-    private enum Phase { case idle, composing, creating, formed }
+    private enum Phase { case idle, composing, creating, formed, querying, results }
 
     /// The settled fil blob pops in — scales up from near-zero with a snappy, punchy spring.
     private static let popTransition = AnyTransition.scale(scale: 0.01).combined(with: .opacity)
@@ -24,33 +27,59 @@ struct BlankCanvasPrototype: View {
     @State private var text = ""
     /// The just-made fil, so the gooey creating blob can settle into its final randomized blob.
     @State private var formedNote: Note?
+
+    // Surfacing
+    @State private var query = ""
+    @State private var results: [Note] = []
+    @State private var retrievalEngine: FilClusteringEngine = .embeddings
+    @State private var isRetrieving = false
+    @State private var selectedNote: Note?
+
     @FocusState private var fieldFocused: Bool
+    @FocusState private var queryFocused: Bool
+
+    private var notesByID: [UUID: Note] {
+        Dictionary(uniqueKeysWithValues: notes.map { ($0.uuid, $0) })
+    }
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { onCanvasTap() }
+                .onLongPressGesture(minimumDuration: 0.35) { onCanvasLongPress() }
 
             switch phase {
             case .idle:      idleHint
             case .composing: composer
             case .creating:  creatingBlob
             case .formed:    formedBlob
+            case .querying:  queryField
+            case .results:   resultsList
             }
 
             closeButton
         }
+        .sheet(item: $selectedNote) { note in
+            NavigationStack { ArticleView(note: note) }
+                .presentationDetents([.fraction(0.6), .large])
+                .presentationBackground(Theme.background)
+        }
     }
 
-    // MARK: - States
+    // MARK: - Capture states
 
     /// The one affordance on an otherwise blank canvas — the whole discoverability of the home.
     private var idleHint: some View {
-        AnimatedGradientRevealText(text: "tap anywhere to begin", maxDuration: 1.2, settledOpacity: 0.35)
-            .font(Theme.dmSans(16, weight: .medium))
-            .foregroundStyle(Theme.secondaryText)
-            .allowsHitTesting(false)
+        VStack(spacing: 6) {
+            AnimatedGradientRevealText(text: "tap to begin", maxDuration: 1.2, settledOpacity: 0.35)
+                .font(Theme.dmSans(16, weight: .medium))
+                .foregroundStyle(Theme.secondaryText)
+            Text("press and hold to surface")
+                .font(Theme.dmMono(11))
+                .foregroundStyle(Theme.tertiaryText)
+        }
+        .allowsHitTesting(false)
     }
 
     /// Centered writing surface: a calm blob focal point above a centered field. Return commits.
@@ -96,16 +125,14 @@ struct BlankCanvasPrototype: View {
     private var creatingBlob: some View {
         CreatingFilBlobView()
             .frame(width: 130, height: 130)
-            // Plop in from small (bouncy spring, set in createFil); on removal it crossfades out as
-            // the settled blob crossfades in — the gooey blob "turning into" the fil.
             .transition(.asymmetric(
                 insertion: .scale(scale: 0.2).combined(with: .opacity),
                 removal: .opacity
             ))
     }
 
-    /// The fil's final, settled randomized blob — same shape/gradient the grid card shows. It
-    /// crossfades in over the gooey creating blob (the "blob turns into a fil" morph), holds, fades.
+    /// The fil's final, settled randomized blob — same shape/gradient the grid card shows. It pops in
+    /// over the gooey creating blob (the "blob turns into a fil" morph), holds, then fades.
     @ViewBuilder
     private var formedBlob: some View {
         if let note = formedNote {
@@ -114,6 +141,115 @@ struct BlankCanvasPrototype: View {
                 .frame(width: 130, height: 130)
                 .transition(Self.popTransition)
         }
+    }
+
+    // MARK: - Surfacing states
+
+    /// Long-press summons this: a centered query field to surface past fils by domain.
+    private var queryField: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "sparkle.magnifyingglass")
+                .font(.system(size: 28, weight: .light))
+                .foregroundStyle(Theme.secondaryText)
+
+            TextField("", text: $query, axis: .horizontal)
+                .font(Theme.dmSans(22, weight: .medium))
+                .foregroundStyle(Theme.primaryText)
+                .multilineTextAlignment(.center)
+                .focused($queryFocused)
+                .submitLabel(.search)
+                .padding(.horizontal, 32)
+                .overlay(alignment: .center) {
+                    if query.isEmpty {
+                        Text("surface a thought — try “work”")
+                            .font(Theme.dmSans(22, weight: .medium))
+                            .foregroundStyle(Theme.tertiaryText)
+                            .allowsHitTesting(false)
+                    }
+                }
+                .onSubmit { Task { await runQuery() } }
+        }
+        .padding(.bottom, 80)
+        .transition(.opacity)
+    }
+
+    private var resultsList: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            resultsHeader
+
+            if isRetrieving {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("surfacing…")
+                        .font(Theme.dmSans(15))
+                        .foregroundStyle(Theme.secondaryText)
+                }
+                .padding(.top, 32)
+                .frame(maxWidth: .infinity)
+            } else if results.isEmpty {
+                Text("nothing surfaced for “\(query)”")
+                    .font(Theme.dmSans(15))
+                    .foregroundStyle(Theme.secondaryText)
+                    .padding(.top, 32)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                ScrollView {
+                    VStack(spacing: 10) {
+                        ForEach(results, id: \.uuid) { note in
+                            resultRow(note)
+                        }
+                    }
+                    .padding(.top, 8)
+                    .padding(.bottom, 80)
+                }
+                .scrollIndicators(.hidden)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 64)
+        .transition(.opacity)
+    }
+
+    private var resultsHeader: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(query)
+                .font(Theme.dmSans(24, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+            // TEMP validation tag — shows whether retrieval used embeddings or the keyword fallback.
+            if !isRetrieving {
+                Text(retrievalEngine == .embeddings ? "· \(results.count)" : "· \(results.count) · keyword")
+                    .font(Theme.dmMono(11))
+                    .foregroundStyle(retrievalEngine == .embeddings ? Theme.tertiaryText : Color.orange)
+            }
+            Spacer()
+            Button("new") {
+                query = ""
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
+                queryFocused = true
+            }
+            .font(Theme.dmSans(14, weight: .semibold))
+            .foregroundStyle(Theme.secondaryText)
+        }
+    }
+
+    private func resultRow(_ note: Note) -> some View {
+        Button { selectedNote = note } label: {
+            HStack(spacing: 12) {
+                NoteBlobShape(seed: note.blobShapeSeed)
+                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                    .frame(width: 24, height: 24)
+                Text(displayTitle(note))
+                    .font(Theme.dmSans(15, weight: .medium))
+                    .foregroundStyle(Theme.primaryText)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var closeButton: some View {
@@ -142,15 +278,22 @@ struct BlankCanvasPrototype: View {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
             fieldFocused = true
         case .composing:
-            // Tapping the canvas while composing dismisses the keyboard; if nothing was written,
-            // fall back to blank so the canvas is never stuck in an empty composing state.
             fieldFocused = false
-            if !hasText {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
-            }
+            if !hasText { withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle } }
+        case .querying:
+            queryFocused = false
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
+        case .results:
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
         case .creating, .formed:
             break
         }
+    }
+
+    private func onCanvasLongPress() {
+        guard phase == .idle else { return }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
+        queryFocused = true
     }
 
     private func createFil() async {
@@ -179,11 +322,47 @@ struct BlankCanvasPrototype: View {
         SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        // The gooey blob gives way to the fil's final randomized blob, which enters with the selected
-        // entry style, holds a beat, then fades cleanly away to the blank canvas.
+        // The gooey blob gives way to the fil's final randomized blob (pop), holds a beat, then fades.
         formedNote = note
         withAnimation(Self.popAnimation) { phase = .formed }
         try? await Task.sleep(for: .milliseconds(750))
         withAnimation(.easeOut(duration: 0.4)) { phase = .idle }
+    }
+
+    private func runQuery() async {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty else { return }
+
+        queryFocused = false
+        isRetrieving = true
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .results }
+
+        let inputs = notes.map { note in
+            FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note))
+        }
+        let outcome = await FilClusteringService.shared.retrieve(query: q, from: inputs)
+
+        results = outcome.filIDs.compactMap { notesByID[$0] }
+        retrievalEngine = outcome.engine
+        isRetrieving = false
+    }
+
+    /// Text handed to retrieval: the fil's title + a short content snippet, so topical relevance keys
+    /// on the actual thought, not just the title.
+    private func clusterText(_ note: Note) -> String {
+        let title = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch (title.isEmpty, body.isEmpty) {
+        case (false, false): return "\(title): \(String(body.prefix(140)))"
+        case (false, true):  return title
+        case (true, false):  return String(body.prefix(140))
+        case (true, true):   return "fil"
+        }
+    }
+
+    private func displayTitle(_ note: Note) -> String {
+        let trimmed = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = trimmed.isEmpty ? "fil" : trimmed
+        return prefersLowercase ? title.lowercased() : title
     }
 }
