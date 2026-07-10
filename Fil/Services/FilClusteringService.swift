@@ -125,9 +125,14 @@ actor FilClusteringService {
             return FilClusteringResult(clusters: salvaged, engine: lastGrouping.isEmpty ? .keyword : lastEngine)
         }
 
-        lastGrouping = result
-        lastGroupingIDs = currentIDs
-        lastEngine = engine
+        // Only cache real model groupings. Fallbacks (embeddings/keyword) are provisional — leaving
+        // the cache empty means the next open retries the LLM instead of serving cached junk, so a
+        // single transient failure can't lock in the worse result.
+        if engine == .model {
+            lastGrouping = result
+            lastGroupingIDs = currentIDs
+            lastEngine = engine
+        }
         log.notice("clusters(\(inputs.count, privacy: .public) fils, \(engine.rawValue, privacy: .public)): \(result.map { "\($0.name)×\($0.filIDs.count)" }.joined(separator: ", "), privacy: .public)")
         return FilClusteringResult(clusters: result, engine: engine)
     }
@@ -195,19 +200,25 @@ actor FilClusteringService {
             .map { "\($0.offset + 1). \($0.element.text)" }
             .joined(separator: "\n")
 
-        let session = LanguageModelSession(instructions: Self.groupingInstructions)
-        do {
-            let response = try await session.respond(
-                to: Prompt { numbered },
-                generating: FilGroupingResponse.self
-            )
-            return mapGrouping(response.content, inputs: inputs)
-        } catch {
-            // Cancellation is not a failure to fall back from — propagate it so the run is discarded.
-            if error is CancellationError || Task.isCancelled { throw CancellationError() }
-            log.notice("LLM grouping failed (\(error.localizedDescription, privacy: .public)) — embedding fallback")
-            return nil
+        // Retry once before giving up: failures here are usually transient (model cold/busy right
+        // after launch), and the same corpus often succeeds on a second attempt.
+        let maxAttempts = 2
+        for attempt in 1...maxAttempts {
+            let session = LanguageModelSession(instructions: Self.groupingInstructions)
+            do {
+                let response = try await session.respond(
+                    to: Prompt { numbered },
+                    generating: FilGroupingResponse.self
+                )
+                return mapGrouping(response.content, inputs: inputs)
+            } catch {
+                // Cancellation is not a failure to fall back from — propagate it so the run is discarded.
+                if error is CancellationError || Task.isCancelled { throw CancellationError() }
+                log.notice("LLM grouping attempt \(attempt, privacy: .public)/\(maxAttempts, privacy: .public) failed (\(error.localizedDescription, privacy: .public))")
+            }
         }
+        log.notice("LLM grouping failed — embedding fallback")
+        return nil
     }
 
     /// Maps the model's note-number groups back to fils, defending against hallucinated, duplicate, or
