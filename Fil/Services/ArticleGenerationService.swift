@@ -18,6 +18,7 @@ final class ArticleGenerationService {
         Write one short, natural sentence — a complete independent clause, in the person's
         own voice — that captures what the note is about. Aim for about four to ten words.
 
+        Use natural punctuation (commas, dashes, question marks) so it reads as a real clause.
         Ground it in the transcript and do not invent themes or details that are not present.
         Keep it natural and specific enough to recognize the note later.
         """
@@ -81,13 +82,22 @@ final class ArticleGenerationService {
     /// connective words so it never ends on a preposition, and capitalizes the
     /// first letter so it reads like a headline.
     private func shortLabel(from text: String) -> String {
-        // Titles now read as full independent clauses, so keep the natural leading and trailing
-        // words (an opening "I", a closing "to figure out") instead of stripping them down to a
-        // terse fragment. Just cap the length and capitalize the first letter.
-        var words = Array(wordTokens(from: text).prefix(Self.maxLabelWords))
-        guard let first = words.first else { return "" }
-        words[0] = first.prefix(1).uppercased() + first.dropFirst()
-        return words.joined(separator: " ")
+        // Titles now read as full independent clauses, so preserve the model's natural punctuation
+        // (commas, dashes, question marks) instead of tokenizing them away — splitting on whitespace
+        // keeps punctuation attached to each word. Just cap the length and capitalize the first letter.
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+
+        let words = trimmed
+            .split(whereSeparator: \.isWhitespace)
+            .prefix(Self.maxLabelWords)
+            .map(String.init)
+        var result = words.joined(separator: " ")
+
+        if let first = result.first {
+            result.replaceSubrange(result.startIndex...result.startIndex, with: first.uppercased())
+        }
+        return result
     }
 
     private func metadataPrompt(for transcript: String) -> Prompt {
