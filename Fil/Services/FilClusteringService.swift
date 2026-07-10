@@ -49,7 +49,7 @@ struct FilGroupingResponse {
 
 @Generable
 struct FilGroupResult {
-    @Guide(description: "Two to four natural lowercase words with spaces (e.g. \"quiet reflections\") naming the kind of thought or feeling these notes share. No underscores. Not a topic label.")
+    @Guide(description: "One or two natural lowercase words (e.g. \"reflections\", \"small joys\") naming the kind of thought or feeling these notes share. No underscores. Not a topic label.")
     var name: String
     @Guide(description: "The numbers of the notes that belong in this group")
     var noteNumbers: [Int]
@@ -176,8 +176,8 @@ actor FilClusteringService {
         - Sort every note into exactly one group.
         - Aim for five to seven focused groups. No single group should hold more than about a quarter
           of the notes — if one would, split it into finer, more specific kinds.
-        - Name each group with two to four natural words, lowercase, with spaces between them
-          (for example: "quiet reflections", "things to look up"). Never use underscores or run words
+        - Name each group with one or two natural words, lowercase (for example: "reflections",
+          "small joys", "to do", "searching"). Keep it short. Never use underscores or run words
           together.
         - Never leave a note out.
         """
