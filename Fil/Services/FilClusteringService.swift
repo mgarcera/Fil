@@ -62,11 +62,30 @@ actor FilClusteringService {
     private var contextual: NLContextualEmbedding?
     private var contextualLanguage: NLLanguage?
 
+    /// Last computed grouping + the fil-id set it was computed from. Grouping is stable: we only re-run
+    /// the (slow, non-deterministic) engine once the note set has changed by `recomputeThreshold` fils.
+    /// Smaller changes reuse the cached grouping so themes don't reshuffle on every new fil.
+    private var lastGrouping: [FilCluster] = []
+    private var lastGroupingIDs: Set<UUID> = []
+    private let recomputeThreshold = 4
+
     private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "clustering")
 
     /// Produces theme clusters for the given fils, newest-first inputs preserved within each cluster.
     func clusters(for inputs: [FilClusterInput]) async -> [FilCluster] {
         guard !inputs.isEmpty else { return [] }
+
+        // Reuse the cached grouping unless the note set has changed past the threshold — keeps themes
+        // stable across new fils and avoids re-running the engine (and its non-determinism) constantly.
+        let currentIDs = Set(inputs.map(\.id))
+        if !lastGrouping.isEmpty {
+            let changed = currentIDs.symmetricDifference(lastGroupingIDs).count
+            if changed < recomputeThreshold {
+                let reconciled = reconcile(lastGrouping, with: inputs)
+                log.notice("clusters(\(inputs.count, privacy: .public) fils): reusing cached grouping (Δ\(changed, privacy: .public))")
+                return reconciled
+            }
+        }
 
         // Tiered: on-device LLM (groups by *kind of thought*, the real goal) → embeddings (topical
         // similarity) → deterministic keyword grouping. Each tier degrades gracefully to the next.
@@ -79,7 +98,32 @@ actor FilClusteringService {
             result = keywordFallback(inputs)
         }
 
+        lastGrouping = result
+        lastGroupingIDs = currentIDs
         log.notice("clusters(\(inputs.count, privacy: .public) fils): \(result.map { "\($0.name)×\($0.filIDs.count)" }.joined(separator: ", "), privacy: .public)")
+        return result
+    }
+
+    /// Applies a cached grouping to the current fils without re-running the engine: drops fils that
+    /// were landfilled, and folds any brand-new fils into "everything else" so nothing disappears.
+    private func reconcile(_ cached: [FilCluster], with inputs: [FilClusterInput]) -> [FilCluster] {
+        let present = Set(inputs.map(\.id))
+        var seen = Set<UUID>()
+
+        var result: [FilCluster] = cached.compactMap { cluster in
+            let ids = cluster.filIDs.filter { present.contains($0) && seen.insert($0).inserted }
+            return ids.isEmpty ? nil : FilCluster(name: cluster.name, filIDs: ids)
+        }
+
+        let newcomers = inputs.filter { !seen.contains($0.id) }.map(\.id)
+        if !newcomers.isEmpty {
+            if let index = result.firstIndex(where: { $0.name == "everything else" }) {
+                let merged = result[index].filIDs + newcomers
+                result[index] = FilCluster(name: "everything else", filIDs: merged)
+            } else {
+                result.append(FilCluster(name: "everything else", filIDs: newcomers))
+            }
+        }
         return result
     }
 
@@ -87,17 +131,21 @@ actor FilClusteringService {
 
     private static let groupingInstructions = """
         You organize a person's short personal notes by the KIND of thinking each one is —
-        the mood, stance, or purpose behind it — not by its topic.
+        the mood, stance, or purpose behind it — not by its topic. Two notes about completely
+        different topics can be the same kind of thought.
 
-        Notes that are different topics can still be the same kind of thought. For example:
-        light emotional check-ins belong together even when they are about different things;
-        quick things-to-look-up belong together; reflective inner questions belong together;
-        plans and to-dos belong together; passing observations belong together.
+        Common kinds (use these when they fit, or name your own):
+        - moods & feelings — emotional check-ins about how life or the day is going
+        - inner thoughts — reflective or philosophical questions a person asks themselves
+        - things to look up — books to read, words, ideas, or people to explore later
+        - plans & to-dos — intentions, tasks, things to do
+        - observations — passing notices about the world, other people, or the day
+        - ideas — sparks, concepts, things to make or try
 
-        Read every note, then sort each one into exactly one group. Give each group a short,
-        lowercase, human name for that kind of thought (for example: "moods", "inner thoughts",
-        "things to look up", "observations", "plans"). Prefer a handful of meaningful groups over
-        many tiny ones. Never leave a note out.
+        Sort every note into exactly one group. Make the groups genuinely distinct: do NOT put
+        most of the notes into one big vague group. If a group would hold most of the notes, split
+        it into finer, more specific kinds. Give each group a short, human name (one to three words).
+        Never leave a note out.
         """
 
     /// Emergent grouping via the on-device model: it reads the notes and invents the groups + names.
@@ -141,7 +189,7 @@ actor FilClusteringService {
             }
             guard !indices.isEmpty else { continue }
             indices.sort()   // input order is newest-first, so keep it that way within the group
-            let name = group.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let name = group.name.trimmingCharacters(in: .whitespacesAndNewlines)
             clusters.append(FilCluster(name: name.isEmpty ? "thoughts" : name, filIDs: indices.map { inputs[$0].id }))
         }
 

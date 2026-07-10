@@ -79,7 +79,7 @@ struct ThemeHomePrototype: View {
         let fils = cluster.filIDs.compactMap { notesByID[$0] }
         if !fils.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text(cluster.name)
+                Text(displayClusterName(cluster.name))
                     .font(Theme.dmSans(18, weight: .bold))
                     .foregroundStyle(Theme.primaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -149,5 +149,11 @@ struct ThemeHomePrototype: View {
         let trimmed = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let title = trimmed.isEmpty ? "fil" : trimmed
         return prefersLowercase ? title.lowercased() : title
+    }
+
+    /// Section names follow the app-wide case preference, like fil titles do.
+    private func displayClusterName(_ name: String) -> String {
+        guard !name.isEmpty else { return name }
+        return prefersLowercase ? name.lowercased() : name.prefix(1).uppercased() + name.dropFirst()
     }
 }
