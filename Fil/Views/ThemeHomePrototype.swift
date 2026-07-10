@@ -1,33 +1,40 @@
 import SwiftUI
 import SwiftData
 
-/// TEMPORARY prototype — reimagines the home as theme-grouped sections (Extra-style) instead of the
-/// day timeline: a vertical scroll of named, collapsible clusters, each a grid of fil blobs, theme
-/// as the spine, newest-first within a theme.
+/// TEMPORARY prototype — reimagines the home as theme-grouped sections instead of the day timeline:
+/// a vertical stack of named clusters, each surfacing its open to-dos up top with the fil blobs
+/// tucked below (minimized; tap the header to reveal). Theme is the spine, newest-first within.
 ///
-/// The clusters here are MOCK — fils are hand-assigned to a fixed set of themed buckets by a stable
-/// hash — so we can verdict the *feel* before building the real on-device semantic clustering.
-/// Delete this file (and its entry point in ContentView) once the direction is locked.
+/// Clusters are MOCK (stable UUID hash into fixed buckets) so we can verdict the *feel* before
+/// building the real on-device semantic clustering. Delete this file + its ContentView entry point
+/// once the direction is locked.
 struct ThemeHomePrototype: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
     @State private var selectedNote: Note?
-    @State private var collapsed: Set<String> = []
+    /// Themes whose fil grid is revealed. Empty by default → fils stay minimized.
+    @State private var expanded: Set<String> = []
 
-    /// Placeholder themes. The real version generates an emoji + short name per on-device cluster.
     private struct MockTheme: Identifiable {
         let id = UUID()
-        let emoji: String
         let name: String
     }
     private let themes: [MockTheme] = [
-        .init(emoji: "💭", name: "half-formed ideas"),
-        .init(emoji: "🌊", name: "the lake house"),
-        .init(emoji: "💼", name: "work & the job"),
-        .init(emoji: "❤️", name: "people i love"),
-        .init(emoji: "✨", name: "everything else")
+        .init(name: "half-formed ideas"),
+        .init(name: "the lake house"),
+        .init(name: "work & the job"),
+        .init(name: "people i love"),
+        .init(name: "everything else")
     ]
+
+    private struct ThemeTodo: Identifiable {
+        let id: UUID
+        let note: Note
+        let index: Int
+        let text: String
+    }
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 3)
 
@@ -75,17 +82,17 @@ struct ThemeHomePrototype: View {
     private func section(for theme: MockTheme) -> some View {
         let fils = fils(in: theme)
         if !fils.isEmpty {
-            let isCollapsed = collapsed.contains(theme.name)
-            VStack(alignment: .leading, spacing: 14) {
+            let isExpanded = expanded.contains(theme.name)
+            let todos = openTodos(in: fils)
+
+            VStack(alignment: .leading, spacing: 12) {
                 Button {
                     SoundscapeManager.shared.playCollapsingSound()
                     withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
-                        if isCollapsed { collapsed.remove(theme.name) } else { collapsed.insert(theme.name) }
+                        if isExpanded { expanded.remove(theme.name) } else { expanded.insert(theme.name) }
                     }
                 } label: {
                     HStack(spacing: 8) {
-                        Text(theme.emoji)
-                            .font(.system(size: 18))
                         Text(theme.name)
                             .font(Theme.dmSans(18, weight: .bold))
                             .foregroundStyle(Theme.primaryText)
@@ -93,13 +100,25 @@ struct ThemeHomePrototype: View {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(Theme.tertiaryText)
-                            .rotationEffect(.degrees(isCollapsed ? 0 : 180))
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
                     }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
 
-                if !isCollapsed {
+                // The theme's open to-dos, surfaced up top.
+                if !todos.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(todos) { todo in
+                            TodoRowContent(text: todo.text, isCompleted: false) {
+                                toggle(todo)
+                            }
+                        }
+                    }
+                }
+
+                // The fils themselves — minimized until the header is tapped.
+                if isExpanded {
                     LazyVGrid(columns: columns, spacing: 26) {
                         ForEach(fils, id: \.uuid) { note in
                             Button { selectedNote = note } label: {
@@ -124,5 +143,21 @@ struct ThemeHomePrototype: View {
     private func bucket(for note: Note) -> Int {
         let sum = note.uuid.uuidString.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
         return sum % themes.count
+    }
+
+    private func openTodos(in fils: [Note]) -> [ThemeTodo] {
+        fils.flatMap { note in
+            note.todoRowItems
+                .filter { !$0.done }
+                .map { ThemeTodo(id: $0.id, note: note, index: $0.index, text: $0.text) }
+        }
+    }
+
+    private func toggle(_ todo: ThemeTodo) {
+        todo.note.normalizeCompletedTodos()
+        guard todo.note.completedTodos.indices.contains(todo.index) else { return }
+        SoundscapeManager.shared.playTodoArticleToggleSound()
+        withAnimation(.snappy) { todo.note.completedTodos[todo.index].toggle() }
+        modelContext.saveOrLog()
     }
 }
