@@ -28,11 +28,11 @@ struct FilCluster: Sendable, Identifiable {
 actor FilClusteringService {
     static let shared = FilClusteringService()
 
-    /// Cosine-similarity floor for two fils to share a theme. Mean-pooled contextual embeddings run
-    /// "hot" (anisotropic — even unrelated text scores high), so this starts higher than a word-
-    /// embedding threshold would. Tune empirically against the cluster-size log: one giant cluster →
-    /// raise it; all singletons → lower it.
-    private let similarityThreshold = 0.85
+    /// Cosine-similarity floor for two fils to share a theme, measured on *mean-centered* vectors
+    /// (see `meanCentered`). Centering removes the shared component that made raw contextual cosines
+    /// all crowd near 1.0, so the usable range drops well below a raw-embedding threshold. Tune
+    /// against the cluster-size log: one giant grab-bag → raise it; all singletons → lower it.
+    private let similarityThreshold = 0.5
     /// Named theme sections beyond this fold into "everything else".
     private let maxNamedClusters = 7
     /// Cap embedded text length — a representative slice is enough and keeps embedding fast.
@@ -53,7 +53,7 @@ actor FilClusteringService {
 
         let result: [FilCluster]
         if let vectors = await embed(inputs) {
-            result = semanticClusters(inputs, vectors: vectors)
+            result = semanticClusters(inputs, vectors: meanCentered(vectors))
         } else {
             result = keywordFallback(inputs)   // no embeddings for this language → deterministic grouping
         }
@@ -231,6 +231,28 @@ actor FilClusteringService {
     }
 
     // MARK: - Math
+
+    /// Subtracts the corpus mean from each vector ("all-but-the-mean"). Contextual embeddings are
+    /// highly anisotropic — every vector shares one dominant direction, so raw cosine similarities all
+    /// bunch near 1.0 and unrelated fils cluster together. Removing the mean cancels that shared
+    /// component and spreads the similarity distribution so the threshold can actually separate themes.
+    /// Corpus-dependent, so it's applied fresh each run on a copy — the cache still holds raw vectors.
+    private func meanCentered(_ vectors: [UUID: [Double]]) -> [UUID: [Double]] {
+        guard let dim = vectors.values.first?.count, dim > 0, vectors.count > 1 else { return vectors }
+
+        var mean = [Double](repeating: 0, count: dim)
+        for vector in vectors.values where vector.count == dim {
+            for i in 0..<dim { mean[i] += vector[i] }
+        }
+        let n = Double(vectors.count)
+        for i in 0..<dim { mean[i] /= n }
+
+        var centered: [UUID: [Double]] = [:]
+        for (id, vector) in vectors where vector.count == dim {
+            centered[id] = zip(vector, mean).map { $0 - $1 }
+        }
+        return centered
+    }
 
     private func cosine(_ a: [Double], _ b: [Double]) -> Double {
         let count = min(a.count, b.count)
