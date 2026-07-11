@@ -273,21 +273,6 @@ struct ContentView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
-                    // Blank-canvas home: asks the canvas to "surface a thought".
-                    Button {
-                        surfaceRequested = true
-                    } label: {
-                        Image(systemName: "sparkle.magnifyingglass")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(notes.isEmpty)
-                    .opacity(notes.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel("Search your thoughts")
-
                     Menu {
                         Section("Screensavers") {
                             screensaverMenuButton("filosophy", systemImage: "camera.filters", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) }
@@ -331,6 +316,21 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(isDarkMode ? "switch to light mode" : "switch to dark mode")
+
+                    // Blank-canvas home: asks the canvas to "surface a thought".
+                    Button {
+                        surfaceRequested = true
+                    } label: {
+                        Image(systemName: "sparkle.magnifyingglass")
+                            .font(.system(size: 17, weight: .medium))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(notes.isEmpty)
+                    .opacity(notes.isEmpty ? 0.45 : 1)
+                    .accessibilityLabel("Search your thoughts")
                 }
                 .padding(.horizontal, 6)
                 .glassEffect()

@@ -170,27 +170,30 @@ struct BlankCanvasPrototype: View {
 
     // MARK: - Surfacing states
 
-    /// A centered query field to surface past fils by domain (opened from the header search).
+    /// The query field to surface past fils, positioned exactly like the composer's "let a thought
+    /// be" entrance — upper-left, left-aligned. Opened from the header search.
     private var queryField: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: 0) {
             TextField("", text: $query, axis: .horizontal)
-                .font(Theme.dmSans(22, weight: .medium))
+                .font(Theme.dmSans(20, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(.center)
+                .multilineTextAlignment(.leading)
                 .focused($queryFocused)
                 .submitLabel(.search)
-                .padding(.horizontal, 32)
-                .overlay(alignment: .center) {
+                .overlay(alignment: .topLeading) {
                     if query.isEmpty {
                         Text("search your thoughts")
-                            .font(Theme.dmSans(22, weight: .medium))
+                            .font(Theme.dmSans(20, weight: .medium))
                             .foregroundStyle(Theme.tertiaryText)
                             .allowsHitTesting(false)
                     }
                 }
                 .onSubmit { Task { await runQuery() } }
+            Spacer(minLength: 0)
         }
-        .padding(.bottom, 80)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 20)
+        .padding(.top, 64)
         .transition(.opacity)
     }
 
