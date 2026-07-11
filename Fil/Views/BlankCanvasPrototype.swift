@@ -109,7 +109,7 @@ struct BlankCanvasPrototype: View {
                 .submitLabel(.return)
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
-                        Text("let a thought be")
+                        AnimatedGradientRevealText(text: "let a thought be")
                             .font(Theme.dmSans(20, weight: .medium))
                             .foregroundStyle(Theme.tertiaryText)
                             .allowsHitTesting(false)
@@ -182,7 +182,7 @@ struct BlankCanvasPrototype: View {
                 .submitLabel(.search)
                 .overlay(alignment: .topLeading) {
                     if query.isEmpty {
-                        Text("search your thoughts")
+                        AnimatedGradientRevealText(text: "search your thoughts")
                             .font(Theme.dmSans(20, weight: .medium))
                             .foregroundStyle(Theme.tertiaryText)
                             .allowsHitTesting(false)
