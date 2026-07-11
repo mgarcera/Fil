@@ -79,7 +79,7 @@ struct BlankCanvasPrototype: View {
             case .results:   resultsList
             }
 
-            if phase == .composing {
+            if phase == .composing && hasText {
                 sendFAB
             }
 
@@ -91,6 +91,7 @@ struct BlankCanvasPrototype: View {
                 closeButton
             }
         }
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
         .sheet(item: $selectedNote) { note in
             NavigationStack { ArticleView(note: note) }
                 .presentationDetents([.fraction(0.6), .large])
@@ -154,10 +155,9 @@ struct BlankCanvasPrototype: View {
                         .foregroundStyle(Theme.primaryText)
                         .frame(width: 56, height: 56)
                         .glassEffect(.regular, in: .circle)
-                        .opacity(hasText ? 1 : 0.35)
                 }
                 .buttonStyle(.plain)
-                .disabled(!hasText)
+                .transition(.scale.combined(with: .opacity))
             }
         }
         .padding(.horizontal, 24)
