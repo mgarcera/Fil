@@ -62,6 +62,10 @@ struct BlankCanvasPrototype: View {
             case .results:   resultsList
             }
 
+            if phase == .composing {
+                sendFAB
+            }
+
             closeButton
         }
         .sheet(item: $selectedNote) { note in
@@ -87,22 +91,17 @@ struct BlankCanvasPrototype: View {
         .allowsHitTesting(false)
     }
 
-    /// Centered writing surface: a calm blob focal point above a centered field. Return commits.
+    /// Writing surface: just the text input, left-aligned in the upper-left. Sending is the FAB.
     private var composer: some View {
-        VStack(spacing: 24) {
-            CreatingFilBlobView()
-                .frame(width: 120, height: 120)
-                .opacity(0.9)
-
+        VStack(alignment: .leading, spacing: 0) {
             TextField("", text: $text, axis: .vertical)
                 .font(Theme.dmSans(20, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(.center)
-                .lineLimit(1...6)
+                .multilineTextAlignment(.leading)
+                .lineLimit(1...12)
                 .focused($fieldFocused)
                 .submitLabel(.return)
-                .padding(.horizontal, 32)
-                .overlay(alignment: .center) {
+                .overlay(alignment: .topLeading) {
                     if text.isEmpty {
                         Text("let a thought be")
                             .font(Theme.dmSans(20, weight: .medium))
@@ -111,20 +110,35 @@ struct BlankCanvasPrototype: View {
                     }
                 }
                 .onSubmit { Task { await createFil() } }
-
-            Button(action: { Task { await createFil() } }) {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundStyle(Theme.background)
-                    .frame(width: 40, height: 40)
-                    .background(Theme.primaryText, in: Circle())
-                    .opacity(hasText ? 1 : 0.3)
-            }
-            .buttonStyle(.plain)
-            .disabled(!hasText)
+            Spacer(minLength: 0)
         }
-        .padding(.bottom, 80)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, 20)
+        .padding(.top, 64)
         .transition(.opacity)
+    }
+
+    /// Floating send button, bottom-trailing, shown while composing. Rides above the keyboard.
+    private var sendFAB: some View {
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                Button { Task { await createFil() } } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Theme.background)
+                        .frame(width: 56, height: 56)
+                        .background(Theme.primaryText, in: Circle())
+                        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+                        .opacity(hasText ? 1 : 0.35)
+                }
+                .buttonStyle(.plain)
+                .disabled(!hasText)
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 24)
     }
 
     private var creatingBlob: some View {
@@ -235,13 +249,14 @@ struct BlankCanvasPrototype: View {
                 NoteBlobShape(seed: note.blobShapeSeed)
                     .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                     .frame(width: 120, height: 120)
+                    .frame(maxWidth: .infinity)   // center the blob in the column
                 Text(displayTitle(note))
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)   // title flush left
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
