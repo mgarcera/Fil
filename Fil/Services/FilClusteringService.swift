@@ -18,6 +18,9 @@ struct FilClusterInput: Sendable {
     let id: UUID
     let text: String     // transcript (or title/keyword) used for embedding
     let keyword: String  // the fil's display label, used to name its cluster
+    /// Compact "(when, type, to-dos)" tag for flexible surfacing queries (temporal / type / to-do).
+    /// Empty for clustering, which ignores it.
+    var metadata: String = ""
 }
 
 struct FilCluster: Sendable, Identifiable {

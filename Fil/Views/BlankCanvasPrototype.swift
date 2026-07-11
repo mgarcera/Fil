@@ -23,6 +23,18 @@ struct BlankCanvasPrototype: View {
     private static let popTransition = AnyTransition.scale(scale: 0.01).combined(with: .opacity)
     private static let popAnimation = Animation.spring(response: 0.24, dampingFraction: 0.46)
 
+    /// Rotating search-field prompts — like the old composer's rotating placeholder — that also teach
+    /// the flexible query types (semantic, temporal, type, to-dos).
+    private static let queryPrompts = [
+        "search your thoughts",
+        "what have i been avoiding?",
+        "recent to-dos",
+        "photos i've saved",
+        "things i might've forgotten",
+        "what's been on my mind lately",
+    ]
+    private static let queryPromptInterval: TimeInterval = 3.5
+
     /// When embedded as the ContentView home, chrome (close) hides and the header owns it, and
     /// surfacing is triggered externally (the header search button) via `surfaceRequested`.
     var showsChrome: Bool = true
@@ -182,10 +194,13 @@ struct BlankCanvasPrototype: View {
                 .submitLabel(.search)
                 .overlay(alignment: .topLeading) {
                     if query.isEmpty {
-                        AnimatedGradientRevealText(text: "search your thoughts")
-                            .font(Theme.dmSans(20, weight: .medium))
-                            .foregroundStyle(Theme.tertiaryText)
-                            .allowsHitTesting(false)
+                        TimelineView(.periodic(from: .now, by: Self.queryPromptInterval)) { context in
+                            let index = Int(context.date.timeIntervalSinceReferenceDate / Self.queryPromptInterval) % Self.queryPrompts.count
+                            AnimatedGradientRevealText(text: Self.queryPrompts[index], maxDuration: 1.2, settledOpacity: 0.4)
+                                .font(Theme.dmSans(20, weight: .medium))
+                                .foregroundStyle(Theme.primaryText)
+                        }
+                        .allowsHitTesting(false)
                     }
                 }
                 .onSubmit { Task { await runQuery() } }
@@ -395,7 +410,7 @@ struct BlankCanvasPrototype: View {
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .results }
 
         let inputs = notes.map { note in
-            FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note))
+            FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note), metadata: filMetadata(note))
         }
 
         do {
@@ -418,6 +433,40 @@ struct BlankCanvasPrototype: View {
         case (false, true):  return title
         case (true, false):  return String(body.prefix(140))
         case (true, true):   return "fil"
+        }
+    }
+
+    /// Compact "(when, type, to-dos)" tag so Claude can answer temporal / type / to-do queries,
+    /// not just semantic ones. e.g. "2d ago, photo, open to-dos".
+    private func filMetadata(_ note: Note) -> String {
+        var parts = [relativeDate(note.timestamp), filKind(note)]
+        if hasOpenTodos(note) { parts.append("open to-dos") }
+        return parts.joined(separator: ", ")
+    }
+
+    private func filKind(_ note: Note) -> String {
+        if note.isLinkFil { return "link" }
+        if note.isImageFil { return "photo" }
+        if !note.audioFilePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "voice" }
+        return "note"
+    }
+
+    private func hasOpenTodos(_ note: Note) -> Bool {
+        guard !note.todos.isEmpty else { return false }
+        return note.todos.indices.contains { index in
+            index >= note.completedTodos.count || !note.completedTodos[index]
+        }
+    }
+
+    private func relativeDate(_ date: Date) -> String {
+        let days = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
+        switch days {
+        case ..<1:      return "today"
+        case 1:         return "yesterday"
+        case 2...6:     return "\(days)d ago"
+        case 7...29:    return "\(days / 7)w ago"
+        case 30...364:  return "\(days / 30)mo ago"
+        default:        return "\(days / 365)y ago"
         }
     }
 

@@ -40,17 +40,27 @@ actor ClaudeSurfacingService {
         guard !key.isEmpty else { throw SurfacingError.missingKey }
 
         let numbered = fils.enumerated()
-            .map { "\($0.offset + 1). \($0.element.text)" }
+            .map { index, fil in
+                let prefix = "\(index + 1)."
+                return fil.metadata.isEmpty ? "\(prefix) \(fil.text)" : "\(prefix) (\(fil.metadata)) \(fil.text)"
+            }
             .joined(separator: "\n")
 
         let system = """
-            You help someone explore their own private notes (they call each one a "fil"). Given a \
-            query and a numbered list of their notes, do two things:
+            You help someone explore their own private notes (they call each one a "fil"). Each note \
+            is listed as:
+              N. (when it was made, its type, whether it has open to-dos) title: snippet
+            Types are note, voice, link, photo.
 
-            1. Select ONLY the notes clearly and directly about the query. Be strict: exclude notes \
-            that are just loosely, thematically, or emotionally connected, even if genuinely related. \
-            Prefer a few tightly-relevant notes over many loosely-related ones; better too few than \
-            too many. If none fit, return an empty list. Order best first.
+            Given a query and the list, do two things:
+
+            1. Select the notes that genuinely answer the query, best first. Interpret the query flexibly:
+            - Topic, mood, or kind of thought: pick notes really about it. Be strict; exclude loosely \
+            or merely emotionally related ones, and prefer a few tight matches over many loose ones.
+            - Temporal ("recently", "lately", "what have i forgotten", "what have i missed"): use the \
+            dates. Recent/lately = the newest notes; forgotten/missed = older notes from a while ago.
+            - Type or to-dos ("photos", "links", "voice notes", "to-dos"): use the type and to-do flag.
+            Return an empty list only if nothing genuinely fits.
 
             2. Reflect back what those selected notes are about, in a warm but grounded way, like a \
             friend who listens well. 2 to 3 sentences, second person, in their voice. Stay close to \
