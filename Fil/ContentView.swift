@@ -215,20 +215,12 @@ struct ContentView: View {
                     Button {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
                     } label: {
-                        Group {
-                            if searchActive {
-                                Text("back")
-                                    .font(Theme.dmSans(15, weight: .semibold))
-                            } else {
-                                Image(systemName: "sparkle.magnifyingglass")
-                                    .font(.system(size: 17, weight: .medium))
-                            }
-                        }
-                        .foregroundStyle(Theme.primaryText)
-                        .frame(height: 44)
-                        .padding(.horizontal, searchActive ? 12 : 0)
-                        .frame(minWidth: 44)
-                        .contentShape(Rectangle())
+                        Text(searchActive ? "back" : "search")
+                            .font(Theme.dmSans(15, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(height: 44)
+                            .padding(.horizontal, 12)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .disabled(!searchActive && notes.isEmpty)
