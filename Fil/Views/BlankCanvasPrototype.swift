@@ -245,10 +245,9 @@ struct BlankCanvasPrototype: View {
             VStack(spacing: 14) {
                 NoteBlobShape(seed: note.blobShapeSeed)
                     .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                    .aspectRatio(1, contentMode: .fit)
-                    .frame(maxWidth: .infinity)
+                    .frame(width: 120, height: 120)
                 Text(displayTitle(note))
-                    .font(Theme.dmSans(17, weight: .medium))
+                    .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
