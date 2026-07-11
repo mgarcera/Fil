@@ -201,7 +201,7 @@ struct BlankCanvasPrototype: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         if !summary.isEmpty {
-                            AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, maxDuration: 2.0)
+                            AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                                 .font(Theme.dmSans(16, weight: .medium))
                                 .foregroundStyle(Theme.primaryText)
                                 .fixedSize(horizontal: false, vertical: true)
