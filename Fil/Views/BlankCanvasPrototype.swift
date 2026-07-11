@@ -245,17 +245,8 @@ struct BlankCanvasPrototype: View {
                         Text("nothing surfaced for “\(query)”")
                             .font(Theme.dmSans(15))
                             .foregroundStyle(Theme.secondaryText)
-                    } else if resultsAreAllTodos {
-                        // A to-do query surfaces a TodoSheet-style checklist instead of the blob grid.
-                        todoList
-                            .padding(.top, 4)
                     } else {
-                        LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
-                            ForEach(results, id: \.uuid) { note in
-                                blobCell(note)
-                            }
-                        }
-                        .padding(.top, 4)
+                        scrapbook
                     }
                 }
             }
@@ -296,15 +287,55 @@ struct BlankCanvasPrototype: View {
         .buttonStyle(.plain)
     }
 
-    /// True when every surfaced fil has open to-dos — a to-do query — so we render a checklist.
-    private var resultsAreAllTodos: Bool {
-        !results.isEmpty && results.allSatisfy { hasOpenTodos($0) }
+    // Mixed-type theme results split into sections that suit each type (the light "scrapbook").
+    private var photoResults: [Note] { results.filter { $0.isImageFil } }
+    private var todoResults: [Note] { results.filter { !$0.isImageFil && hasOpenTodos($0) } }
+    private var otherResults: [Note] { results.filter { !$0.isImageFil && !hasOpenTodos($0) } }
+
+    /// Summary already sits above; here the fils group into photo strip, blob grid, and checklist —
+    /// only the sections whose type is present. A pure "photos"/"to-dos" query shows just that section.
+    private var scrapbook: some View {
+        VStack(alignment: .leading, spacing: 28) {
+            if !photoResults.isEmpty { photoStrip }
+            if !otherResults.isEmpty {
+                LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
+                    ForEach(otherResults, id: \.uuid) { blobCell($0) }
+                }
+            }
+            if !todoResults.isEmpty { todoChecklist(todoResults) }
+        }
+        .padding(.top, 4)
+    }
+
+    /// Horizontal gallery of photo fils (image blob-clipped, title beneath, tap to open).
+    private var photoStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 16) {
+                ForEach(photoResults, id: \.uuid) { note in
+                    Button { selectedNote = note } label: {
+                        VStack(alignment: .leading, spacing: 10) {
+                            NoteCardView(note: note, showsKeywordBadge: false)
+                                .frame(width: 130, height: 130)
+                            Text(displayTitle(note))
+                                .font(Theme.dmSans(14, weight: .medium))
+                                .foregroundStyle(Theme.primaryText)
+                                .frame(width: 130, alignment: .leading)
+                                .lineLimit(2)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
     }
 
     /// TodoSheet-style checklist: each fil as a bold header (blob + title), its open to-dos beneath.
-    private var todoList: some View {
+    private func todoChecklist(_ notes: [Note]) -> some View {
         VStack(alignment: .leading, spacing: 22) {
-            ForEach(results, id: \.uuid) { note in
+            ForEach(notes, id: \.uuid) { note in
                 VStack(alignment: .leading, spacing: 10) {
                     Button { selectedNote = note } label: {
                         HStack(spacing: 12) {
