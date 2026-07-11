@@ -36,10 +36,11 @@ struct BlankCanvasPrototype: View {
     ]
     private static let queryPromptInterval: TimeInterval = 3.5
 
-    /// When embedded as the ContentView home, chrome (close) hides and the header owns it, and
-    /// surfacing is triggered externally (the header search button) via `surfaceRequested`.
+    /// When embedded as the ContentView home, chrome (close) hides and the header owns it. The
+    /// header's search/back button drives `searchActive`: true enters the query screen, false
+    /// returns to the composer.
     var showsChrome: Bool = true
-    @Binding var surfaceRequested: Bool
+    @Binding var searchActive: Bool
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -72,8 +73,6 @@ struct BlankCanvasPrototype: View {
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { onCanvasTap() }
 
             switch phase {
             case .composing: composer
@@ -81,10 +80,6 @@ struct BlankCanvasPrototype: View {
             case .formed:    formedBlob
             case .querying:  queryField
             case .results:   resultsList
-            }
-
-            if phase == .composing && hasText {
-                sendFAB
             }
 
             if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
@@ -95,6 +90,15 @@ struct BlankCanvasPrototype: View {
                 closeButton
             }
         }
+        // The send FAB floats as an overlay (not a ZStack sibling) so its Button reliably wins hit
+        // testing over the full-screen background tap-catcher below.
+        .overlay(alignment: .bottomTrailing) {
+            if phase == .composing && hasText {
+                sendFAB
+                    .padding(.trailing, 24)
+                    .padding(.bottom, 24)
+            }
+        }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
         .sheet(item: $selectedNote) { note in
             NavigationStack { ArticleView(note: note) }
@@ -102,11 +106,15 @@ struct BlankCanvasPrototype: View {
                 .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showKeyEntry) { keyEntrySheet }
-        // The header search button (when embedded) requests surfacing; enter the query field.
-        .onChange(of: surfaceRequested) { _, requested in
-            if requested {
-                beginSurface()
-                surfaceRequested = false
+        // The header search/back button toggles searchActive: enter the query screen or return to
+        // the composer. (There's no tap-anywhere-to-go-back; the header button is the switcher.)
+        .onChange(of: searchActive) { _, active in
+            if active {
+                if phase != .querying && phase != .results { beginSurface() }
+            } else {
+                query = ""
+                queryFocused = false
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
             }
         }
     }
@@ -147,25 +155,17 @@ struct BlankCanvasPrototype: View {
         .transition(.opacity)
     }
 
-    /// Floating send button, bottom-trailing, shown while composing. Rides above the keyboard.
+    /// Floating send button (positioned by the overlay), shown while composing. Rides above the keyboard.
     private var sendFAB: some View {
-        VStack {
-            Spacer()
-            HStack {
-                Spacer()
-                Button { Task { await createFil() } } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Theme.primaryText)
-                        .frame(width: 56, height: 56)
-                        .glassEffect(.regular, in: .circle)
-                }
-                .buttonStyle(.plain)
-                .transition(.scale.combined(with: .opacity))
-            }
+        Button { Task { await createFil() } } label: {
+            Image(systemName: "arrow.up")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 56, height: 56)
+                .glassEffect(.regular, in: .circle)
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 24)
+        .buttonStyle(.plain)
+        .transition(.scale.combined(with: .opacity))
     }
 
     private var creatingBlob: some View {
@@ -480,21 +480,6 @@ struct BlankCanvasPrototype: View {
         var list = recentSearches.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
         list.insert(trimmed, at: 0)
         recentSearchesRaw = list.prefix(6).joined(separator: "\n")
-    }
-
-    private func onCanvasTap() {
-        switch phase {
-        case .composing:
-            // Tapping the canvas toggles the keyboard on the entrance field.
-            fieldFocused.toggle()
-        case .querying:
-            queryFocused = false
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
-        case .results:
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
-        case .creating, .formed:
-            break
-        }
     }
 
     private func createFil() async {

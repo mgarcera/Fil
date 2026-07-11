@@ -19,7 +19,7 @@ struct ContentView: View {
     @State private var selectedNote: Note?
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showFilSetup = false
-    @State private var surfaceRequested = false      // header search → canvas "surface a thought"
+    @State private var searchActive = false          // header button ↔ canvas: search screen vs composer
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -51,7 +51,7 @@ struct ContentView: View {
 
             // Blank-canvas home (blank-canvas-home branch): tap to capture, header search to surface.
             // Replaces the day timeline + bottom composer + FABs. Text-only capture for now.
-            BlankCanvasPrototype(showsChrome: false, surfaceRequested: $surfaceRequested)
+            BlankCanvasPrototype(showsChrome: false, searchActive: $searchActive)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
@@ -210,20 +210,30 @@ struct ContentView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
-                    // Blank-canvas home: asks the canvas to "surface a thought".
+                    // Blank-canvas home: the search/back switcher. In the composer it opens the
+                    // search screen; in search it says "back" and returns to the composer.
                     Button {
-                        surfaceRequested = true
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
                     } label: {
-                        Image(systemName: "sparkle.magnifyingglass")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
+                        Group {
+                            if searchActive {
+                                Text("back")
+                                    .font(Theme.dmSans(15, weight: .semibold))
+                            } else {
+                                Image(systemName: "sparkle.magnifyingglass")
+                                    .font(.system(size: 17, weight: .medium))
+                            }
+                        }
+                        .foregroundStyle(Theme.primaryText)
+                        .frame(height: 44)
+                        .padding(.horizontal, searchActive ? 12 : 0)
+                        .frame(minWidth: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .disabled(notes.isEmpty)
-                    .opacity(notes.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel("Search your thoughts")
+                    .disabled(!searchActive && notes.isEmpty)
+                    .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
+                    .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
                 }
                 .padding(.horizontal, 6)
                 .glassEffect()
