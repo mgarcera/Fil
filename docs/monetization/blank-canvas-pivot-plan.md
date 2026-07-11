@@ -9,8 +9,8 @@ pending Mason's confirm** (marked DECISION).
 
 ## Why the change
 - **Surfacing sends fils to Anthropic's API** → "notes stay on your device" is no longer absolute.
-- **Every query costs money** (~$0.003 on Haiku 4.5, non-zero, scales with use) → cosmetics/tips
-  can't reliably cover it; a recurring model can.
+- **Every query costs money** (~$0.01 measured on Haiku 4.5, and it grows with a user's library size
+  since the whole corpus is sent) → cosmetics/tips can't reliably cover it; a recurring model can.
 - **The dev-key spike is not shippable** — the API key currently lives client-side in AppStorage.
 
 ## DECISION 1 — Money model → **Freemium subscription ("Fil Pro"), flat, no credits** *(recommended — now research-grounded)*
@@ -25,13 +25,18 @@ margin, use credits/hybrid." **That warning mostly doesn't apply to Fil**, and h
   agentic task**; a power user there can cost $90/mo on a $20 plan.
   ([RevenueCat](https://www.revenuecat.com/blog/growth/ai-feature-cost-subscription-app-margins/),
   [digitalapplied](https://www.digitalapplied.com/blog/ai-unit-economics-pricing-margins-services-2026-framework))
-- **Fil surfacing is ~$0.003/query** (Haiku, capped corpus) and **human-paced** (type a query, read a
-  result). Break-even against a $2.99/mo sub is **~1,000 queries/month** — a human won't hand-type
-  that. The scripted-abuse case is capped by the proxy's rate limit.
-- The literature's own threshold: **"if AI costs are under $0.10/user/month, bundle it — the pricing
-  complexity isn't worth the margin risk."** ([freemius](https://freemius.com/blog/ai-app-pricing-model/))
-  A typical Fil user (say 10–40 surfacings/mo) is **~$0.03–$0.12/user/mo** — right at that line. So a
-  **flat freemium sub is the right call; credits would add friction for negligible margin protection.**
+- **Fil surfacing is ~$0.01/query** (measured on Haiku, not the ~$0.003 first estimated) and
+  **human-paced** (type a query, read a result). Break-even against a $2.99/mo sub is **~300
+  queries/month (~10/day)** — most humans won't hit that, but a genuinely heavy daily searcher
+  *can*, so it's a real (not theoretical) tail to bound.
+- **Cost scales with the user's own library** — the whole fil corpus is sent each query, so a big
+  library ⇒ a bigger, pricier payload. This makes the **payload cap / pre-filter (review #10) the #1
+  cost lever**, not a minor cleanup (see Finalized model).
+- The literature's threshold: **"under $0.10/user/month → bundle it; $1+/user/mo and variable → price
+  it explicitly."** ([freemius](https://freemius.com/blog/ai-app-pricing-model/)) A typical Fil user
+  (~10–40 surfacings/mo) is **~$0.10–$0.40/user/mo** — just over the bundle line, well under the
+  "price-it-explicitly" line. So a **flat freemium sub still fits; credits would add friction for
+  little gain — but the free cap + payload cap + a daily rate limit now do real work.**
 - **Conversion:** AI apps convert above classic SaaS — good 6–8%, great 15–20% (Claude ~13%); a hard
   paywall earns ~9× the D14 revenue of cheap freemium but forgoes free-user data.
   ([Growth Unhinged](https://www.growthunhinged.com/p/free-to-paid-conversion-report),
