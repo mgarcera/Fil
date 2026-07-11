@@ -663,7 +663,10 @@ struct ContentView: View {
 
     // Secondary-sheet contents, extracted so the (large) body stays type-checkable.
     private var filSetupSheet: some View {
-        SettingsView(screensaverOptions: screensaverOptions)
+        SettingsView(
+            screensaverOptions: screensaverOptions,
+            autoScreensaverUnlocked: notes.count >= koiPondUnlockThreshold
+        )
             .presentationDetents([.fraction(0.6)])
             .presentationBackground(Theme.background)
     }

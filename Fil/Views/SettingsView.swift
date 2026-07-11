@@ -7,6 +7,9 @@ import SwiftData
 struct SettingsView: View {
     /// Screensaver launchers, supplied by ContentView (each dismisses settings, then launches).
     var screensaverOptions: [ScreensaverOption] = []
+    /// Whether the library has enough fils for auto-screensaver to actually run (else the toggle
+    /// is disabled so it can't be switched on to no effect).
+    var autoScreensaverUnlocked: Bool = true
 
     @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
     @AppStorage("soundEnabled") private var soundEnabled = true
@@ -174,9 +177,13 @@ struct SettingsView: View {
 
             settingToggle(
                 "auto screensaver",
-                description: "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery.",
+                description: autoScreensaverUnlocked
+                    ? "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery."
+                    : "unlocks once you have a few more fils.",
                 isOn: $autoScreensaverEnabled
             )
+            .disabled(!autoScreensaverUnlocked)
+            .opacity(autoScreensaverUnlocked ? 1 : 0.5)
         }
     }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct NoteCardView: View {
     let note: Note
+    var cardHeight: CGFloat = 98
     var selectionStrokeColor: Color?
     var selectionStrokeLineWidth: CGFloat = 0
     var selectionStrokeShadowOpacity: Double = 0
@@ -63,7 +64,7 @@ struct NoteCardView: View {
             // clip at large accessibility text sizes.
             .dynamicTypeSize(...DynamicTypeSize.xLarge)
         }
-        .frame(height: 98)
+        .frame(height: cardHeight)
         .overlay(selectionStroke)
     }
 

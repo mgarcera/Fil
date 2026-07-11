@@ -49,6 +49,9 @@ struct BlankCanvasPrototype: View {
     // Surfacing (dev-key Claude spike)
     @State private var query = ""
     @State private var results: [Note] = []
+    /// Which surfaced fils go in the to-do checklist, captured once per query so completing a to-do
+    /// doesn't reflow the fil into the grid mid-tap.
+    @State private var todoFilIDs: Set<UUID> = []
     @State private var summary = ""
     @State private var surfaceError: String?
     @State private var isRetrieving = false
@@ -305,7 +308,7 @@ struct BlankCanvasPrototype: View {
             VStack(alignment: .center, spacing: 14) {
                 Group {
                     if note.isImageFil {
-                        NoteCardView(note: note)
+                        NoteCardView(note: note, cardHeight: gridBlobSize)
                     } else {
                         NoteBlobShape(seed: note.blobShapeSeed)
                             .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
@@ -340,9 +343,10 @@ struct BlankCanvasPrototype: View {
     }
 
     // Mixed-type theme results: one uniform blob grid (photos render as images, same size as notes)
-    // plus a to-do checklist section when to-do fils are present.
-    private var todoResults: [Note] { results.filter { !$0.isImageFil && hasOpenTodos($0) } }
-    private var gridResults: [Note] { results.filter { $0.isImageFil || !hasOpenTodos($0) } }
+    // plus a to-do checklist section. The split is captured once per query (`todoFilIDs`, set in
+    // runQuery) so completing a to-do can't reflow a fil out of the checklist mid-tap.
+    private var todoResults: [Note] { results.filter { todoFilIDs.contains($0.uuid) } }
+    private var gridResults: [Note] { results.filter { !todoFilIDs.contains($0.uuid) } }
 
     /// Summary sits above; here photos + notes + links share the grid, and any to-do fils get a
     /// checklist beneath. A pure "to-dos" query shows just the checklist.
@@ -378,7 +382,9 @@ struct BlankCanvasPrototype: View {
                     }
                     .buttonStyle(.plain)
 
-                    ForEach(openTodoItems(note), id: \.index) { item in
+                    // All of the fil's to-dos (completed ones struck through), reusing the model's
+                    // stable row items so completing one strikes in place instead of vanishing.
+                    ForEach(note.todoRowItems, id: \.id) { item in
                         TodoRowContent(text: item.text, isCompleted: item.done) {
                             toggleTodo(note, item.index)
                         }
@@ -389,17 +395,14 @@ struct BlankCanvasPrototype: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func openTodoItems(_ note: Note) -> [(index: Int, text: String, done: Bool)] {
-        note.todos.enumerated().compactMap { index, text in
-            let done = index < note.completedTodos.count ? note.completedTodos[index] : false
-            return done ? nil : (index, text, done)
-        }
-    }
-
+    /// Mirrors ContentView.toggleTodoFromSheet: normalize, bound-check, sound, toggle, save.
     private func toggleTodo(_ note: Note, _ index: Int) {
-        guard index < note.todos.count else { return }
-        while note.completedTodos.count < note.todos.count { note.completedTodos.append(false) }
-        note.completedTodos[index].toggle()
+        note.normalizeCompletedTodos()
+        guard note.completedTodos.indices.contains(index) else { return }
+        SoundscapeManager.shared.playTodoArticleToggleSound()
+        withAnimation(.snappy) {
+            note.completedTodos[index].toggle()
+        }
         modelContext.saveOrLog()
     }
 
@@ -524,7 +527,10 @@ struct BlankCanvasPrototype: View {
         formedNote = note
         withAnimation(Self.popAnimation) { phase = .formed }
         try? await Task.sleep(for: .milliseconds(750))
-        withAnimation(.easeOut(duration: 0.4)) { phase = .composing }
+        // Only return to the composer if the user hasn't navigated away (e.g. opened search) meanwhile.
+        if phase == .formed {
+            withAnimation(.easeOut(duration: 0.4)) { phase = .composing }
+        }
     }
 
     private func runQuery() async {
@@ -548,7 +554,10 @@ struct BlankCanvasPrototype: View {
         do {
             let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, apiKey: devKey)
             summary = outcome.summary
-            results = outcome.relevantIDs.compactMap { notesByID[$0] }
+            let surfaced = outcome.relevantIDs.compactMap { notesByID[$0] }
+            results = surfaced
+            // Capture the checklist membership once, so it's stable while the user toggles to-dos.
+            todoFilIDs = Set(surfaced.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
         } catch {
             surfaceError = (error as? ClaudeSurfacingService.SurfacingError)?.errorDescription ?? error.localizedDescription
         }
