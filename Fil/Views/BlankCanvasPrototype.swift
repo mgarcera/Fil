@@ -91,7 +91,7 @@ struct BlankCanvasPrototype: View {
     private var composer: some View {
         VStack(spacing: 24) {
             CreatingFilBlobView()
-                .frame(width: 76, height: 76)
+                .frame(width: 120, height: 120)
                 .opacity(0.9)
 
             TextField("", text: $text, axis: .vertical)
@@ -181,10 +181,10 @@ struct BlankCanvasPrototype: View {
     /// Two-column grid for the surfaced fils. Blobs fill the column width; tweak spacing here.
     private let gridColumns = [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)]
 
+    /// Everything — query, summary, and the fil grid — scrolls together in one ScrollView.
     private var resultsList: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            // Header + summary are pinned; only the blob carousel scrolls (horizontally).
-            VStack(alignment: .leading, spacing: 16) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
                 resultsHeader
 
                 if isRetrieving {
@@ -211,48 +211,37 @@ struct BlankCanvasPrototype: View {
                         Text("nothing surfaced for “\(query)”")
                             .font(Theme.dmSans(15))
                             .foregroundStyle(Theme.secondaryText)
+                    } else {
+                        LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
+                            ForEach(results, id: \.uuid) { note in
+                                blobCell(note)
+                            }
+                        }
+                        .padding(.top, 4)
                     }
                 }
             }
             .padding(.horizontal, 20)
-
-            if !isRetrieving, surfaceError == nil, !results.isEmpty {
-                blobGrid
-            }
-        }
-        .padding(.top, 64)
-        .transition(.opacity)
-    }
-
-    /// Two-column grid of the surfaced fils as large blobs, full title beneath (no truncation).
-    /// Header + summary stay pinned; only the grid scrolls.
-    private var blobGrid: some View {
-        ScrollView {
-            LazyVGrid(columns: gridColumns, alignment: .center, spacing: 28) {
-                ForEach(results, id: \.uuid) { note in
-                    blobCell(note)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 4)
+            .padding(.top, 64)
             .padding(.bottom, 80)
         }
         .scrollIndicators(.hidden)
+        .transition(.opacity)
     }
 
     private func blobCell(_ note: Note) -> some View {
         Button { selectedNote = note } label: {
-            VStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 14) {
                 NoteBlobShape(seed: note.blobShapeSeed)
                     .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                     .frame(width: 120, height: 120)
                 Text(displayTitle(note))
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
-                    .multilineTextAlignment(.center)
+                    .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
