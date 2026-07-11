@@ -26,11 +26,24 @@ allowance (e.g. ~5 searches/month) so they feel the magic before paying. Beyond 
 
 ## DECISION 3 — Privacy stance → **keep an on-device-only path; surfacing is opt-in + honestly disclosed** *(recommended)*
 Capture, on-device titles, storage, widgets, screensavers stay 100% local. Surfacing is the *only*
-thing that sends data out, and only when the user runs a query. Positioning becomes:
+thing that sends data out, and only when the user runs a query. Positioning becomes (wording
+verified against Anthropic's terms, 2026-07-11):
 > "Your thoughts stay on your device. When you ask Fil to surface them, the relevant text is sent
-> securely to our AI to answer — never stored, never used for training."
-A user who never searches keeps the absolute on-device guarantee. (Anthropic's API does not train on
-submitted data by default — the backbone of this claim; verify current terms at build time.)
+> securely to our AI provider (Anthropic) to answer. It is never used to train models, and is
+> deleted within 30 days."
+A user who never searches keeps the absolute on-device guarantee.
+
+**Verified facts (Anthropic Commercial/API terms):**
+- **Not trained on** — by default Anthropic does NOT train on API inputs/outputs (Commercial Terms).
+  ✅ safe to claim.
+- **Retention** — the API auto-deletes inputs/outputs within **~30 days** (longer only if content
+  is flagged for Usage Policy enforcement). So **"never stored" is FALSE** — say "deleted within 30
+  days," not "never stored."
+- **Zero Data Retention (ZDR)** — an arrangement (request from Anthropic sales) under which prompts/
+  responses aren't stored at rest after the response returns. If we obtain ZDR, we *can* say "not
+  stored." Otherwise use the 30-day wording. → tracked in Open decisions.
+- The 2025 consumer-terms changes (5-yr retention, opt-in training) apply to Claude.ai consumer
+  plans, **NOT** the API/Commercial Terms — doesn't affect us.
 
 ## DECISION 4 — Backend → **serverless proxy** *(recommended)*
 A lightweight function (Cloudflare Workers / Vercel) that: holds the Anthropic key server-side,
@@ -56,8 +69,9 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
 
 ## Disclosures (must ship with the paywall)
 - **Privacy policy** update: name Anthropic as a processor, what's sent (fil text for a query), that
-  it's transient / not trained on / not stored, and that capture stays local. (`docs/legal/privacy-policy.md`,
-  hosted at rootcause.ltd/fil/privacy.)
+  it's **not used to train models** and **deleted within ~30 days** (or "not stored" only if we
+  secure ZDR), and that capture stays local. (`docs/legal/privacy-policy.md`, hosted at
+  rootcause.ltd/fil/privacy.)
 - **App Store privacy nutrition label:** update from "no data collected" — surfacing transmits user
   content to a processor; declare accordingly (likely "User Content" used for App Functionality, not
   linked, not for tracking). Re-answer P2.11's questions for the cloud path.
@@ -93,6 +107,8 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
 - **Model tier** for production (Haiku vs Sonnet) and prompt-cache use at scale.
 - **Fate of the old cosmetics shop** — drop, or keep as optional extra support alongside Pro.
 - **Offline / no-Pro behavior** of the surfacing entry (hide vs show-with-paywall).
+- **Zero Data Retention** — pursue a ZDR agreement with Anthropic (lets us say "not stored," a
+  stronger privacy claim) vs. ship with the default 30-day-deletion wording.
 
 ## Verification / gates before shipping
 - Proxy: key never in the client build; subscription verified server-side (can't be spoofed);
