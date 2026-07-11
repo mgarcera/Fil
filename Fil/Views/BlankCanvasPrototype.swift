@@ -213,7 +213,10 @@ struct BlankCanvasPrototype: View {
                     if query.isEmpty {
                         TimelineView(.periodic(from: .now, by: Self.queryPromptInterval)) { context in
                             let index = Int(context.date.timeIntervalSinceReferenceDate / Self.queryPromptInterval) % Self.queryPrompts.count
-                            AnimatedGradientRevealText(text: Self.queryPrompts[index], maxDuration: 1.2, settledOpacity: 0.4)
+                            let prompt = Self.queryPrompts[index]
+                            // Example prompts read as quoted phrases; the plain "search your thoughts" anchor doesn't.
+                            let display = prompt == "search your thoughts" ? prompt : "“\(prompt)”"
+                            AnimatedGradientRevealText(text: display, maxDuration: 1.2, settledOpacity: 0.4)
                                 .font(Theme.dmSans(20, weight: .medium))
                                 .foregroundStyle(Theme.primaryText)
                         }
