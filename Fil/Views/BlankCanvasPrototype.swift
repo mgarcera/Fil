@@ -134,9 +134,6 @@ struct BlankCanvasPrototype: View {
                     }
                 }
                 .onSubmit { Task { await createFil() } }
-                .padding(.horizontal, 18)
-                .padding(.vertical, 14)
-                .glassEffect(.regular, in: .rect(cornerRadius: 24))
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -154,10 +151,9 @@ struct BlankCanvasPrototype: View {
                 Button { Task { await createFil() } } label: {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Theme.background)
+                        .foregroundStyle(Theme.primaryText)
                         .frame(width: 56, height: 56)
-                        .background(Theme.primaryText, in: Circle())
-                        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+                        .glassEffect(.regular, in: .circle)
                         .opacity(hasText ? 1 : 0.35)
                 }
                 .buttonStyle(.plain)
