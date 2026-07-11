@@ -178,57 +178,85 @@ struct BlankCanvasPrototype: View {
         .transition(.opacity)
     }
 
-    private var resultsList: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            resultsHeader
+    /// Size of the blobs in the results carousel. Easy to tweak while experimenting.
+    private let carouselBlobSize: CGFloat = 110
 
-            if isRetrieving {
-                HStack(spacing: 10) {
-                    ProgressView()
-                    Text("surfacing…")
-                        .font(Theme.dmSans(15))
-                        .foregroundStyle(Theme.secondaryText)
-                }
-                .padding(.top, 32)
-                .frame(maxWidth: .infinity)
-            } else if let surfaceError {
-                Text(surfaceError)
-                    .font(Theme.dmSans(15))
-                    .foregroundStyle(.orange)
-                    .padding(.top, 32)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        if !summary.isEmpty {
-                            AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
-                                .font(Theme.dmSans(16, weight: .medium))
-                                .foregroundStyle(Theme.primaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        if results.isEmpty {
-                            Text("nothing surfaced for “\(query)”")
-                                .font(Theme.dmSans(15))
-                                .foregroundStyle(Theme.secondaryText)
-                        } else {
-                            VStack(spacing: 10) {
-                                ForEach(results, id: \.uuid) { note in
-                                    resultRow(note)
-                                }
-                            }
-                        }
+    private var resultsList: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Header + summary are pinned; only the blob carousel scrolls (horizontally).
+            VStack(alignment: .leading, spacing: 16) {
+                resultsHeader
+
+                if isRetrieving {
+                    HStack(spacing: 10) {
+                        ProgressView()
+                        Text("surfacing…")
+                            .font(Theme.dmSans(15))
+                            .foregroundStyle(Theme.secondaryText)
                     }
-                    .padding(.top, 12)
-                    .padding(.bottom, 80)
+                    .padding(.top, 16)
+                } else if let surfaceError {
+                    Text(surfaceError)
+                        .font(Theme.dmSans(15))
+                        .foregroundStyle(.orange)
+                        .padding(.top, 16)
+                } else {
+                    if !summary.isEmpty {
+                        AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                            .font(Theme.dmSans(16, weight: .medium))
+                            .foregroundStyle(Theme.primaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if results.isEmpty {
+                        Text("nothing surfaced for “\(query)”")
+                            .font(Theme.dmSans(15))
+                            .foregroundStyle(Theme.secondaryText)
+                    }
                 }
-                .scrollIndicators(.hidden)
+            }
+            .padding(.horizontal, 20)
+
+            if !isRetrieving, surfaceError == nil, !results.isEmpty {
+                blobCarousel
             }
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 20)
         .padding(.top, 64)
         .transition(.opacity)
+    }
+
+    /// Horizontal strip of the surfaced fils as large blobs (title beneath). Bleeds to the screen
+    /// edges with a content inset so the blobs scroll under the margin.
+    private var blobCarousel: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(alignment: .top, spacing: 16) {
+                ForEach(results, id: \.uuid) { note in
+                    blobCard(note)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private func blobCard(_ note: Note) -> some View {
+        Button { selectedNote = note } label: {
+            VStack(spacing: 10) {
+                NoteBlobShape(seed: note.blobShapeSeed)
+                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                    .frame(width: carouselBlobSize, height: carouselBlobSize)
+                Text(displayTitle(note))
+                    .font(Theme.dmSans(14, weight: .medium))
+                    .foregroundStyle(Theme.primaryText)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(width: carouselBlobSize + 24)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var resultsHeader: some View {
@@ -267,24 +295,6 @@ struct BlankCanvasPrototype: View {
         .padding(24)
         .presentationDetents([.height(240)])
         .presentationBackground(Theme.background)
-    }
-
-    private func resultRow(_ note: Note) -> some View {
-        Button { selectedNote = note } label: {
-            HStack(spacing: 12) {
-                NoteBlobShape(seed: note.blobShapeSeed)
-                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                    .frame(width: 24, height: 24)
-                Text(displayTitle(note))
-                    .font(Theme.dmSans(15, weight: .medium))
-                    .foregroundStyle(Theme.primaryText)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 
     private var closeButton: some View {
