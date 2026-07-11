@@ -178,8 +178,8 @@ struct BlankCanvasPrototype: View {
         .transition(.opacity)
     }
 
-    /// Size of the blobs in the results carousel. Easy to tweak while experimenting.
-    private let carouselBlobSize: CGFloat = 110
+    /// Two-column grid for the surfaced fils. Blobs fill the column width; tweak spacing here.
+    private let gridColumns = [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)]
 
     private var resultsList: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -217,43 +217,43 @@ struct BlankCanvasPrototype: View {
             .padding(.horizontal, 20)
 
             if !isRetrieving, surfaceError == nil, !results.isEmpty {
-                blobCarousel
+                blobGrid
             }
-
-            Spacer(minLength: 0)
         }
         .padding(.top, 64)
         .transition(.opacity)
     }
 
-    /// Horizontal strip of the surfaced fils as large blobs (title beneath). Bleeds to the screen
-    /// edges with a content inset so the blobs scroll under the margin.
-    private var blobCarousel: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 16) {
+    /// Two-column grid of the surfaced fils as large blobs, full title beneath (no truncation).
+    /// Header + summary stay pinned; only the grid scrolls.
+    private var blobGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: gridColumns, alignment: .center, spacing: 28) {
                 ForEach(results, id: \.uuid) { note in
-                    blobCard(note)
+                    blobCell(note)
                 }
             }
             .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .padding(.bottom, 80)
         }
         .scrollIndicators(.hidden)
     }
 
-    private func blobCard(_ note: Note) -> some View {
+    private func blobCell(_ note: Note) -> some View {
         Button { selectedNote = note } label: {
-            VStack(spacing: 10) {
+            VStack(spacing: 14) {
                 NoteBlobShape(seed: note.blobShapeSeed)
                     .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                    .frame(width: carouselBlobSize, height: carouselBlobSize)
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
                 Text(displayTitle(note))
-                    .font(Theme.dmSans(14, weight: .medium))
+                    .font(Theme.dmSans(17, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .multilineTextAlignment(.center)
-                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(width: carouselBlobSize + 24)
+            .frame(maxWidth: .infinity, alignment: .top)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
