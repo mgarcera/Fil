@@ -83,6 +83,10 @@ struct BlankCanvasPrototype: View {
                 sendFAB
             }
 
+            if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
+                recentChipsBar
+            }
+
             if showsChrome {
                 closeButton
             }
@@ -206,12 +210,6 @@ struct BlankCanvasPrototype: View {
                     }
                 }
                 .onSubmit { Task { await runQuery() } }
-
-            if query.isEmpty && !recentSearches.isEmpty {
-                recentList
-                    .padding(.top, 40)
-            }
-
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -220,27 +218,34 @@ struct BlankCanvasPrototype: View {
         .transition(.opacity)
     }
 
-    /// Recently-searched terms as a quiet text list beneath the field; tap a line to re-run.
-    private var recentList: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("retrace your steps:")
-                .font(Theme.dmSans(16, weight: .semibold))
-                .foregroundStyle(Theme.secondaryText)
-            ForEach(recentSearches, id: \.self) { term in
-                Button {
-                    query = term
-                    Task { await runQuery() }
-                } label: {
-                    Text(term)
-                        .font(Theme.dmSans(16, weight: .medium))
-                        .foregroundStyle(Theme.secondaryText)
-                        .lineLimit(1)
-                        .contentShape(Rectangle())
+    /// Recently-searched terms as tappable glass chips, bottom-anchored so they ride above the
+    /// keyboard on the search screen. Tap to re-run.
+    private var recentChipsBar: some View {
+        VStack {
+            Spacer()
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(recentSearches, id: \.self) { term in
+                        Button {
+                            query = term
+                            Task { await runQuery() }
+                        } label: {
+                            Text(term)
+                                .font(Theme.dmSans(14, weight: .medium))
+                                .foregroundStyle(Theme.secondaryText)
+                                .lineLimit(1)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .glassEffect(.regular, in: .capsule)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
             }
+            .scrollIndicators(.hidden)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 12)
     }
 
     /// Two-column grid for the surfaced fils. Blobs fill the column width; tweak spacing here.
