@@ -224,8 +224,8 @@ struct BlankCanvasPrototype: View {
     private var recentList: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("retrace your steps:")
-                .font(Theme.dmMono(12))
-                .foregroundStyle(Theme.tertiaryText)
+                .font(Theme.dmSans(16, weight: .semibold))
+                .foregroundStyle(Theme.secondaryText)
             ForEach(recentSearches, id: \.self) { term in
                 Button {
                     query = term
@@ -320,49 +320,23 @@ struct BlankCanvasPrototype: View {
         .buttonStyle(.plain)
     }
 
-    // Mixed-type theme results split into sections that suit each type (the light "scrapbook").
-    private var photoResults: [Note] { results.filter { $0.isImageFil } }
+    // Mixed-type theme results: one uniform blob grid (photos render as images, same size as notes)
+    // plus a to-do checklist section when to-do fils are present.
     private var todoResults: [Note] { results.filter { !$0.isImageFil && hasOpenTodos($0) } }
-    private var otherResults: [Note] { results.filter { !$0.isImageFil && !hasOpenTodos($0) } }
+    private var gridResults: [Note] { results.filter { $0.isImageFil || !hasOpenTodos($0) } }
 
-    /// Summary already sits above; here the fils group into photo strip, blob grid, and checklist —
-    /// only the sections whose type is present. A pure "photos"/"to-dos" query shows just that section.
+    /// Summary sits above; here photos + notes + links share the grid, and any to-do fils get a
+    /// checklist beneath. A pure "to-dos" query shows just the checklist.
     private var scrapbook: some View {
         VStack(alignment: .leading, spacing: 28) {
-            if !photoResults.isEmpty { photoStrip }
-            if !otherResults.isEmpty {
+            if !gridResults.isEmpty {
                 LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
-                    ForEach(otherResults, id: \.uuid) { blobCell($0) }
+                    ForEach(gridResults, id: \.uuid) { blobCell($0) }
                 }
             }
             if !todoResults.isEmpty { todoChecklist(todoResults) }
         }
         .padding(.top, 4)
-    }
-
-    /// Horizontal gallery of photo fils (image blob-clipped, title beneath, tap to open).
-    private var photoStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 16) {
-                ForEach(photoResults, id: \.uuid) { note in
-                    Button { selectedNote = note } label: {
-                        VStack(alignment: .leading, spacing: 10) {
-                            NoteCardView(note: note, showsKeywordBadge: false)
-                                .frame(width: 130, height: 130)
-                            Text(displayTitle(note))
-                                .font(Theme.dmSans(14, weight: .medium))
-                                .foregroundStyle(Theme.primaryText)
-                                .frame(width: 130, alignment: .leading)
-                                .lineLimit(2)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-        .scrollIndicators(.hidden)
     }
 
     /// TodoSheet-style checklist: each fil as a bold header (blob + title), its open to-dos beneath.
