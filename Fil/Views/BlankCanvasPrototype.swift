@@ -307,17 +307,31 @@ struct BlankCanvasPrototype: View {
                     }
                 }
                 .frame(width: gridBlobSize, height: gridBlobSize)
-                Text(displayTitle(note))
-                    .font(Theme.dmSans(15, weight: .medium))
-                    .foregroundStyle(Theme.primaryText)
-                    .multilineTextAlignment(.leading)
-                    .frame(width: gridBlobSize, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
+                gridTitle(note)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    /// A one-line title centers under the blob; a title that wraps to two+ lines left-aligns.
+    /// ViewThatFits picks the single-line centered version when it fits the blob width, else the
+    /// wrapping left-aligned version — no manual line counting.
+    private func gridTitle(_ note: Note) -> some View {
+        let title = displayTitle(note)
+        return ViewThatFits(in: .horizontal) {
+            Text(title)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            Text(title)
+                .multilineTextAlignment(.leading)
+                .frame(width: gridBlobSize, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(Theme.dmSans(15, weight: .medium))
+        .foregroundStyle(Theme.primaryText)
+        .frame(width: gridBlobSize)
     }
 
     // Mixed-type theme results: one uniform blob grid (photos render as images, same size as notes)
