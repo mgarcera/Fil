@@ -245,18 +245,21 @@ struct BlankCanvasPrototype: View {
 
     private func blobCell(_ note: Note) -> some View {
         Button { selectedNote = note } label: {
-            VStack(alignment: .leading, spacing: 14) {
+            // Blob and title share the same 120pt-wide column, centered in the grid cell. The title
+            // text is left-aligned *within* that 120pt block, so it reads left-aligned but lines up
+            // under the blob rather than spanning the whole cell.
+            VStack(alignment: .center, spacing: 14) {
                 NoteBlobShape(seed: note.blobShapeSeed)
                     .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                     .frame(width: 120, height: 120)
-                    .frame(maxWidth: .infinity)   // center the blob in the column
                 Text(displayTitle(note))
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)   // title flush left
+                    .frame(width: 120, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
