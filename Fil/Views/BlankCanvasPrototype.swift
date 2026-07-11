@@ -245,6 +245,10 @@ struct BlankCanvasPrototype: View {
                         Text("nothing surfaced for “\(query)”")
                             .font(Theme.dmSans(15))
                             .foregroundStyle(Theme.secondaryText)
+                    } else if resultsAreAllTodos {
+                        // A to-do query surfaces a TodoSheet-style checklist instead of the blob grid.
+                        todoList
+                            .padding(.top, 4)
                     } else {
                         LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
                             ForEach(results, id: \.uuid) { note in
@@ -267,11 +271,18 @@ struct BlankCanvasPrototype: View {
         Button { selectedNote = note } label: {
             // Blob and title share the same 120pt-wide column, centered in the grid cell. The title
             // text is left-aligned *within* that 120pt block, so it reads left-aligned but lines up
-            // under the blob rather than spanning the whole cell.
+            // under the blob rather than spanning the whole cell. Photo fils show their image (blob-
+            // clipped, like the main-branch card) instead of a gradient blob.
             VStack(alignment: .center, spacing: 14) {
-                NoteBlobShape(seed: note.blobShapeSeed)
-                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                    .frame(width: 120, height: 120)
+                Group {
+                    if note.isImageFil {
+                        NoteCardView(note: note, showsKeywordBadge: false)
+                    } else {
+                        NoteBlobShape(seed: note.blobShapeSeed)
+                            .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                    }
+                }
+                .frame(width: 120, height: 120)
                 Text(displayTitle(note))
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
@@ -283,6 +294,56 @@ struct BlankCanvasPrototype: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    /// True when every surfaced fil has open to-dos — a to-do query — so we render a checklist.
+    private var resultsAreAllTodos: Bool {
+        !results.isEmpty && results.allSatisfy { hasOpenTodos($0) }
+    }
+
+    /// TodoSheet-style checklist: each fil as a bold header (blob + title), its open to-dos beneath.
+    private var todoList: some View {
+        VStack(alignment: .leading, spacing: 22) {
+            ForEach(results, id: \.uuid) { note in
+                VStack(alignment: .leading, spacing: 10) {
+                    Button { selectedNote = note } label: {
+                        HStack(spacing: 12) {
+                            NoteBlobShape(seed: note.blobShapeSeed)
+                                .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                                .frame(width: 26, height: 26)
+                            Text(displayTitle(note))
+                                .font(Theme.dmSans(18, weight: .bold))
+                                .foregroundStyle(Theme.primaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    ForEach(openTodoItems(note), id: \.index) { item in
+                        TodoRowContent(text: item.text, isCompleted: item.done) {
+                            toggleTodo(note, item.index)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func openTodoItems(_ note: Note) -> [(index: Int, text: String, done: Bool)] {
+        note.todos.enumerated().compactMap { index, text in
+            let done = index < note.completedTodos.count ? note.completedTodos[index] : false
+            return done ? nil : (index, text, done)
+        }
+    }
+
+    private func toggleTodo(_ note: Note, _ index: Int) {
+        guard index < note.todos.count else { return }
+        while note.completedTodos.count < note.todos.count { note.completedTodos.append(false) }
+        note.completedTodos[index].toggle()
+        modelContext.saveOrLog()
     }
 
     private var resultsHeader: some View {
