@@ -28,11 +28,12 @@ struct BlankCanvasPrototype: View {
     private static let queryPrompts = [
         "search your thoughts",
         "what am i forgetting?",
-        "my to dos",
-        "my photos",
+        "today",
+        "to dos",
+        "photos",
         "times i felt...",
-        "my work project",
-        "that one vacation",
+        "my project...",
+        "that time i...",
     ]
     private static let queryPromptInterval: TimeInterval = 3.5
 
@@ -109,7 +110,7 @@ struct BlankCanvasPrototype: View {
         }
         .sheet(isPresented: $showKeyEntry) { keyEntrySheet }
         .landfilConfirmation(item: $pendingLandfilNote, message: { _ in
-            "this fil will be moved to the landfil. this cannot be undone."
+            "this fil will be deleted. this cannot be undone."
         }, onConfirm: { note in
             landfil(note)
         })
