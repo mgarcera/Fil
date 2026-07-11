@@ -134,6 +134,9 @@ struct BlankCanvasPrototype: View {
                     }
                 }
                 .onSubmit { Task { await createFil() } }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .glassEffect(.regular, in: .rect(cornerRadius: 24))
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
