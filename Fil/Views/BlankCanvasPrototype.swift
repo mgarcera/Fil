@@ -54,6 +54,8 @@ struct BlankCanvasPrototype: View {
     /// doesn't reflow the fil into the grid mid-tap.
     @State private var todoFilIDs: Set<UUID> = []
     @State private var summary = ""
+    /// A surfaced fil pending landfil confirmation (drives the shared alert).
+    @State private var pendingLandfilNote: Note?
     @State private var surfaceError: String?
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
@@ -106,6 +108,11 @@ struct BlankCanvasPrototype: View {
                 .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showKeyEntry) { keyEntrySheet }
+        .landfilConfirmation(item: $pendingLandfilNote, message: { _ in
+            "this fil will be moved to the landfil. this cannot be undone."
+        }, onConfirm: { note in
+            landfil(note)
+        })
         // The header search/back button toggles searchActive: enter the query screen or return to
         // the composer. (There's no tap-anywhere-to-go-back; the header button is the switcher.)
         .onChange(of: searchActive) { _, active in
@@ -321,6 +328,7 @@ struct BlankCanvasPrototype: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contextMenu { filContextMenu(note) }
     }
 
     /// A one-line title centers under the blob; a title that wraps to two+ lines left-aligns.
@@ -381,6 +389,7 @@ struct BlankCanvasPrototype: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .contextMenu { filContextMenu(note) }
 
                     // All of the fil's to-dos (completed ones struck through), reusing the model's
                     // stable row items so completing one strikes in place instead of vanishing.
@@ -393,6 +402,46 @@ struct BlankCanvasPrototype: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Long-press menu on a surfaced fil: pin to the lock screen, or landfil it (confirmed).
+    @ViewBuilder
+    private func filContextMenu(_ note: Note) -> some View {
+        Button {
+            togglePin(note)
+        } label: {
+            let pinned = PinnedFilStore.shared.isPinned(note)
+            Label(pinned ? "unpin from lock screen" : "pin to lock screen",
+                  systemImage: pinned ? "pin.slash" : "pin")
+        }
+        Button(role: .destructive) {
+            pendingLandfilNote = note
+        } label: {
+            Label("landfil", systemImage: "trash")
+        }
+    }
+
+    /// Mirrors ArticleView.togglePinnedFil (store + Live Activity).
+    private func togglePin(_ note: Note) {
+        SoundscapeManager.shared.playTabSound()
+        if PinnedFilStore.shared.isPinned(note) {
+            PinnedFilStore.shared.unpin()
+            Task { await PinnedFilLiveActivityController.unpin() }
+        } else {
+            let snapshot = PinnedFilStore.shared.pin(note)
+            Task { await PinnedFilLiveActivityController.pin(snapshot) }
+        }
+    }
+
+    private func landfil(_ note: Note) {
+        FilLandfil.cleanUpResources(for: note)
+        let id = note.uuid
+        withAnimation(.easeOut(duration: 0.25)) {
+            results.removeAll { $0.uuid == id }
+            todoFilIDs.remove(id)
+        }
+        modelContext.delete(note)
+        modelContext.saveOrLog()
     }
 
     /// Mirrors ContentView.toggleTodoFromSheet: normalize, bound-check, sound, toggle, save.
