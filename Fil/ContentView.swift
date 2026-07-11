@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var showTodoSheet = false
     @State private var showFilSetup = false
     @State private var showThemePrototype = false   // TEMP: theme-home prototype
+    @State private var surfaceRequested = false      // header search → canvas "surface a thought"
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -82,32 +83,9 @@ struct ContentView: View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    notesSection
-                }
-                // Clear the floating header so content starts below it, then scrolls under.
-                .padding(.top, 64)
-                .padding(.bottom, 100)
-            }
-            .frame(maxHeight: .infinity)
-            .scrollDismissesKeyboard(.interactively)
-            .overlay {
-                if isComposerFocused {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture { isComposerFocused = false }
-                }
-            }
-            .overlay(alignment: .bottom) {
-                if !isSearching {
-                    bottomComposer
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
-                        .zIndex(1)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
+            // Blank-canvas home (blank-canvas-home branch): tap to capture, header search to surface.
+            // Replaces the day timeline + bottom composer + FABs. Text-only capture for now.
+            BlankCanvasPrototype(showsChrome: false, surfaceRequested: $surfaceRequested)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
@@ -295,13 +273,11 @@ struct ContentView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
+                    // Blank-canvas home: the search button asks the canvas to "surface a thought".
                     Button {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
-                            isSearching = true
-                        }
-                        isSearchFieldFocused = true
+                        surfaceRequested = true
                     } label: {
-                        Image(systemName: "magnifyingglass")
+                        Image(systemName: "sparkle.magnifyingglass")
                             .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(Theme.primaryText)
                             .frame(width: 44, height: 44)
@@ -310,20 +286,7 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .disabled(notes.isEmpty)
                     .opacity(notes.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel("Search")
-
-                    // TEMP: theme-home prototype entry — remove with ThemeHomePrototype.swift.
-                    Button {
-                        showThemePrototype = true
-                    } label: {
-                        Image(systemName: "square.grid.2x2")
-                            .font(.system(size: 17, weight: .medium))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Theme prototype")
+                    .accessibilityLabel("Surface a thought")
 
                     Menu {
                         Section("Screensavers") {
@@ -378,8 +341,6 @@ struct ContentView: View {
         .padding(.top, 8)
         .padding(.bottom, 4)
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: isSearching)
-        // TEMP: blank-canvas prototype — remove with BlankCanvasPrototype.swift.
-        .fullScreenCover(isPresented: $showThemePrototype) { BlankCanvasPrototype() }
     }
 
     private var searchBar: some View {

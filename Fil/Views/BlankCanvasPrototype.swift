@@ -23,6 +23,11 @@ struct BlankCanvasPrototype: View {
     private static let popTransition = AnyTransition.scale(scale: 0.01).combined(with: .opacity)
     private static let popAnimation = Animation.spring(response: 0.24, dampingFraction: 0.46)
 
+    /// When embedded as the ContentView home, chrome (close) hides and the header owns it, and
+    /// surfacing is triggered externally (the header search button) via `surfaceRequested`.
+    var showsChrome: Bool = true
+    @Binding var surfaceRequested: Bool
+
     @State private var phase: Phase = .idle
     @State private var text = ""
     /// The just-made fil, so the gooey creating blob can settle into its final randomized blob.
@@ -66,7 +71,9 @@ struct BlankCanvasPrototype: View {
                 sendFAB
             }
 
-            closeButton
+            if showsChrome {
+                closeButton
+            }
         }
         .sheet(item: $selectedNote) { note in
             NavigationStack { ArticleView(note: note) }
@@ -74,6 +81,19 @@ struct BlankCanvasPrototype: View {
                 .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showKeyEntry) { keyEntrySheet }
+        // The header search button (when embedded) requests surfacing; enter the query field.
+        .onChange(of: surfaceRequested) { _, requested in
+            if requested {
+                beginSurface()
+                surfaceRequested = false
+            }
+        }
+    }
+
+    private func beginSurface() {
+        query = ""
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
+        queryFocused = true
     }
 
     // MARK: - Capture states
