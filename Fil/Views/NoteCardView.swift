@@ -2,13 +2,9 @@ import SwiftUI
 
 struct NoteCardView: View {
     let note: Note
-    var showsKeywordBadge: Bool = true
     var selectionStrokeColor: Color?
     var selectionStrokeLineWidth: CGFloat = 0
     var selectionStrokeShadowOpacity: Double = 0
-
-    @AppStorage("prefersLowercase") private var prefersLowercase = false
-    @AppStorage("badgeStyleRaw") private var badgeStyle: BadgeStyle = .solid
 
     var body: some View {
         ZStack {
@@ -69,30 +65,6 @@ struct NoteCardView: View {
         }
         .frame(height: 98)
         .overlay(selectionStroke)
-        .overlay(alignment: .topTrailing) {
-            let badgeText = prefersLowercase ? note.displayBadgeText.lowercased() : note.displayBadgeText
-            let linkBadgeColor = Color(hex: "#408CD9")
-            if showsKeywordBadge, !badgeText.isEmpty {
-                KeywordBadgeLabel(
-                    text: badgeText,
-                    textColor: note.isLinkFil ? .white : .black,
-                    backgroundColor: note.isLinkFil ? linkBadgeColor : .white,
-                    strokeColor: note.isLinkFil ? linkBadgeColor.opacity(0.85) : Theme.primaryText.opacity(0.5),
-                    style: badgeStyle,
-                    glassTint: note.isLinkFil ? linkBadgeColor : Color(hex: note.gradientStartHex),
-                    adaptiveTextColor: tintedBadgeTextColor,
-                    isLink: note.isLinkFil,
-                    isRegenerating: !note.isLinkFil && TitleRegenerationTracker.shared.isRegenerating(note.uuid)
-                )
-                    // The badge is a compact chip on a fixed-size card; cap its Dynamic Type growth
-                    // a notch below the app-wide accessibility1 clamp so it breathes without
-                    // swallowing the blob's word-count/waveform content. Its internal padding
-                    // (declared inside the badge) scales to this same cap.
-                    .dynamicTypeSize(...DynamicTypeSize.xLarge)
-                    .padding(.trailing, 8)
-                    .offset(y: -18)
-            }
-        }
     }
 
     @ViewBuilder
@@ -143,140 +115,10 @@ struct NoteCardView: View {
         return (start + end) / 2 > 0.55 ? .black : .white
     }
 
-    /// Black/white for the tinted glass badge, chosen from the fil's gradient like `blobTextColor`
-    /// but with a lower threshold (the glass frost lightens the badge, so it should lean black
-    /// sooner). This constant is the knob to tune.
-    private var tintedBadgeTextColor: Color {
-        let start = Color(hex: note.gradientStartHex).luminance
-        let end = Color(hex: note.gradientEndHex).luminance
-        return (start + end) / 2 > 0.56 ? .black : .white
-    }
-
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
         let seconds = Int(duration) % 60
         return String(format: "%d:%02d", minutes, seconds)
-    }
-}
-
-/// The fil's title/keyword badge. When the title changes (e.g. after an edit
-/// regenerates it), the old text dissolves away in accent colors while the new title
-/// gradient-reveals in — the same effect as sending a fil from the composer. A looping
-/// shimmer plays while regeneration is still in flight.
-private struct KeywordBadgeLabel: View {
-    let text: String
-    let textColor: Color
-    let backgroundColor: Color
-    let strokeColor: Color
-    let style: BadgeStyle
-    let glassTint: Color
-    /// Black/white for the tinted badge, decided from the fil's gradient with a badge-tuned threshold.
-    let adaptiveTextColor: Color
-    let isLink: Bool
-    let isRegenerating: Bool
-
-    @Environment(\.colorScheme) private var colorScheme
-
-    private var effectiveTextColor: Color {
-        switch style {
-        case .solid:
-            return textColor
-        case .glassRegular:
-            // Links sit on a blue tint → white. Otherwise follow the mode: black in light, white in dark.
-            if isLink { return .white }
-            return colorScheme == .dark ? .white : .black
-        case .glassTinted:
-            // Links (blue tint) always read white; other fils use the gradient-based decision
-            // with the badge-tuned threshold.
-            return isLink ? .white : adaptiveTextColor
-        }
-    }
-
-    @State private var isRevealing = false
-    /// Pulsing blur applied to the old title while it's being regenerated.
-    @State private var blurRadius: CGFloat = 0
-
-    // Internal padding scales with Dynamic Type so the chip breathes at larger text sizes
-    // instead of cramping. Bounded by the caller's dynamicTypeSize cap.
-    @ScaledMetric(relativeTo: .body) private var horizontalPadding: CGFloat = 9
-    @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 4
-
-    var body: some View {
-        Group {
-            if isRevealing {
-                // The new title sharpens out of blur (the reveal renderer starts each
-                // glyph blurred), so it emerges seamlessly from the "thinking" blur.
-                AnimatedGradientRevealText(text: text, maxDuration: 1.1)
-                    .foregroundStyle(effectiveTextColor)
-            } else if isRegenerating {
-                // "Thinking": the current title softens into a pulsing blur.
-                Text(text)
-                    .foregroundStyle(effectiveTextColor)
-                    .blur(radius: blurRadius)
-                    .opacity(0.7)
-            } else {
-                Text(text)
-                    .foregroundStyle(effectiveTextColor)
-            }
-        }
-        .font(Theme.dmSans(9, weight: .semibold))
-        .padding(.horizontal, horizontalPadding)
-        .padding(.vertical, verticalPadding)
-        .modifier(BadgeChrome(style: style, backgroundColor: backgroundColor, strokeColor: strokeColor, glassTint: glassTint, isLink: isLink))
-        // Capsule eases between the old and new title widths as the new one reveals,
-        // rather than snapping. One motion — no intermediate resize step.
-        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: text)
-        .onChange(of: isRegenerating) { _, nowRegenerating in
-            if nowRegenerating {
-                blurRadius = 2
-                withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true)) {
-                    blurRadius = 5
-                }
-            } else {
-                withAnimation(.easeOut(duration: 0.2)) { blurRadius = 0 }
-            }
-        }
-        // Driven by the actual title change (a persisted, observed property), so it
-        // fires reliably. Guard against the first assignment and scroll reuse.
-        .onChange(of: text) { oldValue, newValue in
-            guard oldValue != newValue, !oldValue.isEmpty else { return }
-            isRevealing = true
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(1.1))
-                isRevealing = false
-            }
-        }
-    }
-}
-
-/// Renders the badge's capsule chrome per the chosen `BadgeStyle`: the classic solid chip, or one of
-/// three Liquid Glass variants (regular / tinted / clear).
-private struct BadgeChrome: ViewModifier {
-    let style: BadgeStyle
-    let backgroundColor: Color
-    let strokeColor: Color
-    /// For links this is the link blue; for other fils it's the fil's gradient color.
-    let glassTint: Color
-    let isLink: Bool
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        switch style {
-        case .solid:
-            content
-                .background(backgroundColor, in: Capsule())
-                .overlay(Capsule().stroke(strokeColor, lineWidth: 1.5))
-                .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 3)
-        case .glassRegular:
-            // Neutral glass, except links stay blue-tinted so they keep their identity.
-            if isLink {
-                content.glassEffect(.regular.tint(glassTint), in: Capsule())
-            } else {
-                content.glassEffect(.regular, in: Capsule())
-            }
-        case .glassTinted:
-            content.glassEffect(.regular.tint(glassTint), in: Capsule())
-        }
     }
 }
 

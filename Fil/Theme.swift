@@ -5,25 +5,6 @@ import UIKit
 import AppKit
 #endif
 
-/// How the fil title/keyword badge on grid cards is rendered. Persisted via @AppStorage and chosen
-/// in Settings → Appearance. Temporary: three glass variants are exposed for on-device comparison
-/// before locking one in.
-enum BadgeStyle: String, CaseIterable, Identifiable {
-    case solid          // the classic opaque chip
-    case glassRegular   // regular liquid glass (link fils stay blue-tinted)
-    case glassTinted    // regular liquid glass, tinted with the fil's color
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .solid: "Solid"
-        case .glassRegular: "Glass"
-        case .glassTinted: "Tinted"
-        }
-    }
-}
-
 extension Image {
     init?(data: Data) {
         #if canImport(UIKit)

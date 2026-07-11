@@ -11,7 +11,6 @@ struct SettingsView: View {
     @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("prefersLowercase") private var prefersLowercase = false
-    @AppStorage("badgeStyleRaw") private var badgeStyle: BadgeStyle = .solid
     @AppStorage("isDarkMode") private var isDarkMode = true
 
     @State private var section: SettingsSection = .appearance
@@ -139,37 +138,6 @@ struct SettingsView: View {
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 22) {
             settingToggle("dark mode", isOn: $isDarkMode)
-
-            VStack(alignment: .leading, spacing: 14) {
-                Text("fil badges")
-                    .font(Theme.dmSans(16, weight: .medium))
-                    .foregroundStyle(.white)
-
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        ForEach(BadgeStyle.allCases) { style in
-                            Button {
-                                guard badgeStyle != style else { return }
-                                SoundscapeManager.shared.playTabSound()
-                                withAnimation(.snappy) { badgeStyle = style }
-                            } label: {
-                                let isSelected = badgeStyle == style
-                                Text(style.title)
-                                    .font(Theme.dmSans(14, weight: .semibold))
-                                    .foregroundStyle(isSelected ? Color.black : .white)
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 38)
-                                    .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
-                                    .overlay {
-                                        Capsule().stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
-                                    }
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                .scrollIndicators(.hidden)
-            }
 
             if !screensaverOptions.isEmpty {
                 VStack(alignment: .leading, spacing: 14) {

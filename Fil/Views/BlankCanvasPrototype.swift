@@ -27,11 +27,12 @@ struct BlankCanvasPrototype: View {
     /// the flexible query types (semantic, temporal, type, to-dos).
     private static let queryPrompts = [
         "search your thoughts",
-        "what have i been avoiding?",
-        "recent to-dos",
-        "photos i've saved",
-        "things i might've forgotten",
-        "what's been on my mind lately",
+        "what am i forgetting?",
+        "my to dos",
+        "my photos",
+        "times i felt...",
+        "my work project",
+        "that one vacation",
     ]
     private static let queryPromptInterval: TimeInterval = 3.5
 
@@ -304,7 +305,7 @@ struct BlankCanvasPrototype: View {
             VStack(alignment: .center, spacing: 14) {
                 Group {
                     if note.isImageFil {
-                        NoteCardView(note: note, showsKeywordBadge: false)
+                        NoteCardView(note: note)
                     } else {
                         NoteBlobShape(seed: note.blobShapeSeed)
                             .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
