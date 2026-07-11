@@ -170,13 +170,9 @@ struct BlankCanvasPrototype: View {
 
     // MARK: - Surfacing states
 
-    /// Long-press summons this: a centered query field to surface past fils by domain.
+    /// A centered query field to surface past fils by domain (opened from the header search).
     private var queryField: some View {
         VStack(spacing: 20) {
-            Image(systemName: "sparkle.magnifyingglass")
-                .font(.system(size: 28, weight: .light))
-                .foregroundStyle(Theme.secondaryText)
-
             TextField("", text: $query, axis: .horizontal)
                 .font(Theme.dmSans(22, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
@@ -186,7 +182,7 @@ struct BlankCanvasPrototype: View {
                 .padding(.horizontal, 32)
                 .overlay(alignment: .center) {
                     if query.isEmpty {
-                        Text("surface a thought — try “work”")
+                        Text("search your thoughts")
                             .font(Theme.dmSans(22, weight: .medium))
                             .foregroundStyle(Theme.tertiaryText)
                             .allowsHitTesting(false)

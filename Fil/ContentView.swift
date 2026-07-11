@@ -273,15 +273,14 @@ struct ContentView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
-                    // Blank-canvas home: a text entry that asks the canvas to "surface a thought".
+                    // Blank-canvas home: asks the canvas to "surface a thought".
                     Button {
                         surfaceRequested = true
                     } label: {
-                        Text("search your thoughts")
-                            .font(Theme.dmSans(15, weight: .medium))
+                        Image(systemName: "sparkle.magnifyingglass")
+                            .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(Theme.primaryText)
-                            .frame(height: 44)
-                            .padding(.horizontal, 10)
+                            .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
