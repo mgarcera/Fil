@@ -13,11 +13,47 @@ pending Mason's confirm** (marked DECISION).
   can't reliably cover it; a recurring model can.
 - **The dev-key spike is not shippable** — the API key currently lives client-side in AppStorage.
 
-## DECISION 1 — Money model → **Freemium subscription ("Fil Pro")** *(recommended)*
+## DECISION 1 — Money model → **Freemium subscription ("Fil Pro"), flat, no credits** *(recommended — now research-grounded)*
 Auto-renewing StoreKit 2 subscription unlocks surfacing; **capture stays free forever**. Recurring
-revenue matches the recurring API + proxy cost. (Alternatives: usage-credit IAP packs; or
-cosmetics-only + free surfacing — financially risky. The old cosmetics/tip shop can still exist
-later as *additional* support, but it's no longer the core model.)
+revenue matches the recurring API + proxy cost. Skip usage credits for v1 (see findings). The old
+cosmetics/tip shop can still exist later as *additional* support, but it's no longer the core model.
+
+### Monetization research (2026) — findings that shaped this
+The generic AI-pricing literature screams "flat subscriptions kill AI apps — power users destroy your
+margin, use credits/hybrid." **That warning mostly doesn't apply to Fil**, and here's why:
+- Those warnings target chat/agent products at **$0.05–$0.30 per conversation** or **$0.50–$5.00 per
+  agentic task**; a power user there can cost $90/mo on a $20 plan.
+  ([RevenueCat](https://www.revenuecat.com/blog/growth/ai-feature-cost-subscription-app-margins/),
+  [digitalapplied](https://www.digitalapplied.com/blog/ai-unit-economics-pricing-margins-services-2026-framework))
+- **Fil surfacing is ~$0.003/query** (Haiku, capped corpus) and **human-paced** (type a query, read a
+  result). Break-even against a $2.99/mo sub is **~1,000 queries/month** — a human won't hand-type
+  that. The scripted-abuse case is capped by the proxy's rate limit.
+- The literature's own threshold: **"if AI costs are under $0.10/user/month, bundle it — the pricing
+  complexity isn't worth the margin risk."** ([freemius](https://freemius.com/blog/ai-app-pricing-model/))
+  A typical Fil user (say 10–40 surfacings/mo) is **~$0.03–$0.12/user/mo** — right at that line. So a
+  **flat freemium sub is the right call; credits would add friction for negligible margin protection.**
+- **Conversion:** AI apps convert above classic SaaS — good 6–8%, great 15–20% (Claude ~13%); a hard
+  paywall earns ~9× the D14 revenue of cheap freemium but forgoes free-user data.
+  ([Growth Unhinged](https://www.growthunhinged.com/p/free-to-paid-conversion-report),
+  [userpilot](https://userpilot.com/blog/freemium-to-premium/))
+- **Free-tier design:** give **full functionality, cap the volume** (≈32% higher conversion than
+  crippled features); set the cap **just past the "aha" moment**; fire the upgrade prompt at ~90% of
+  the allowance, front-loaded in the first ~2 weeks. A **reverse trial** (full surfacing ~14 days →
+  then the free cap) converts well for AI (8–12% "great"). ([PLG Collective via userpilot], freemius)
+- **Pricing comps (journal/note apps):** Day One $2.99/mo · $34.99/yr (and its new AI "Gold" tier is
+  a direct analog to paid AI reflection); Bear $2.99/mo; Ulysses $5.99/mo · $39.99/yr; Stoic
+  $4.99/mo · $39.99/yr. Market band ≈ **$2.99–4.99/mo, ~$20–40/yr**.
+  ([Day One plans](https://dayoneapp.com/plans/))
+
+### Finalized model
+- **Flat auto-renewing "Fil Pro"**, priced in-band (lean **$2.99/mo + a discounted annual ~$24.99**;
+  bias people to annual). No credits in v1.
+- **Free tier = full-featured surfacing, small monthly cap** (start ~5–10/mo; tune from real cohort
+  data — no universal number). Upgrade prompt at ~90% of the cap. Consider a **reverse trial** at
+  launch.
+- **Guardrails at the proxy** (cheap but not free): a per-user **daily rate limit** to kill scripted
+  abuse, plus the payload cap (#10). No literal "unlimited" marketing until usage data backs it —
+  though for humans it's effectively unlimited at this cost.
 
 ## DECISION 2 — Free/paid line → **capture free + a small surfacing taste, then Pro** *(recommended)*
 Everyone captures unlimited fils and on-device titles free, and gets a small monthly surfacing
