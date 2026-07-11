@@ -201,7 +201,7 @@ struct BlankCanvasPrototype: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         if !summary.isEmpty {
-                            Text(prefersLowercase ? summary.lowercased() : summary)
+                            AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, maxDuration: 2.0)
                                 .font(Theme.dmSans(16, weight: .medium))
                                 .foregroundStyle(Theme.primaryText)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -236,11 +236,6 @@ struct BlankCanvasPrototype: View {
             Text(query)
                 .font(Theme.dmSans(24, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
-            if !isRetrieving && surfaceError == nil && !results.isEmpty {
-                Text("· \(results.count)")
-                    .font(Theme.dmMono(11))
-                    .foregroundStyle(Theme.tertiaryText)
-            }
             Spacer()
             Button("new") {
                 query = ""
