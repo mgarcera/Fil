@@ -273,50 +273,6 @@ struct ContentView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
-                    Menu {
-                        Section("Screensavers") {
-                            screensaverMenuButton("filosophy", systemImage: "camera.filters", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) }
-                            screensaverMenuButton("filharmonic", systemImage: "wave.3.left", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) }
-                            screensaverMenuButton("filanthropy", systemImage: "wind", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) }
-                            screensaverMenuButton("chlorofil", systemImage: "rainbow", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) }
-                            screensaverMenuButton("fillet", systemImage: "fish.fill", unlockAt: koiPondUnlockThreshold) { launchKoiPond() }
-                        }
-                        Section {
-                            Button {
-                                autoScreensaverEnabled.toggle()
-                            } label: {
-                                Text(autoScreensaverEnabled ? "auto is on" : "auto is off")
-                                Text("start after 60 seconds idle. keeps your screen awake.")
-                                if autoScreensaverEnabled {
-                                    Image(systemName: "power")
-                                }
-                            }
-                            .disabled(notes.count < koiPondUnlockThreshold)
-                        }
-                    } label: {
-                        Image(systemName: "zzz")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .disabled(notes.isEmpty)
-                    .opacity(notes.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel("Screensaver")
-
-                    Button {
-                        SoundscapeManager.shared.playLightModeSound()
-                        withAnimation(.snappy) { isDarkMode.toggle() }
-                    } label: {
-                        Image(systemName: isDarkMode ? "moon.fill" : "sun.max.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(isDarkMode ? "switch to light mode" : "switch to dark mode")
-
                     // Blank-canvas home: asks the canvas to "surface a thought".
                     Button {
                         surfaceRequested = true
@@ -707,9 +663,26 @@ struct ContentView: View {
 
     // Secondary-sheet contents, extracted so the (large) body stays type-checkable.
     private var filSetupSheet: some View {
-        SettingsView()
+        SettingsView(screensaverOptions: screensaverOptions)
             .presentationDetents([.fraction(0.6)])
             .presentationBackground(Theme.background)
+    }
+
+    /// Screensaver launchers for Settings → Appearance. Each dismisses settings, then launches.
+    private var screensaverOptions: [ScreensaverOption] {
+        func option(_ title: String, _ image: String, unlockAt: Int, launch: @escaping () -> Void) -> ScreensaverOption {
+            ScreensaverOption(title: title, systemImage: image, isUnlocked: notes.count >= unlockAt, requirement: "\(unlockAt) fils") {
+                showFilSetup = false
+                launch()
+            }
+        }
+        return [
+            option("filosophy", "camera.filters", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
+            option("filharmonic", "wave.3.left", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
+            option("filanthropy", "wind", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
+            option("chlorofil", "rainbow", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
+            option("fillet", "fish.fill", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
+        ]
     }
 
     private var todoSheetView: some View {

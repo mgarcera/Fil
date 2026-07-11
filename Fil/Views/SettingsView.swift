@@ -5,12 +5,16 @@ import SwiftData
 /// a capsule tab bar over an animated ambient gradient, with a glass card below — but
 /// each tab is a real settings section and every control applies live (no save step).
 struct SettingsView: View {
+    /// Screensaver launchers, supplied by ContentView (each dismisses settings, then launches).
+    var screensaverOptions: [ScreensaverOption] = []
+
     @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     @AppStorage("badgeStyleRaw") private var badgeStyle: BadgeStyle = .solid
+    @AppStorage("isDarkMode") private var isDarkMode = true
 
-    @State private var section: SettingsSection = .writing
+    @State private var section: SettingsSection = .appearance
     @State private var showFromMason = false
     @State private var contentVisible = false
 
@@ -134,6 +138,8 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 22) {
+            settingToggle("dark mode", isOn: $isDarkMode)
+
             VStack(alignment: .leading, spacing: 14) {
                 Text("fil badges")
                     .font(Theme.dmSans(16, weight: .medium))
@@ -163,6 +169,39 @@ struct SettingsView: View {
                     }
                 }
                 .scrollIndicators(.hidden)
+            }
+
+            if !screensaverOptions.isEmpty {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("screensavers")
+                        .font(Theme.dmSans(16, weight: .medium))
+                        .foregroundStyle(.white)
+
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 8) {
+                            ForEach(screensaverOptions) { option in
+                                Button(action: option.action) {
+                                    HStack(spacing: 6) {
+                                        if !option.isUnlocked {
+                                            Image(systemName: "lock.fill").font(.system(size: 11))
+                                        }
+                                        Text(option.isUnlocked ? option.title : "\(option.title) · \(option.requirement)")
+                                            .font(Theme.dmSans(14, weight: .semibold))
+                                    }
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 38)
+                                    .background(Color.white.opacity(0.12), in: Capsule())
+                                    .overlay { Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1) }
+                                    .opacity(option.isUnlocked ? 1 : 0.5)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(!option.isUnlocked)
+                            }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+                }
             }
 
             settingToggle(
@@ -272,19 +311,30 @@ struct SettingsView: View {
     }
 }
 
+/// A screensaver launcher shown in Settings → Appearance. Built by ContentView (which owns the
+/// launch + unlock logic); the action dismisses settings then launches the screensaver.
+struct ScreensaverOption: Identifiable {
+    let id = UUID()
+    let title: String
+    let systemImage: String
+    let isUnlocked: Bool
+    let requirement: String     // e.g. "10 fils" (shown when locked)
+    let action: () -> Void
+}
+
 private enum SettingsSection: String, CaseIterable, Identifiable {
+    case appearance
     case writing
     case sound
-    case appearance
     case about
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .appearance: "Appearance"
         case .writing: "Writing"
         case .sound: "Sound"
-        case .appearance: "Appearance"
         case .about: "About"
         }
     }
@@ -292,12 +342,12 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     /// Reuses the four ambient gradient palettes so each section has its own mood.
     var backgroundColors: [Color] {
         switch self {
+        case .appearance:
+            [Color(hex: "#0EA5E9"), Color(hex: "#14B8A6"), Color(hex: "#22C55E")]
         case .writing:
             [Color(hex: "#6366F1"), Color(hex: "#EC4899"), Color(hex: "#0EA5E9")]
         case .sound:
             [Color(hex: "#4F46E5"), Color(hex: "#7C3AED"), Color(hex: "#2563EB")]
-        case .appearance:
-            [Color(hex: "#0EA5E9"), Color(hex: "#14B8A6"), Color(hex: "#22C55E")]
         case .about:
             [Color(hex: "#F59E0B"), Color(hex: "#F97316"), Color(hex: "#EAB308")]
         }
