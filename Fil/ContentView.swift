@@ -273,20 +273,21 @@ struct ContentView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
-                    // Blank-canvas home: the search button asks the canvas to "surface a thought".
+                    // Blank-canvas home: a text entry that asks the canvas to "surface a thought".
                     Button {
                         surfaceRequested = true
                     } label: {
-                        Image(systemName: "sparkle.magnifyingglass")
-                            .font(.system(size: 17, weight: .medium))
+                        Text("search your thoughts")
+                            .font(Theme.dmSans(15, weight: .medium))
                             .foregroundStyle(Theme.primaryText)
-                            .frame(width: 44, height: 44)
+                            .frame(height: 44)
+                            .padding(.horizontal, 10)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .disabled(notes.isEmpty)
                     .opacity(notes.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel("Surface a thought")
+                    .accessibilityLabel("Search your thoughts")
 
                     Menu {
                         Section("Screensavers") {

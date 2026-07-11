@@ -17,7 +17,7 @@ struct BlankCanvasPrototype: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
-    private enum Phase { case idle, composing, creating, formed, querying, results }
+    private enum Phase { case composing, creating, formed, querying, results }
 
     /// The settled fil blob pops in — scales up from near-zero with a snappy, punchy spring.
     private static let popTransition = AnyTransition.scale(scale: 0.01).combined(with: .opacity)
@@ -28,7 +28,7 @@ struct BlankCanvasPrototype: View {
     var showsChrome: Bool = true
     @Binding var surfaceRequested: Bool
 
-    @State private var phase: Phase = .idle
+    @State private var phase: Phase = .composing
     @State private var text = ""
     /// The just-made fil, so the gooey creating blob can settle into its final randomized blob.
     @State private var formedNote: Note?
@@ -56,10 +56,8 @@ struct BlankCanvasPrototype: View {
             Theme.background.ignoresSafeArea()
                 .contentShape(Rectangle())
                 .onTapGesture { onCanvasTap() }
-                .onLongPressGesture(minimumDuration: 0.35) { onCanvasLongPress() }
 
             switch phase {
-            case .idle:      idleHint
             case .composing: composer
             case .creating:  creatingBlob
             case .formed:    formedBlob
@@ -98,20 +96,8 @@ struct BlankCanvasPrototype: View {
 
     // MARK: - Capture states
 
-    /// The one affordance on an otherwise blank canvas — the whole discoverability of the home.
-    private var idleHint: some View {
-        VStack(spacing: 6) {
-            AnimatedGradientRevealText(text: "tap to begin", maxDuration: 1.2, settledOpacity: 0.35)
-                .font(Theme.dmSans(16, weight: .medium))
-                .foregroundStyle(Theme.secondaryText)
-            Text("press and hold to surface")
-                .font(Theme.dmMono(11))
-                .foregroundStyle(Theme.tertiaryText)
-        }
-        .allowsHitTesting(false)
-    }
-
     /// Writing surface: just the text input, left-aligned in the upper-left. Sending is the FAB.
+    /// This is the home's resting state — "let a thought be" is the entrance.
     private var composer: some View {
         VStack(alignment: .leading, spacing: 0) {
             TextField("", text: $text, axis: .vertical)
@@ -350,26 +336,17 @@ struct BlankCanvasPrototype: View {
 
     private func onCanvasTap() {
         switch phase {
-        case .idle:
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
-            fieldFocused = true
         case .composing:
-            fieldFocused = false
-            if !hasText { withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle } }
+            // Tapping the canvas toggles the keyboard on the entrance field.
+            fieldFocused.toggle()
         case .querying:
             queryFocused = false
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
         case .results:
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .idle }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
         case .creating, .formed:
             break
         }
-    }
-
-    private func onCanvasLongPress() {
-        guard phase == .idle else { return }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
-        queryFocused = true
     }
 
     private func createFil() async {
@@ -402,7 +379,7 @@ struct BlankCanvasPrototype: View {
         formedNote = note
         withAnimation(Self.popAnimation) { phase = .formed }
         try? await Task.sleep(for: .milliseconds(750))
-        withAnimation(.easeOut(duration: 0.4)) { phase = .idle }
+        withAnimation(.easeOut(duration: 0.4)) { phase = .composing }
     }
 
     private func runQuery() async {
