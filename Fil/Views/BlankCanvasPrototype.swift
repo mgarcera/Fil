@@ -208,8 +208,8 @@ struct BlankCanvasPrototype: View {
                 .onSubmit { Task { await runQuery() } }
 
             if query.isEmpty && !recentSearches.isEmpty {
-                recentChips
-                    .padding(.top, 22)
+                recentList
+                    .padding(.top, 40)
             }
 
             Spacer(minLength: 0)
@@ -220,32 +220,33 @@ struct BlankCanvasPrototype: View {
         .transition(.opacity)
     }
 
-    /// Recently-searched terms as tappable chips beneath the field; tap to re-run.
-    private var recentChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(recentSearches, id: \.self) { term in
-                    Button {
-                        query = term
-                        Task { await runQuery() }
-                    } label: {
-                        Text(term)
-                            .font(Theme.dmSans(14, weight: .medium))
-                            .foregroundStyle(Theme.secondaryText)
-                            .lineLimit(1)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                            .glassEffect(.regular, in: .capsule)
-                    }
-                    .buttonStyle(.plain)
+    /// Recently-searched terms as a quiet text list beneath the field; tap a line to re-run.
+    private var recentList: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("retrace your steps:")
+                .font(Theme.dmMono(12))
+                .foregroundStyle(Theme.tertiaryText)
+            ForEach(recentSearches, id: \.self) { term in
+                Button {
+                    query = term
+                    Task { await runQuery() }
+                } label: {
+                    Text(term)
+                        .font(Theme.dmSans(16, weight: .medium))
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(1)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
             }
         }
-        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Two-column grid for the surfaced fils. Blobs fill the column width; tweak spacing here.
     private let gridColumns = [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)]
+    /// Uniform blob size in the results grid. Titles are pinned to this width, so bigger = roomier titles.
+    private let gridBlobSize: CGFloat = 150
 
     /// Everything — query, summary, and the fil grid — scrolls together in one ScrollView.
     private var resultsList: some View {
@@ -305,12 +306,12 @@ struct BlankCanvasPrototype: View {
                             .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                     }
                 }
-                .frame(width: 120, height: 120)
+                .frame(width: gridBlobSize, height: gridBlobSize)
                 Text(displayTitle(note))
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .multilineTextAlignment(.leading)
-                    .frame(width: 120, alignment: .leading)
+                    .frame(width: gridBlobSize, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity)
