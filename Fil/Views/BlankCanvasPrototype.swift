@@ -55,6 +55,8 @@ struct BlankCanvasPrototype: View {
     @State private var showKeyEntry = false
     /// TEMP: local-only Claude key for the spike. Never committed, never shipped.
     @AppStorage("claudeDevKey") private var devKey = ""
+    /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
+    @AppStorage("recentSearchesRaw") private var recentSearchesRaw = ""
 
     @FocusState private var fieldFocused: Bool
     @FocusState private var queryFocused: Bool
@@ -204,12 +206,42 @@ struct BlankCanvasPrototype: View {
                     }
                 }
                 .onSubmit { Task { await runQuery() } }
+
+            if query.isEmpty && !recentSearches.isEmpty {
+                recentChips
+                    .padding(.top, 22)
+            }
+
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 20)
         .padding(.top, 64)
         .transition(.opacity)
+    }
+
+    /// Recently-searched terms as tappable chips beneath the field; tap to re-run.
+    private var recentChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(recentSearches, id: \.self) { term in
+                    Button {
+                        query = term
+                        Task { await runQuery() }
+                    } label: {
+                        Text(term)
+                            .font(Theme.dmSans(14, weight: .medium))
+                            .foregroundStyle(Theme.secondaryText)
+                            .lineLimit(1)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .glassEffect(.regular, in: .capsule)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
     }
 
     /// Two-column grid for the surfaced fils. Blobs fill the column width; tweak spacing here.
@@ -440,6 +472,19 @@ struct BlankCanvasPrototype: View {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var recentSearches: [String] {
+        recentSearchesRaw.split(separator: "\n").map(String.init)
+    }
+
+    /// Record a run query: dedup (case-insensitive), move to front, cap at 6, persist.
+    private func recordSearch(_ query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var list = recentSearches.filter { $0.caseInsensitiveCompare(trimmed) != .orderedSame }
+        list.insert(trimmed, at: 0)
+        recentSearchesRaw = list.prefix(6).joined(separator: "\n")
+    }
+
     private func onCanvasTap() {
         switch phase {
         case .composing:
@@ -494,6 +539,7 @@ struct BlankCanvasPrototype: View {
 
         guard !devKey.isEmpty else { showKeyEntry = true; return }
 
+        recordSearch(q)
         queryFocused = false
         summary = ""
         surfaceError = nil
