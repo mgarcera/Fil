@@ -1,0 +1,74 @@
+{
+  "identifier" : "F11A0000-0000-0000-0000-00000000Fi10",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21000000",
+      "localizations" : [],
+      "name" : "Fil Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "2.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "21000001",
+          "introductoryOffer" : {
+            "internalID" : "22000001",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
+          },
+          "localizations" : [
+            {
+              "description" : "Surface your thoughts with AI.",
+              "displayName" : "Fil Pro (Monthly)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.masongarcera.Fil.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Fil Pro Monthly",
+          "subscriptionGroupID" : "21000000",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "24.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "21000002",
+          "introductoryOffer" : {
+            "internalID" : "22000002",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
+          },
+          "localizations" : [
+            {
+              "description" : "Surface your thoughts with AI.",
+              "displayName" : "Fil Pro (Annual)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.masongarcera.Fil.pro.annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Fil Pro Annual",
+          "subscriptionGroupID" : "21000000",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

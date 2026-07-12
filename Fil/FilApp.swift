@@ -30,6 +30,8 @@ struct FilApp: App {
                 .dynamicTypeSize(...DynamicTypeSize.accessibility1)
                 // Warm the on-device title model after first frame so the first fil isn't stalled.
                 .task { ArticleGenerationService.shared.prewarm() }
+                // Begin observing subscription state (Fil Pro entitlement + transaction updates).
+                .task { StoreManager.shared.start() }
         }
         .modelContainer(modelContainer)
     }
