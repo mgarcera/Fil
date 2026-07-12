@@ -170,30 +170,36 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
   and centralize the prompt-format contract.
 
 ## Phased build
-1. **Proxy MVP (Cloudflare Worker):** stand up the Worker holding `ANTHROPIC_API_KEY`; port
-   `ClaudeSurfacingService` to call it (still ungated), Haiku. Add app-attest / shared-secret header
-   so it's not an open endpoint. Proves client→proxy→Claude end-to-end, key off-device.
-2. **Local keyword search (the free tier):** build the on-device keyword/substring search over
-   titles + transcripts and wire it into the query UI as the free retrieval path (results as blobs,
-   no summary). This is the free experience *and* fixes the current "fils only reachable via paid
-   cloud" gap — foundational to the capability split, independent of the proxy.
-3. **StoreKit:** `StoreManager`, an auto-renewing sub product ($2.99/mo + $24.99/yr) in App Store
-   Connect, a `.storekit` config; `isPro` entitlement; the ~14-day reverse-trial state.
-4. **Subscription verification in the proxy** (App Store Server API) + **per-user cost attribution
-   (KV)** + the **silent circuit-breaker** (~200/day). No free-allowance accounting (free = local).
-5. **Paywall + gating:** route a query to the proxy when `isPro || inReverseTrial`, else to local
-   keyword search; a calm, on-brand upgrade screen (voice per `/fil-voice`); Restore. Upgrade nudge
-   when a free user's query would have benefited from AI (e.g. a fuzzy/temporal query local search
-   can't satisfy).
-6. **Disclosures:** privacy policy, nutrition label, in-app note, terms link (incl. the fair-use
+1. ✅ **Proxy MVP (Cloudflare Worker)** — deployed at `fil-surfacing-proxy.mason-2fe.workers.dev`,
+   holds `ANTHROPIC_API_KEY`, Haiku; client ported. (2026-07-11/12)
+2. ✅ **Local keyword search (the free tier)** — on-device keyword/substring over title + transcript;
+   queries branch on `isPro` (Pro → cloud, free → local). Fixes the "fils only reachable via paid
+   cloud" gap.
+3. ✅ **StoreKit (client)** — `StoreManager` (StoreKit 2, `isPro` + transaction id), local
+   `Products.storekit` with monthly $2.99 / annual $24.99 + 2-week free trial. *ASC products +
+   sandbox tester still to finish for real testing.*
+4. ✅ **Subscription verification in the proxy** — App Store Server API (ES256 auth via the In-App
+   Purchase `.p8`, Get All Subscription Statuses, prod→sandbox); shared secret removed. *Per-user KV
+   attribution + silent ~200/day circuit-breaker still TODO.*
+5. ✅ **Paywall + gating** — native `SubscriptionStoreView` + a bespoke Fil marketing header; free
+   users see a calm "found by keyword / fil pro can surface" invite that opens it; success flips
+   `isPro`. *(Reverse-trial via StoreKit intro offer; verdict on header copy pending.)*
+6. ⬜ **Disclosures:** privacy policy, nutrition label, in-app note, terms link (incl. the fair-use
    clause). Say "surface your thoughts," not "unlimited."
-7. **Altitude cleanups** (#9): rename `BlankCanvasPrototype` → real home, remove dev-key path,
-   optional `Note.kind`.
-8. **Re-home capture modes + onboarding (#5):** voice/photo/link capture and the first-fil seed
+7. ⬜ **Altitude cleanups** (#9): rename `BlankCanvasPrototype` → real home, optional `Note.kind`.
+   (Dev-key path already removed in phase 4.)
+8. ⬜ **Re-home capture modes + onboarding (#5):** voice/photo/link capture and the first-fil seed
    reveal, so the paid home is also a complete capture home.
 
+**Still TODO (cost controls, deferred):** per-user cost attribution (Workers KV) + the silent
+~200/day circuit-breaker in the proxy; the payload cap / pre-filter (review #10).
+
 **Set-and-forget (not a code phase):** set the **Anthropic account-level spend cap** in the console
-before the proxy goes live — the outermost backstop.
+— the outermost backstop. *(Confirm done.)*
+
+**Testing note:** the App Store Server API can't verify local `.storekit` transactions, so the cloud
+path must be tested in **sandbox** (products live in ASC + a sandbox tester + subscribe on device).
+Local `.storekit` still exercises the paywall + the `isPro` flip.
 
 ## Locked (2026-07-11) — was "open"
 - **Price:** $2.99/mo + $24.99/yr. **Model:** Haiku 4.5. **Backend:** Cloudflare Workers.
