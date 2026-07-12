@@ -184,8 +184,11 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
 5. ✅ **Paywall + gating** — native `SubscriptionStoreView` + a bespoke Fil marketing header; free
    users see a calm "found by keyword / fil pro can surface" invite that opens it; success flips
    `isPro`. *(Reverse-trial via StoreKit intro offer; verdict on header copy pending.)*
-6. ⬜ **Disclosures:** privacy policy, nutrition label, in-app note, terms link (incl. the fair-use
-   clause). Say "surface your thoughts," not "unlimited."
+6. ✅ **Disclosures** — privacy policy updated (cloud-surfacing section + subscriptions), App Privacy
+   answers flipped to User Content › Other User Content (App Functionality, not linked, not
+   tracking) + matching `PrivacyInfo.xcprivacy`, and a plain-language data line in the paywall at
+   opt-in (+ SubscriptionStoreView's privacy link). *Re-publish the hosted policy at
+   rootcause.ltd/fil/privacy to match the repo copy; fair-use clause TBD in the terms.*
 7. ⬜ **Altitude cleanups** (#9): rename `BlankCanvasPrototype` → real home, optional `Note.kind`.
    (Dev-key path already removed in phase 4.)
 8. ⬜ **Re-home capture modes + onboarding (#5):** voice/photo/link capture and the first-fil seed
