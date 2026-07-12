@@ -61,6 +61,7 @@ struct BlankCanvasPrototype: View {
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
     @State private var showKeyEntry = false
+    @State private var showPaywall = false
     /// DEV: the surfacing proxy (Cloudflare Worker) URL + shared secret. Configured on-device, never
     /// committed. Replaced by StoreKit-verified access in a later phase.
     @AppStorage("filProxyURL") private var proxyURL = ""
@@ -111,6 +112,11 @@ struct BlankCanvasPrototype: View {
                 .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showKeyEntry) { keyEntrySheet }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
+                .presentationDetents([.large])
+                .presentationBackground(Theme.background)
+        }
         .landfilConfirmation(item: $pendingLandfilNote, message: { _ in
             "this fil will be deleted. this cannot be undone."
         }, onConfirm: { note in
@@ -294,6 +300,8 @@ struct BlankCanvasPrototype: View {
                             .font(Theme.dmSans(16, weight: .medium))
                             .foregroundStyle(Theme.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
+                    } else if !StoreManager.shared.isPro && !results.isEmpty {
+                        freeSurfaceInvite
                     }
                     if results.isEmpty {
                         Text("nothing surfaced for “\(query)”")
@@ -310,6 +318,23 @@ struct BlankCanvasPrototype: View {
         }
         .scrollIndicators(.hidden)
         .transition(.opacity)
+    }
+
+    /// Shown to free users in place of the AI summary: a calm, non-pushy invitation to Pro
+    /// surfacing (their keyword results still render below).
+    private var freeSurfaceInvite: some View {
+        Button { showPaywall = true } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("found by keyword.")
+                    .font(Theme.dmSans(15, weight: .medium))
+                    .foregroundStyle(Theme.primaryText)
+                Text("fil pro can read these and surface what fits.")
+                    .font(Theme.dmSans(14))
+                    .foregroundStyle(Theme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
     }
 
     private func blobCell(_ note: Note) -> some View {
