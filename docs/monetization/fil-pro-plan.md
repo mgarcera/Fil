@@ -1,5 +1,12 @@
 # Fil — Monetization Plan (Support + Cosmetic Shop)
 
+> **⚠️ SUPERSEDED (2026-07-11) by [`blank-canvas-pivot-plan.md`](./blank-canvas-pivot-plan.md).**
+> The blank-canvas direction added cloud AI surfacing (a real recurring per-query cost), which breaks
+> the two premises this plan rested on — "stays on device" and "no per-use cost." The live money model
+> is now a flat freemium **Fil Pro** subscription ($2.99/mo + $24.99/yr, capability-split free tier).
+> This file is kept for history only; the cosmetics/tip shop may still return as *optional extra*
+> support, but it is no longer the core model.
+
 *Phase 5 strategy. Final model locked with Mason 2026-07-06. Supersedes every earlier framing
 (subscription, iCloud-sync-hero, summaries-gate). There is intentionally **no "Pro" tier** and
 **nothing essential is ever gated** — monetization is optional support + cosmetics only.*

@@ -4,8 +4,9 @@
 model). The blank-canvas direction added **cloud AI surfacing** (Claude), which breaks two promises
 that plan rested on — data leaving the device, and a real recurring per-query cost — so the
 monetization and privacy story have to change with it. This doc is the plan for that. Live product
-state: `docs/features/blank-canvas-home.md`. All four headline choices below are **recommendations
-pending Mason's confirm** (marked DECISION).
+state: `docs/features/blank-canvas-home.md`. **All four headline decisions are now LOCKED
+(2026-07-11)** after a research + numbers pass with Mason; see each DECISION block and the "Locked"
+summary near the end.
 
 ## Why the change
 - **Surfacing sends fils to Anthropic's API** → "notes stay on your device" is no longer absolute.
@@ -51,19 +52,59 @@ margin, use credits/hybrid." **That warning mostly doesn't apply to Fil**, and h
   ([Day One plans](https://dayoneapp.com/plans/))
 
 ### Finalized model
-- **Flat auto-renewing "Fil Pro"**, priced in-band (lean **$2.99/mo + a discounted annual ~$24.99**;
-  bias people to annual). No credits in v1.
-- **Free tier = full-featured surfacing, small monthly cap** (start ~5–10/mo; tune from real cohort
-  data — no universal number). Upgrade prompt at ~90% of the cap. Consider a **reverse trial** at
-  launch.
-- **Guardrails at the proxy** (cheap but not free): a per-user **daily rate limit** to kill scripted
-  abuse, plus the payload cap (#10). No literal "unlimited" marketing until usage data backs it —
-  though for humans it's effectively unlimited at this cost.
+- **Flat auto-renewing "Fil Pro" — LOCKED at $2.99/mo + $24.99/yr** (2026-07-11; annual ~30% off to
+  bias toward commitment). No credits in v1. Rationale: the $1 delta over $1.99 is nearly all margin
+  (costs are fixed), ~doubling net profit at every scale while staying in the calm/indie band
+  (Day One, Bear). Assumes Apple's 15% Small Business rate.
+- **Model tier — LOCKED: Haiku 4.5** (2026-07-11). Testing shows it holds; the ~$0.01/query economics
+  depend on it (Sonnet ≈ 3–4× cost, breaks bundling). Sonnet kept as a possible future quality
+  toggle / "Pro+", not the default.
+- **Backend — LOCKED: Cloudflare Workers** (2026-07-11) for the serverless proxy; Workers KV for
+  per-user cost attribution.
+- **Free tier = unlimited local keyword search** (find your fils, $0, private) — no volume counter.
+  The AI *summary* + semantic/temporal/thematic understanding is the Pro line. **~14-day reverse
+  trial** of full AI surfacing at first launch, then it settles to free local search. (See Decision 2
+  for the capability split — this supersedes the earlier "small monthly cap" idea.)
+- **Guardrails — LOCKED (2026-07-11): no marketed per-user limit; data-first, with invisible
+  backstops.** The literature is clear that a *marketed product limit* is off-brand and unnecessary at
+  this cost, but shipping with *zero in-path ceiling* is the one genuinely risky choice (billing
+  dashboards lag 24–48h, so monitor-and-react can't stop a scripted loop before the bill). So:
+  1. **Anthropic account-level spend cap** (their dashboard) — outermost net; total spend can never
+     exceed $X/mo regardless of bug/abuse. Set-and-forget.
+  2. **Per-user cost attribution in the proxy** — log cost per user ID (proxy is being built anyway).
+     This is the "trust the data" instrument: heavy users surface long before they matter.
+  3. **Silent circuit-breaker set absurdly high** (~200/day) — not a product limit; an invisible
+     runaway guard so a script can't burn all weekend. No human reaches it.
+  4. **One-line fair-use clause** in terms: "unlimited" = human-initiated; no bots/scripts/automation.
+  Plus the payload cap (#10). Don't advertise the word "unlimited" until ~3 months of data earn it —
+  say "surface your thoughts," not "unlimited surfacing."
+  *(Each of these four gets expanded when we reach the build phase it belongs to — Mason to co-design.)*
 
-## DECISION 2 — Free/paid line → **capture free + a small surfacing taste, then Pro** *(recommended)*
-Everyone captures unlimited fils and on-device titles free, and gets a small monthly surfacing
-allowance (e.g. ~5 searches/month) so they feel the magic before paying. Beyond that → Pro.
-(Alternatives: surfacing fully Pro, no free taste; or all-free beta to learn first.)
+## DECISION 2 — Free/paid line → **split on CAPABILITY: free = local retrieval, Pro = cloud AI understanding** *(LOCKED 2026-07-11)*
+The free/paid line is **not** a volume cap on searching your own thoughts (that's extractive and
+off-brand, and a good-enough free general search would cannibalize Pro). Instead:
+- **Free, unlimited, on-device, $0:** a **local keyword/substring search** over titles + transcripts.
+  You can always find your own fils by words you remember. Private, offline, no counter.
+- **Pro ($2.99/mo):** **cloud AI surfacing** — the things keyword search structurally *cannot* do:
+  semantic / temporal / thematic queries ("what am I forgetting?", "times I felt anxious", "my work
+  stuff", "recently"), the warm synthesized **summary**, and type-aware grouping.
+- **Reverse trial (~14 days):** full AI surfacing for new users so they feel the magic, then it
+  settles to the free local search.
+
+**Why this is the right axis:** keyword search and AI surfacing answer *different needs* — free finds
+words you can name; Pro finds thoughts you've forgotten or can't put a keyword to, and hands you the
+summary. The "I just want to find a note" user (who was never going to pay) doesn't feel robbed; the
+magic + the cost stay behind the wall.
+
+**Free search is deliberately keyword-only** (not on-device embeddings, though the engine exists) — a
+clearly weaker literal match sharpens the reason to upgrade, and it's trivial to build.
+
+**Two consequences:**
+1. **Fixes a hidden extractive problem:** since the timeline was deleted, fils are currently reachable
+   *only* through the paid cloud query — a non-paying user can't reach their own notes at all. The
+   free local search is the honest baseline that must exist regardless of monetization.
+2. **Free-tier AI cost → ~$0:** free users hit local search, not Claude. So the blended AI-cost column
+   in the revenue tables basically collapses to payer-only cost — margins are *better* than projected.
 
 ## DECISION 3 — Privacy stance → **keep an on-device-only path; surfacing is opt-in + honestly disclosed** *(recommended)*
 Capture, on-device titles, storage, widgets, screensavers stay 100% local. Surfacing is the *only*
@@ -86,12 +127,13 @@ A user who never searches keeps the absolute on-device guarantee.
 - The 2025 consumer-terms changes (5-yr retention, opt-in training) apply to Claude.ai consumer
   plans, **NOT** the API/Commercial Terms — doesn't affect us.
 
-## DECISION 4 — Backend → **serverless proxy** *(recommended)*
-A lightweight function (Cloudflare Workers / Vercel) that: holds the Anthropic key server-side,
-verifies the user's StoreKit subscription (App Store Server API / signed transaction), enforces
-per-user rate limits + the free allowance, forwards to Claude, returns the result. Minimal ops,
-cheap, fast to stand up. The app never sees the key. (Alternative: a full managed backend for more
-caching/abuse control.)
+## DECISION 4 — Backend → **serverless proxy on Cloudflare Workers** *(LOCKED 2026-07-11)*
+A lightweight Cloudflare Worker that: holds the Anthropic key server-side, verifies the user's
+StoreKit subscription (App Store Server API / signed transaction) or reverse-trial state, logs
+per-user cost to Workers KV (attribution), enforces the silent circuit-breaker, forwards to Claude
+(Haiku), returns the result. No free-allowance *metering* is needed — free users never reach the
+proxy (they use local keyword search on-device), so the proxy only ever serves Pro + trial users.
+Minimal ops, cheap, fast to stand up. The app never sees the key.
 
 ## Architecture
 ```
@@ -128,28 +170,50 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
   and centralize the prompt-format contract.
 
 ## Phased build
-1. **Proxy MVP:** stand up the serverless function with the key; port `ClaudeSurfacingService` to
-   call it (still ungated) — proves the client→proxy→Claude path end-to-end, key off-device.
-2. **StoreKit:** `StoreManager`, an auto-renewing subscription product in App Store Connect, a
-   `.storekit` config; `isPro` entitlement.
-3. **Subscription verification in the proxy** (App Store Server API) + free-allowance/rate-limit
-   accounting.
-4. **Paywall + gating:** gate surfacing on `isPro`/allowance; a calm, on-brand upgrade screen (voice
-   per `/fil-voice`); Restore.
-5. **Disclosures:** privacy policy, nutrition label, in-app note, terms link.
-6. **Altitude cleanups** (#9): rename, remove dev-key path, optional `Note.kind`.
-7. **Re-home capture modes + onboarding (#5):** voice/photo/link capture and the first-fil seed
+1. **Proxy MVP (Cloudflare Worker):** stand up the Worker holding `ANTHROPIC_API_KEY`; port
+   `ClaudeSurfacingService` to call it (still ungated), Haiku. Add app-attest / shared-secret header
+   so it's not an open endpoint. Proves client→proxy→Claude end-to-end, key off-device.
+2. **Local keyword search (the free tier):** build the on-device keyword/substring search over
+   titles + transcripts and wire it into the query UI as the free retrieval path (results as blobs,
+   no summary). This is the free experience *and* fixes the current "fils only reachable via paid
+   cloud" gap — foundational to the capability split, independent of the proxy.
+3. **StoreKit:** `StoreManager`, an auto-renewing sub product ($2.99/mo + $24.99/yr) in App Store
+   Connect, a `.storekit` config; `isPro` entitlement; the ~14-day reverse-trial state.
+4. **Subscription verification in the proxy** (App Store Server API) + **per-user cost attribution
+   (KV)** + the **silent circuit-breaker** (~200/day). No free-allowance accounting (free = local).
+5. **Paywall + gating:** route a query to the proxy when `isPro || inReverseTrial`, else to local
+   keyword search; a calm, on-brand upgrade screen (voice per `/fil-voice`); Restore. Upgrade nudge
+   when a free user's query would have benefited from AI (e.g. a fuzzy/temporal query local search
+   can't satisfy).
+6. **Disclosures:** privacy policy, nutrition label, in-app note, terms link (incl. the fair-use
+   clause). Say "surface your thoughts," not "unlimited."
+7. **Altitude cleanups** (#9): rename `BlankCanvasPrototype` → real home, remove dev-key path,
+   optional `Note.kind`.
+8. **Re-home capture modes + onboarding (#5):** voice/photo/link capture and the first-fil seed
    reveal, so the paid home is also a complete capture home.
 
-## Open decisions (beyond the four above)
-- **Price** (monthly / annual; e.g. ~$2.99/mo or ~$19.99/yr) and the exact free allowance.
-- **Proxy host** (Cloudflare Workers vs Vercel) + how the free allowance is tracked (per Apple
-  account? device? anonymous id?).
-- **Model tier** for production (Haiku vs Sonnet) and prompt-cache use at scale.
+**Set-and-forget (not a code phase):** set the **Anthropic account-level spend cap** in the console
+before the proxy goes live — the outermost backstop.
+
+## Locked (2026-07-11) — was "open"
+- **Price:** $2.99/mo + $24.99/yr. **Model:** Haiku 4.5. **Backend:** Cloudflare Workers.
+- **Free/paid line:** capability split — free = unlimited local keyword search; Pro = cloud AI
+  surfacing + summary; ~14-day reverse trial. No volume metering on free.
+- **Guardrails:** no marketed limit; Anthropic account cap + proxy per-user attribution + silent
+  ~200/day circuit-breaker + fair-use clause.
+- **Offline / no-Pro behavior:** resolved by the split — the query entry is always present; a free /
+  offline user gets local keyword results (never hidden, never a hard paywall wall), with an upgrade
+  nudge when the query is one only AI could satisfy.
+
+## Still open
 - **Fate of the old cosmetics shop** — drop, or keep as optional extra support alongside Pro.
-- **Offline / no-Pro behavior** of the surfacing entry (hide vs show-with-paywall).
 - **Zero Data Retention** — pursue a ZDR agreement with Anthropic (lets us say "not stored," a
   stronger privacy claim) vs. ship with the default 30-day-deletion wording.
+- **Reverse-trial mechanics** — exact length (~14d), how trial state is tracked (StoreKit intro
+  offer vs app-side flag), and what the downgrade moment feels like.
+- **Circuit-breaker number** — start ~200/day, tune from attribution data.
+- **Prompt-cache use at scale** — the corpus prefix is cacheable (Haiku 4096-token min); worth it
+  once payloads/library sizes are known (ties to the #10 payload cap).
 
 ## Verification / gates before shipping
 - Proxy: key never in the client build; subscription verified server-side (can't be spoofed);
