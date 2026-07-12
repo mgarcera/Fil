@@ -582,8 +582,6 @@ struct BlankCanvasPrototype: View {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
 
-        guard !proxyURL.isEmpty else { showKeyEntry = true; return }
-
         recordSearch(q)
         queryFocused = false
         summary = ""
@@ -591,6 +589,22 @@ struct BlankCanvasPrototype: View {
         results = []
         isRetrieving = true
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .results }
+
+        // Capability split: Pro (and active trial) get cloud AI surfacing + summary; everyone else
+        // gets free on-device keyword search. See docs/monetization/blank-canvas-pivot-plan.md.
+        if StoreManager.shared.isPro {
+            await runCloudSurfacing(q)
+        } else {
+            runLocalSearch(q)
+        }
+
+        isRetrieving = false
+    }
+
+    /// Pro path: send the fil corpus + query to the surfacing proxy (Claude) for a warm summary and
+    /// semantic/temporal/thematic selection.
+    private func runCloudSurfacing(_ q: String) async {
+        guard !proxyURL.isEmpty else { showKeyEntry = true; return }
 
         let inputs = notes.map { note in
             FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note), metadata: filMetadata(note))
@@ -606,7 +620,27 @@ struct BlankCanvasPrototype: View {
         } catch {
             surfaceError = (error as? ClaudeSurfacingService.SurfacingError)?.errorDescription ?? error.localizedDescription
         }
-        isRetrieving = false
+    }
+
+    /// Free path: case-insensitive keyword/substring match over each fil's title + transcript. No
+    /// network, no summary, no counter — the free tier's way to find fils by words you remember.
+    /// (Semantic / temporal / thematic queries and the summary are the Pro upgrade.)
+    private func runLocalSearch(_ q: String) {
+        let terms = q.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !terms.isEmpty else { return }
+
+        let scored = notes.compactMap { note -> (note: Note, hits: Int)? in
+            let haystack = (note.displayBadgeText + " " + note.transcript).lowercased()
+            let hits = terms.reduce(0) { $0 + (haystack.contains($1) ? 1 : 0) }
+            return hits > 0 ? (note, hits) : nil
+        }
+        // Most query terms matched first, then most recent.
+        let matched = scored
+            .sorted { ($0.hits, $0.note.timestamp) > ($1.hits, $1.note.timestamp) }
+            .map(\.note)
+
+        results = matched
+        todoFilIDs = Set(matched.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
     }
 
     /// Text handed to retrieval: the fil's title + a short content snippet, so topical relevance keys
