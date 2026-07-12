@@ -61,8 +61,10 @@ struct BlankCanvasPrototype: View {
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
     @State private var showKeyEntry = false
-    /// TEMP: local-only Claude key for the spike. Never committed, never shipped.
-    @AppStorage("claudeDevKey") private var devKey = ""
+    /// DEV: the surfacing proxy (Cloudflare Worker) URL + shared secret. Configured on-device, never
+    /// committed. Replaced by StoreKit-verified access in a later phase.
+    @AppStorage("filProxyURL") private var proxyURL = ""
+    @AppStorage("filProxySecret") private var proxySecret = ""
     /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
     @AppStorage("recentSearchesRaw") private var recentSearchesRaw = ""
 
@@ -478,13 +480,18 @@ struct BlankCanvasPrototype: View {
     /// TEMP dev-key entry for the Claude spike. The key is stored only on-device (AppStorage).
     private var keyEntrySheet: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("claude dev key")
+            Text("surfacing proxy")
                 .font(Theme.dmSans(18, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
-            Text("temporary — for the surfacing spike only. stored on this device, never shipped.")
+            Text("dev config for the surfacing proxy. stored on this device, never shipped.")
                 .font(Theme.dmSans(13))
                 .foregroundStyle(Theme.secondaryText)
-            SecureField("sk-ant-…", text: $devKey)
+            TextField("https://…workers.dev", text: $proxyURL)
+                .textFieldStyle(.roundedBorder)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .keyboardType(.URL)
+            SecureField("shared secret", text: $proxySecret)
                 .textFieldStyle(.roundedBorder)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -493,7 +500,7 @@ struct BlankCanvasPrototype: View {
             Spacer()
         }
         .padding(24)
-        .presentationDetents([.height(240)])
+        .presentationDetents([.height(300)])
         .presentationBackground(Theme.background)
     }
 
@@ -502,7 +509,7 @@ struct BlankCanvasPrototype: View {
             HStack(spacing: 16) {
                 Spacer()
                 Button { showKeyEntry = true } label: {
-                    Image(systemName: devKey.isEmpty ? "key" : "key.fill")
+                    Image(systemName: proxyURL.isEmpty ? "key" : "key.fill")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundStyle(Theme.secondaryText)
                 }
@@ -575,7 +582,7 @@ struct BlankCanvasPrototype: View {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
 
-        guard !devKey.isEmpty else { showKeyEntry = true; return }
+        guard !proxyURL.isEmpty else { showKeyEntry = true; return }
 
         recordSearch(q)
         queryFocused = false
@@ -590,7 +597,7 @@ struct BlankCanvasPrototype: View {
         }
 
         do {
-            let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, apiKey: devKey)
+            let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, endpoint: proxyURL, secret: proxySecret)
             summary = outcome.summary
             let surfaced = outcome.relevantIDs.compactMap { notesByID[$0] }
             results = surfaced

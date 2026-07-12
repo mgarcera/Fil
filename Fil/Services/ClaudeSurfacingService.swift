@@ -1,15 +1,13 @@
 import Foundation
 import OSLog
 
-/// TEMPORARY dev-key spike (blank-canvas surfacing, docs/features/blank-canvas-home.md).
+/// Surfacing client: posts a query + the user's fils to the Fil surfacing proxy (a Cloudflare Worker
+/// that holds the Anthropic key server-side and asks Claude to pick the relevant fils + write a short
+/// synthesis). The app never sees the key.
 ///
-/// Calls the Anthropic API DIRECTLY from the app with a locally-stored key, purely to validate
-/// Claude-powered surfacing before we build the real thing. This must NEVER ship: a production build
-/// has to proxy through a server that holds the key and checks the user's subscription — an embedded
-/// key would be extracted and abused. The key here lives only in on-device storage, never in the repo.
-///
-/// One pass: given a query + the user's fils, Claude picks the genuinely relevant ones and writes a
-/// short synthesis — replacing the weak on-device embedding retrieval.
+/// Phase 1 MVP: the proxy is gated only by a shared secret and isn't subscription-aware yet. The
+/// endpoint URL + secret are configured on-device (dev), never committed. StoreKit verification and
+/// per-user cost attribution land in later phases (see docs/monetization/blank-canvas-pivot-plan.md).
 actor ClaudeSurfacingService {
     static let shared = ClaudeSurfacingService()
 
@@ -19,164 +17,75 @@ actor ClaudeSurfacingService {
     }
 
     enum SurfacingError: LocalizedError {
-        case missingKey, http(Int, String), empty, badJSON
+        case missingConfig, http(Int, String), empty, badJSON
 
         var errorDescription: String? {
             switch self {
-            case .missingKey:            return "Add a Claude dev key to try surfacing."
-            case let .http(code, body):  return "Claude request failed (\(code)). \(body)"
-            case .empty:                 return "Claude returned an empty response."
-            case .badJSON:               return "Couldn't read Claude's response."
+            case .missingConfig:         return "Set the surfacing proxy URL to try surfacing."
+            case let .http(code, body):  return "Surfacing request failed (\(code)). \(body)"
+            case .empty:                 return "The proxy returned an empty response."
+            case .badJSON:               return "Couldn't read the proxy's response."
             }
         }
     }
 
-    private let model = "claude-haiku-4-5"
-    private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
-    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "claude-spike")
+    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "surfacing")
 
-    func surface(query: String, fils: [FilClusterInput], apiKey: String) async throws -> Surfacing {
-        let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { throw SurfacingError.missingKey }
+    /// - Parameters:
+    ///   - endpoint: the proxy URL (e.g. https://fil-surfacing-proxy.<acct>.workers.dev).
+    ///   - secret: the shared secret matched against the proxy's PROXY_SHARED_SECRET.
+    func surface(query: String, fils: [FilClusterInput], endpoint: String, secret: String) async throws -> Surfacing {
+        let urlString = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !urlString.isEmpty, let url = URL(string: urlString) else { throw SurfacingError.missingConfig }
 
-        let numbered = fils.enumerated()
-            .map { index, fil in
-                let prefix = "\(index + 1)."
-                return fil.metadata.isEmpty ? "\(prefix) \(fil.text)" : "\(prefix) (\(fil.metadata)) \(fil.text)"
-            }
-            .joined(separator: "\n")
-
-        let system = """
-            You help someone explore their own private notes (they call each one a "fil"). Each note \
-            is listed as:
-              N. (when it was made, its type, whether it has open to-dos) title: snippet
-            Types are note, voice, link, photo.
-
-            Given a query and the list, do two things:
-
-            1. Select the notes that genuinely answer the query, best first. Interpret the query flexibly:
-            - Topic, mood, or kind of thought: pick notes really about it. Be strict; exclude loosely \
-            or merely emotionally related ones, and prefer a few tight matches over many loose ones.
-            - Temporal ("recently", "lately", "what have i forgotten", "what have i missed"): use the \
-            dates. Recent/lately = the newest notes; forgotten/missed = older notes from a while ago.
-            - Type or to-dos ("photos", "links", "voice notes", "to-dos"): use the type and to-do flag.
-            Return an empty list only if nothing genuinely fits.
-
-            2. Reflect back what those selected notes are about, in a warm but grounded way, like a \
-            friend who listens well. 2 to 3 sentences, second person, in their voice. Stay close to \
-            what's actually written.
-
-            Voice rules:
-            - Warm but restrained. Never sentimental, flowery, or therapeutic. Do not psychoanalyze, \
-            infer hidden motives, or reach for deeper meaning the notes don't state.
-            - Describe what they've been noting about this, not who they are as a person.
-            - No clinical framing ("there's a tension between", "navigating with intention"), no \
-            advice, no nudges.
-            - Never use em dashes. Use commas, periods, or "and". Contractions welcome.
-            - Write in natural sentence case (the app handles lowercasing).
-
-            Respond with ONLY a JSON object, no prose or code fences:
-            {"summary": "...", "relevant": [numbers]}
-            """
-        // Cache the stable prefix (the fil corpus); the query varies and trails after the breakpoint,
-        // so repeat queries within the TTL read the corpus from cache at 0.1x. (Only engages once the
-        // prefix clears the model's minimum cacheable length — 4,096 tokens for Haiku.)
-        let requestBody = RequestBody(
-            model: model,
-            max_tokens: 800,
-            system: system,
-            messages: [
-                Message(role: "user", content: [
-                    ContentPart(text: "Notes:\n\(numbered)", cache: true),
-                    ContentPart(text: "Query: \(query)")
-                ])
-            ]
+        let payload = RequestBody(
+            query: query,
+            fils: fils.map { RequestFil(text: $0.text, metadata: $0.metadata) }
         )
 
-        var request = URLRequest(url: endpoint)
+        var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue(key, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.httpBody = try JSONEncoder().encode(requestBody)
+        request.setValue(secret, forHTTPHeaderField: "X-Fil-Proxy-Key")
+        request.httpBody = try JSONEncoder().encode(payload)
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw SurfacingError.empty }
         guard http.statusCode == 200 else {
-            let body = String(data: data, encoding: .utf8) ?? ""
-            log.notice("claude http \(http.statusCode, privacy: .public)")
+            let body = errorMessage(from: data) ?? String(data: data, encoding: .utf8) ?? ""
+            log.notice("surfacing http \(http.statusCode, privacy: .public)")
             throw SurfacingError.http(http.statusCode, String(body.prefix(200)))
         }
 
-        let decoded = try JSONDecoder().decode(APIResponse.self, from: data)
-        guard let text = decoded.content.first(where: { $0.type == "text" })?.text, !text.isEmpty else {
-            throw SurfacingError.empty
+        guard let decoded = try? JSONDecoder().decode(ProxyResponse.self, from: data) else {
+            throw SurfacingError.badJSON
         }
 
-        let parsed = try parse(text)
-        let ids = parsed.relevant.compactMap { number -> UUID? in
+        let ids = decoded.relevant.compactMap { number -> UUID? in
             let index = number - 1
             return fils.indices.contains(index) ? fils[index].id : nil
         }
-        let usage = decoded.usage
-        log.notice("claude surface(\"\(query, privacy: .public)\"): \(ids.count, privacy: .public) fils | in \(usage?.input_tokens ?? 0, privacy: .public) out \(usage?.output_tokens ?? 0, privacy: .public) cacheWrite \(usage?.cache_creation_input_tokens ?? 0, privacy: .public) cacheRead \(usage?.cache_read_input_tokens ?? 0, privacy: .public)")
-        return Surfacing(summary: parsed.summary.withoutEmDashes, relevantIDs: ids)
+        log.notice("surface(\"\(query, privacy: .public)\"): \(ids.count, privacy: .public) fils")
+        return Surfacing(summary: decoded.summary.withoutEmDashes, relevantIDs: ids)
     }
 
-    /// Extracts the {"summary","relevant"} object from the model's text, tolerating stray wrapping.
-    private func parse(_ text: String) throws -> Parsed {
-        guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}") else {
-            throw SurfacingError.badJSON
-        }
-        let json = String(text[start...end])
-        guard let data = json.data(using: .utf8), let parsed = try? JSONDecoder().decode(Parsed.self, from: data) else {
-            throw SurfacingError.badJSON
-        }
-        return parsed
+    /// Pull the proxy's `{ "error": "..." }` message out of a non-200 body, if present.
+    private func errorMessage(from data: Data) -> String? {
+        struct ErrorBody: Decodable { let error: String }
+        return (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error
     }
 
     // MARK: - Wire types
 
     private struct RequestBody: Encodable {
-        let model: String
-        let max_tokens: Int
-        let system: String
-        let messages: [Message]
+        let query: String
+        let fils: [RequestFil]
     }
-    private struct Message: Encodable {
-        let role: String
-        let content: [ContentPart]
-    }
-    private struct ContentPart: Encodable {
-        let type: String
+    private struct RequestFil: Encodable {
         let text: String
-        let cacheControl: CacheControl?
-
-        enum CodingKeys: String, CodingKey { case type, text, cacheControl = "cache_control" }
-
-        init(text: String, cache: Bool = false) {
-            self.type = "text"
-            self.text = text
-            self.cacheControl = cache ? CacheControl() : nil
-        }
+        let metadata: String
     }
-    private struct CacheControl: Encodable { let type = "ephemeral" }
-
-    private struct APIResponse: Decodable {
-        let content: [ContentBlock]
-        let usage: Usage?
-    }
-    private struct ContentBlock: Decodable {
-        let type: String
-        let text: String?
-    }
-    private struct Usage: Decodable {
-        let input_tokens: Int?
-        let output_tokens: Int?
-        let cache_creation_input_tokens: Int?
-        let cache_read_input_tokens: Int?
-    }
-    private struct Parsed: Decodable {
+    private struct ProxyResponse: Decodable {
         let summary: String
         let relevant: [Int]
     }

@@ -1,0 +1,8 @@
+name = "fil-surfacing-proxy"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+# Secrets are NOT set here — they'd be committed. Set them with:
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put PROXY_SHARED_SECRET
+# For local `wrangler dev`, put them in .dev.vars (git-ignored) instead.

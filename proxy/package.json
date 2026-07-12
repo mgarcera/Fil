@@ -1,0 +1,14 @@
+{
+  "name": "fil-surfacing-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cloudflare Worker that proxies Fil's Claude surfacing calls, holding the Anthropic key server-side.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
