@@ -49,6 +49,14 @@ struct PaywallView: View {
                     .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
+                // Plain-language data disclosure, shown at the moment of opting in. Pairs with the
+                // privacy-policy link SubscriptionStoreView renders below.
+                Text("surfacing sends the relevant fil text to our ai provider (anthropic) to answer. it's never used to train models, and is deleted within 30 days. free keyword search stays on your device.")
+                    .font(Theme.dmSans(12))
+                    .foregroundStyle(Theme.tertiaryText)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 4)
             }
             .padding(.horizontal, 24)
         }

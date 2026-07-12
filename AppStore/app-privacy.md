@@ -1,30 +1,49 @@
 # Fil — App Privacy (App Store Connect answers)
 
-Fil is local-first with no analytics, ads, accounts, or third-party SDKs. Answer the App Privacy
-questionnaire as follows.
+Fil is local-first with no analytics, ads, accounts, or third-party tracking SDKs. **One paid,
+opt-in feature (Fil Pro surfacing) transmits user content off-device**, so the questionnaire is no
+longer "Data Not Collected." Answer as follows.
 
 ## Data collection
-**"Do you or your third-party partners collect data from this app?" → No.**
-Select **"Data Not Collected."** Everything is processed and stored on the device; nothing is sent
-to the developer. This is the whole questionnaire once you pick it.
+**"Do you or your third-party partners collect data from this app?" → Yes.**
+Declare exactly one data type:
+
+- **User Content → "Other User Content"** — the text of the fils relevant to a surfacing query,
+  sent to our AI provider (Anthropic) to answer it.
+  - **Used for:** App Functionality (only).
+  - **Linked to the user's identity?** **No.** Fil has no account; nothing identifying is attached.
+  - **Used for tracking?** **No.**
+
+Do **not** declare any other type. Creating, storing, and keyword-searching fils are entirely
+on-device and collect nothing; the free tier never transmits content.
 
 ## Tracking (ATT)
-**No.** Fil does not track. There is no `NSUserTrackingUsageDescription`, no IDFA, and no ATT
-prompt.
+**No.** Fil does not track. No `NSUserTrackingUsageDescription`, no IDFA, no ATT prompt.
 
 ## Why this is accurate (keep for your records)
-- **On-device speech:** transcription is on-device when supported; on devices without support,
-  iOS may use **Apple's** speech recognition service. That processing is Apple's, not developer
-  collection, so "Data Not Collected" remains correct. It is disclosed in the Privacy Policy.
-- **Link previews:** user-initiated requests to the linked site via Apple's LinkPresentation —
-  not collected by the developer.
-- **Privacy manifest:** `PrivacyInfo.xcprivacy` is already in the app + widget + share extension
-  (`NSPrivacyTracking=false`, empty collected-data types, UserDefaults reasons `CA92.1` + `1C8F.1`).
+- **Fil Pro surfacing:** when a subscriber asks a question in their own words, the relevant fil text
+  is sent to Anthropic to produce a reflection + pick matching fils. Apple treats transmitting user
+  content off-device as "collected," so it must be declared — as App Functionality, not linked, not
+  tracking. Under Anthropic's commercial terms it is not used to train models and is deleted within
+  ~30 days. Disclosed in the Privacy Policy and in an in-app note before first use.
+- **Subscription check:** Fil sends the StoreKit transaction id to its proxy to verify Fil Pro with
+  Apple. This is Apple's own receipt mechanism used solely for app functionality, not stored by us
+  and not linked to identity; it does not add a separate declared data type. (If App Review ever
+  pushes back, the fallback is to also declare "Purchases → App Functionality, not linked.")
+- **On-device speech:** transcription is on-device when supported; otherwise iOS may use Apple's
+  speech service — Apple's processing, not developer collection.
+- **Link previews:** user-initiated requests to the linked site via Apple's LinkPresentation — not
+  collected by the developer.
+- **Privacy manifest:** `PrivacyInfo.xcprivacy` (app target) now lists the "Other User Content" data
+  type (App Functionality, not linked, not tracking) to match this. Widget + share extension collect
+  nothing and keep empty collected-data types.
 
 ## ASC checklist
-- [ ] App Privacy → Data Types → **Data Not Collected**
+- [ ] App Privacy → Data Types → **User Content › Other User Content** → App Functionality, **not**
+      linked to identity, **not** used for tracking.
 - [ ] Tracking → **No**
-- [ ] Privacy Policy URL entered (hosted policy → `FilLinks.privacyPolicy`)
+- [ ] Privacy Policy URL entered (hosted policy → `FilLinks.privacyPolicy`) — reflects the cloud
+      surfacing disclosure
 - [ ] Support URL entered (hosted support page → `FilLinks.support`)
 - [ ] Age rating completed (expected 4+)
 - [ ] Export compliance handled by `ITSAppUsesNonExemptEncryption = NO` (already in the build)
