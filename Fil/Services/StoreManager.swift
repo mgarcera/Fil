@@ -23,6 +23,8 @@ final class StoreManager {
     private(set) var products: [Product] = []
     /// True while the user has an active Fil Pro entitlement (includes an active free trial).
     private(set) var isPro = false
+    /// The active subscription's transaction id, sent to the proxy to prove entitlement.
+    private(set) var proTransactionID: String?
     /// True once the initial product load + entitlement check have completed.
     private(set) var isReady = false
 
@@ -67,13 +69,16 @@ final class StoreManager {
     /// Recompute `isPro` from the current entitlements.
     func updateEntitlement() async {
         var active = false
+        var txID: String?
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             if ProductID.all.contains(transaction.productID), transaction.revocationDate == nil {
                 active = true
+                txID = String(transaction.id)
             }
         }
         isPro = active
+        proTransactionID = txID
     }
 
     enum PurchaseOutcome { case success, pending, cancelled }

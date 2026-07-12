@@ -17,11 +17,11 @@ actor ClaudeSurfacingService {
     }
 
     enum SurfacingError: LocalizedError {
-        case missingConfig, http(Int, String), empty, badJSON
+        case notSubscribed, http(Int, String), empty, badJSON
 
         var errorDescription: String? {
             switch self {
-            case .missingConfig:         return "Set the surfacing proxy URL to try surfacing."
+            case .notSubscribed:         return "Fil Pro is needed to surface your thoughts."
             case let .http(code, body):  return "Surfacing request failed (\(code)). \(body)"
             case .empty:                 return "The proxy returned an empty response."
             case .badJSON:               return "Couldn't read the proxy's response."
@@ -29,24 +29,25 @@ actor ClaudeSurfacingService {
         }
     }
 
+    /// The surfacing proxy. A URL isn't secret, so it's compiled in; the proxy verifies the caller's
+    /// Fil Pro subscription (via the transaction id) and holds the Anthropic key server-side.
+    private let endpoint = URL(string: "https://fil-surfacing-proxy.mason-2fe.workers.dev")!
     private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "surfacing")
 
-    /// - Parameters:
-    ///   - endpoint: the proxy URL (e.g. https://fil-surfacing-proxy.<acct>.workers.dev).
-    ///   - secret: the shared secret matched against the proxy's PROXY_SHARED_SECRET.
-    func surface(query: String, fils: [FilClusterInput], endpoint: String, secret: String) async throws -> Surfacing {
-        let urlString = endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !urlString.isEmpty, let url = URL(string: urlString) else { throw SurfacingError.missingConfig }
+    /// - Parameter transactionID: the active Fil Pro subscription's transaction id, which the proxy
+    ///   verifies with Apple before serving.
+    func surface(query: String, fils: [FilClusterInput], transactionID: String) async throws -> Surfacing {
+        guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
 
         let payload = RequestBody(
             query: query,
             fils: fils.map { RequestFil(text: $0.text, metadata: $0.metadata) }
         )
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "content-type")
-        request.setValue(secret, forHTTPHeaderField: "X-Fil-Proxy-Key")
+        request.setValue(transactionID, forHTTPHeaderField: "X-Fil-Transaction-Id")
         request.httpBody = try JSONEncoder().encode(payload)
 
         let (data, response) = try await URLSession.shared.data(for: request)

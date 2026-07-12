@@ -60,12 +60,7 @@ struct BlankCanvasPrototype: View {
     @State private var surfaceError: String?
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
-    @State private var showKeyEntry = false
     @State private var showPaywall = false
-    /// DEV: the surfacing proxy (Cloudflare Worker) URL + shared secret. Configured on-device, never
-    /// committed. Replaced by StoreKit-verified access in a later phase.
-    @AppStorage("filProxyURL") private var proxyURL = ""
-    @AppStorage("filProxySecret") private var proxySecret = ""
     /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
     @AppStorage("recentSearchesRaw") private var recentSearchesRaw = ""
 
@@ -111,7 +106,6 @@ struct BlankCanvasPrototype: View {
                 .presentationDetents([.fraction(0.6), .large])
                 .presentationBackground(Theme.background)
         }
-        .sheet(isPresented: $showKeyEntry) { keyEntrySheet }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
                 .presentationDetents([.large])
@@ -503,41 +497,10 @@ struct BlankCanvasPrototype: View {
     }
 
     /// TEMP dev-key entry for the Claude spike. The key is stored only on-device (AppStorage).
-    private var keyEntrySheet: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("surfacing proxy")
-                .font(Theme.dmSans(18, weight: .bold))
-                .foregroundStyle(Theme.primaryText)
-            Text("dev config for the surfacing proxy. stored on this device, never shipped.")
-                .font(Theme.dmSans(13))
-                .foregroundStyle(Theme.secondaryText)
-            TextField("https://…workers.dev", text: $proxyURL)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .keyboardType(.URL)
-            SecureField("shared secret", text: $proxySecret)
-                .textFieldStyle(.roundedBorder)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-            Button("done") { showKeyEntry = false }
-                .font(Theme.dmSans(15, weight: .semibold))
-            Spacer()
-        }
-        .padding(24)
-        .presentationDetents([.height(300)])
-        .presentationBackground(Theme.background)
-    }
-
     private var closeButton: some View {
         VStack {
             HStack(spacing: 16) {
                 Spacer()
-                Button { showKeyEntry = true } label: {
-                    Image(systemName: proxyURL.isEmpty ? "key" : "key.fill")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(Theme.secondaryText)
-                }
                 Button("close") { dismiss() }
                     .font(Theme.dmSans(14, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
@@ -629,14 +592,12 @@ struct BlankCanvasPrototype: View {
     /// Pro path: send the fil corpus + query to the surfacing proxy (Claude) for a warm summary and
     /// semantic/temporal/thematic selection.
     private func runCloudSurfacing(_ q: String) async {
-        guard !proxyURL.isEmpty else { showKeyEntry = true; return }
-
         let inputs = notes.map { note in
             FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note), metadata: filMetadata(note))
         }
 
         do {
-            let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, endpoint: proxyURL, secret: proxySecret)
+            let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, transactionID: StoreManager.shared.proTransactionID ?? "")
             summary = outcome.summary
             let surfaced = outcome.relevantIDs.compactMap { notesByID[$0] }
             results = surfaced
