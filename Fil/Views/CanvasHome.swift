@@ -1,19 +1,12 @@
 import SwiftUI
 import SwiftData
 
-/// TEMPORARY prototype — the "blank canvas" home direction (2026-07-10, see
-/// docs/features/blank-canvas-home.md): the home is empty; you TAP to capture a thought and
-/// LONG-PRESS to surface past fils by a domain query.
-///
-///   tap        → creation blob + centered field → type → fil pops into being → blank
-///   long-press → query field → type a domain → matching fils surface
-///
-/// Phase-2 surfacing is retrieval only (no LLM summary yet) — validates that a query finds the
-/// right fils before we commit to "only via query". Reached via the temporary ▦ button in the
-/// ContentView header. Delete both when promoted.
-struct BlankCanvasPrototype: View {
+/// Fil's home: a blank capture-first canvas. You type a thought and it pops into being as a fil;
+/// tapping search opens a query field. Fil Pro gets cloud AI surfacing (a warm summary +
+/// semantic/temporal/thematic selection); everyone gets free on-device keyword search. Embedded in
+/// ContentView, which owns the header (settings + search/back).
+struct CanvasHome: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
@@ -37,10 +30,8 @@ struct BlankCanvasPrototype: View {
     ]
     private static let queryPromptInterval: TimeInterval = 3.5
 
-    /// When embedded as the ContentView home, chrome (close) hides and the header owns it. The
-    /// header's search/back button drives `searchActive`: true enters the query screen, false
+    /// The header (owned by ContentView) drives `searchActive`: true enters the query screen, false
     /// returns to the composer.
-    var showsChrome: Bool = true
     @Binding var searchActive: Bool
 
     @State private var phase: Phase = .composing
@@ -85,10 +76,6 @@ struct BlankCanvasPrototype: View {
 
             if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
                 recentChipsBar
-            }
-
-            if showsChrome {
-                closeButton
             }
         }
         // The send FAB floats as an overlay (not a ZStack sibling) so its Button reliably wins hit
@@ -494,21 +481,6 @@ struct BlankCanvasPrototype: View {
             .font(Theme.dmSans(14, weight: .semibold))
             .foregroundStyle(Theme.secondaryText)
         }
-    }
-
-    /// TEMP dev-key entry for the Claude spike. The key is stored only on-device (AppStorage).
-    private var closeButton: some View {
-        VStack {
-            HStack(spacing: 16) {
-                Spacer()
-                Button("close") { dismiss() }
-                    .font(Theme.dmSans(14, weight: .semibold))
-                    .foregroundStyle(Theme.secondaryText)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, 20)
-        .padding(.top, 8)
     }
 
     // MARK: - Logic

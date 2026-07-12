@@ -49,9 +49,9 @@ struct ContentView: View {
         ZStack {
             Theme.background.ignoresSafeArea()
 
-            // Blank-canvas home (blank-canvas-home branch): tap to capture, header search to surface.
-            // Replaces the day timeline + bottom composer + FABs. Text-only capture for now.
-            BlankCanvasPrototype(showsChrome: false, searchActive: $searchActive)
+            // The capture-first home: type to capture, header search to surface. Replaces the day
+            // timeline + bottom composer + FABs. Text-only capture for now.
+            CanvasHome(searchActive: $searchActive)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
