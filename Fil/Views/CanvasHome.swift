@@ -1,5 +1,8 @@
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Fil's home: a blank capture-first canvas. You type a thought and it pops into being as a fil;
 /// tapping search opens a query field. Fil Pro gets cloud AI surfacing (a warm summary +
@@ -7,12 +10,13 @@ import SwiftData
 /// ContentView, which owns the header (settings + search/back).
 struct CanvasHome: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.openURL) private var openURL
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     /// Handedness (shared with the header): the send FAB sits on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
-    private enum Phase { case composing, creating, formed, querying, results }
+    private enum Phase { case composing, recording, creating, formed, querying, results }
 
     /// The settled fil blob pops in — scales up from near-zero with a snappy, punchy spring.
     private static let popTransition = AnyTransition.scale(scale: 0.01).combined(with: .opacity)
@@ -67,12 +71,19 @@ struct CanvasHome: View {
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
     @State private var showPaywall = false
+    // Voice capture: the mic glyph starts recording; the gooey blob pulses while recording, then
+    // flows into the same creation animation typed/link fils use.
+    @State private var recorder = VoiceRecorderViewModel()
+    @State private var showMicPriming = false
+    @State private var recordingPulse = false
     /// Fils mid-landfil: they shrink to nothing (like the timeline) before the actual delete.
     @State private var landfillingIDs: Set<UUID> = []
     /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
     @AppStorage("recentSearchesRaw") private var recentSearchesRaw = ""
 
-    @FocusState private var fieldFocused: Bool
+    /// Composer focus. A plain Bool (not @FocusState) so it can drive ComposerTextView's first
+    /// responder — the composer is a UITextView (for its custom edit menu), not a SwiftUI TextField.
+    @State private var fieldFocused = false
     @FocusState private var queryFocused: Bool
 
     private var notesByID: [UUID: Note] {
@@ -85,7 +96,9 @@ struct CanvasHome: View {
 
             switch phase {
             case .composing: composer
-            case .creating:  creatingBlob
+            // Recording and creating share ONE gooey blob so it never tears down between them; it
+            // then morphs into the settled note blob.
+            case .recording, .creating: creatingGooey
             case .formed:    formedBlob
             case .querying:  queryField
             case .results:   resultsList
@@ -109,6 +122,13 @@ struct CanvasHome: View {
                     .padding(.bottom, 24)
             }
         }
+        // While recording, a stop button sits below the pulsing gooey blob.
+        .overlay(alignment: .bottom) {
+            if phase == .recording {
+                stopButton
+                    .padding(.bottom, 90)
+            }
+        }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
         .sheet(item: $selectedNote) { note in
             NavigationStack {
@@ -124,6 +144,17 @@ struct CanvasHome: View {
             PaywallView()
                 .presentationDetents([.large])
                 .presentationBackground(Theme.background)
+        }
+        .sheet(isPresented: $showMicPriming) {
+            MicPrimingSheet(
+                onEnable: {
+                    showMicPriming = false
+                    Task { if await recorder.requestPermissions() { await beginRecording() } }
+                },
+                onNotNow: { showMicPriming = false }
+            )
+            .presentationDetents([.medium])
+            .presentationBackground(Theme.background)
         }
         .landfilConfirmation(item: $pendingLandfilNote, message: { _ in
             "this fil will be deleted. this cannot be undone."
@@ -211,13 +242,9 @@ struct CanvasHome: View {
     /// This is the home's resting state — "let thoughts be" is the entrance.
     private var composer: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TextField("", text: $text, axis: .vertical)
-                .font(Theme.dmSans(20, weight: .medium))
-                .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(.leading)
-                .lineLimit(1...12)
-                .focused($fieldFocused)
-                .submitLabel(.return)
+            // UITextView-backed so "record voice" (and later "add photo") live in its edit menu.
+            ComposerTextView(text: $text, isFocused: $fieldFocused, onRecordVoice: startVoiceCapture)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
                         AnimatedGradientRevealText(text: "let thoughts be")
@@ -226,7 +253,6 @@ struct CanvasHome: View {
                             .allowsHitTesting(false)
                     }
                 }
-                .onSubmit { Task { await createFil() } }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -248,13 +274,35 @@ struct CanvasHome: View {
         .transition(.scale.combined(with: .opacity))
     }
 
-    private var creatingBlob: some View {
+    /// A stop button, shown below the gooey blob while recording. Tapping it ends the recording and
+    /// the same blob morphs straight into the settled fil.
+    private var stopButton: some View {
+        Button { Task { await finishRecording() } } label: {
+            Image(systemName: "stop.fill")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 56, height: 56)
+                .glassEffect(.regular, in: .circle)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Stop recording")
+        .transition(.scale.combined(with: .opacity))
+    }
+
+    /// The gooey blob shown while a fil forms — during a voice recording and while any fil is being
+    /// created. It pulses gently, then morphs into the settled note blob (`formedBlob`). Recording
+    /// and creating render this same view, so stopping never flashes a second blob.
+    private var creatingGooey: some View {
         CreatingFilBlobView()
             .frame(width: 190, height: 190)
+            .scaleEffect(recordingPulse ? 1.04 : 0.96)
+            .animation(.easeInOut(duration: 0.95).repeatForever(autoreverses: true), value: recordingPulse)
             .transition(.asymmetric(
                 insertion: .scale(scale: 0.2).combined(with: .opacity),
                 removal: .opacity
             ))
+            .onAppear { recordingPulse = true }
+            .onDisappear { recordingPulse = false }
     }
 
     /// The fil's final, settled randomized blob — same shape/gradient the grid card shows. It pops in
@@ -326,7 +374,7 @@ struct CanvasHome: View {
                     ForEach(recentFils) { note in
                         Button { selectedNote = note } label: {
                             Group {
-                                if note.isImageFil || note.isLinkFil {
+                                if hasBlobArtwork(note) {
                                     NoteCardView(note: note, cardHeight: 36)
                                 } else {
                                     NoteBlobShape(seed: note.blobShapeSeed)
@@ -505,7 +553,7 @@ struct CanvasHome: View {
             // clipped, like the main-branch card) instead of a gradient blob.
             VStack(alignment: .center, spacing: 14) {
                 Group {
-                    if note.isImageFil || note.isLinkFil {
+                    if hasBlobArtwork(note) {
                         NoteCardView(note: note, cardHeight: gridBlobSize)
                     } else {
                         NoteBlobShape(seed: note.blobShapeSeed)
@@ -734,6 +782,69 @@ struct CanvasHome: View {
         }
     }
 
+    // MARK: - Voice capture
+
+    /// Mic tapped: record if allowed, prime on first use, or route to Settings after a denial.
+    private func startVoiceCapture() {
+        switch recorder.permissionStatus {
+        case .authorized:    Task { await beginRecording() }
+        case .notDetermined: showMicPriming = true
+        case .denied:
+            #if canImport(UIKit)
+            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+            #endif
+        }
+    }
+
+    private func beginRecording() async {
+        fieldFocused = false
+        await recorder.startRecording()
+        guard recorder.isRecording else { return }   // setup failed → stay in the composer
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .recording }
+    }
+
+    /// Stop, transcribe on-device, and create the voice fil — then hand off to the shared creation
+    /// animation (gooey blob → settled fil → composer), exactly like a typed fil.
+    private func finishRecording() async {
+        guard let (url, duration) = recorder.stopRecording() else {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { phase = .composing }
+            fieldFocused = true
+            return
+        }
+
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
+        SoundscapeManager.shared.startMeshDuringProcessSound()
+
+        let transcript = ((try? await recorder.transcribe(url: url)) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let gradient = Theme.randomGradientPair()
+        let title = transcript.isEmpty
+            ? "voice fil"
+            : await ArticleGenerationService.shared.generateTitle(from: transcript)
+        let note = Note(
+            title: title,
+            transcript: transcript,
+            audioFilePath: url.lastPathComponent,   // bare filename; resolved against the docs dir
+            duration: duration,
+            keyword: title,
+            gradientStartHex: gradient.start,
+            gradientEndHex: gradient.end
+        )
+        modelContext.insert(note)
+        modelContext.saveOrLog()
+
+        SoundscapeManager.shared.stopMeshDuringProcessSound()
+        SoundscapeManager.shared.playArticleMadeSound()
+
+        formedNote = note
+        withAnimation(Self.popAnimation) { phase = .formed }
+        try? await Task.sleep(for: .milliseconds(1100))
+        if phase == .formed {
+            withAnimation(Self.popAnimation) { phase = .composing }
+            fieldFocused = true
+        }
+    }
+
     private func runQuery() async {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
@@ -773,6 +884,12 @@ struct CanvasHome: View {
     /// A grid blob is visible once it has popped in (revealed) and isn't being landfilled.
     private func blobShown(_ note: Note) -> Bool {
         revealedResultIDs.contains(note.uuid) && !isLandfilling(note)
+    }
+
+    /// Fils whose blob carries its own artwork (photo image, link favicon, or voice waveform) render
+    /// via NoteCardView; plain text fils get the gradient blob.
+    private func hasBlobArtwork(_ note: Note) -> Bool {
+        note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty
     }
 
     /// Pro path: send the fil corpus + query to the surfacing proxy (Claude) for a warm summary and

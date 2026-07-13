@@ -52,14 +52,19 @@ struct NoteCardView: View {
                         .font(Theme.dmMono(10))
                         .foregroundStyle(blobTextColor.opacity(0.75))
                 } else {
-                    CompactWaveformView(duration: note.duration, color: blobTextColor)
+                    // Small blobs (the input-bar chips) show just the time; bigger search blobs also
+                    // show the waveform, scaled up with the blob (like the link favicons).
+                    if showsVoiceWaveform {
+                        CompactWaveformView(duration: note.duration, color: blobTextColor)
+                            .scaleEffect(cardHeight / 98)
+                    }
                     Text(formatDuration(note.duration))
-                        .font(Theme.dmMono(10))
+                        .font(Theme.dmMono(voiceMetricFont))
                         .foregroundStyle(blobTextColor.opacity(0.9))
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(.top, note.audioFilePath.isEmpty ? 0 : 16)
+            .padding(.top, showsVoiceWaveform ? 16 : 0)
             // The card is a fixed 98pt; clamp its blob content (word count / duration) so it can't
             // clip at large accessibility text sizes.
             .dynamicTypeSize(...DynamicTypeSize.xLarge)
@@ -118,6 +123,11 @@ struct NoteCardView: View {
         let end = Color(hex: note.gradientEndHex).luminance
         return (start + end) / 2 > 0.55 ? .black : .white
     }
+
+    /// Show the waveform only on bigger blobs; small chips get the time alone.
+    private var showsVoiceWaveform: Bool { !note.audioFilePath.isEmpty && cardHeight >= 60 }
+    /// The duration label scales with the blob (floored so it stays legible on the small chips).
+    private var voiceMetricFont: CGFloat { max(10, cardHeight * 0.1) }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
         let minutes = Int(duration) / 60
