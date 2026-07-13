@@ -89,14 +89,14 @@ struct SettingsView: View {
             switch section {
             case .writing:
                 settingToggle(
-                    "Use Lowercase",
+                    "use lowercase",
                     icon: "textformat.abc",
                     description: "render titles and transcripts in lowercase for a more casual voice.",
                     isOn: $prefersLowercase
                 )
 
             case .sound:
-                settingToggle("Sound Effects", icon: "music.note", isOn: $soundEnabled)
+                settingToggle("sound effects", icon: "music.note", isOn: $soundEnabled)
 
             case .appearance:
                 appearanceSection
@@ -113,12 +113,12 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            settingToggle("Dark Mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
+            settingToggle("dark mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
 
             sectionDivider
 
             settingToggle(
-                "Left-handed",
+                "left-handed",
                 icon: "hand.point.left.fill",
                 description: "put the search, fil, and send buttons on the left.",
                 isOn: $controlsOnLeft
@@ -127,42 +127,16 @@ struct SettingsView: View {
             if !screensaverOptions.isEmpty {
                 sectionDivider
 
-                VStack(alignment: .leading, spacing: 14) {
-                    settingLabel("Screensavers", icon: "zzz")
-
-                    ScrollView(.horizontal) {
-                        HStack(spacing: 8) {
-                            ForEach(screensaverOptions) { option in
-                                Button(action: option.action) {
-                                    HStack(spacing: 6) {
-                                        if !option.isUnlocked {
-                                            Image(systemName: "lock.fill").font(.system(size: 11))
-                                        }
-                                        Text(option.isUnlocked ? option.title : "\(option.title) · \(option.requirement)")
-                                            .font(Theme.dmSans(14, weight: .semibold))
-                                    }
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 38)
-                                    .background(Color.white.opacity(0.12), in: Capsule())
-                                    .overlay { Capsule().stroke(Color.white.opacity(0.14), lineWidth: 1) }
-                                    .opacity(option.isUnlocked ? 1 : 0.5)
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(!option.isUnlocked)
-                            }
-                        }
-                    }
-                    .scrollIndicators(.hidden)
-                    .contentMargins(.horizontal, 20, for: .scrollContent)
-                    .padding(.horizontal, -20)   // bleed the row out of the section's 20pt inset
+                VStack(alignment: .leading, spacing: 16) {
+                    settingLabel("screensavers", icon: "zzz")
+                    ForEach(screensaverOptions) { screensaverRow($0) }
                 }
             }
 
             sectionDivider
 
             settingToggle(
-                "Auto Screensaver",
+                "auto screensaver",
                 icon: "power",
                 description: autoScreensaverUnlocked
                     ? "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery."
@@ -196,7 +170,7 @@ struct SettingsView: View {
     }
 
     /// A leading SF Symbol + a title, sized to line up icons across rows. Shared by the toggles and
-    /// the Screensavers header.
+    /// the screensavers header.
     private func settingLabel(_ title: String, icon: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
@@ -207,6 +181,40 @@ struct SettingsView: View {
                 .font(Theme.dmSans(16, weight: .medium))
                 .foregroundStyle(.white)
         }
+    }
+
+    /// A screensaver as a vertical row: icon + name + a one-line description (or the unlock
+    /// requirement when locked). Tapping launches it; locked rows are dimmed and non-tappable.
+    private func screensaverRow(_ option: ScreensaverOption) -> some View {
+        Button(action: option.action) {
+            HStack(spacing: 12) {
+                Image(systemName: option.systemImage)
+                    .font(.system(size: 16))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .frame(width: 22)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(option.title)
+                            .font(Theme.dmSans(16, weight: .medium))
+                            .foregroundStyle(.white)
+                        if !option.isUnlocked {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                    }
+                    Text(option.isUnlocked ? option.description : "unlocks at \(option.requirement)")
+                        .font(Theme.dmSans(13))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+            .opacity(option.isUnlocked ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+        .disabled(!option.isUnlocked)
     }
 
     private var aboutContent: some View {
@@ -328,6 +336,7 @@ struct ScreensaverOption: Identifiable {
     let id = UUID()
     let title: String
     let systemImage: String
+    let description: String     // one-line sub-description shown in the vertical list
     let isUnlocked: Bool
     let requirement: String     // e.g. "10 fils" (shown when locked)
     let action: () -> Void

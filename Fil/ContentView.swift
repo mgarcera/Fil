@@ -405,18 +405,18 @@ struct ContentView: View {
 
     /// Screensaver launchers for Settings → Appearance. Each dismisses settings, then launches.
     private var screensaverOptions: [ScreensaverOption] {
-        func option(_ title: String, _ image: String, unlockAt: Int, launch: @escaping () -> Void) -> ScreensaverOption {
-            ScreensaverOption(title: title, systemImage: image, isUnlocked: notes.count >= unlockAt, requirement: "\(unlockAt) fils") {
+        func option(_ title: String, _ image: String, _ description: String, unlockAt: Int, launch: @escaping () -> Void) -> ScreensaverOption {
+            ScreensaverOption(title: title, systemImage: image, description: description, isUnlocked: notes.count >= unlockAt, requirement: "\(unlockAt) fils") {
                 showFilSetup = false
                 launch()
             }
         }
         return [
-            option("filosophy", "camera.filters", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
-            option("filharmonic", "wave.3.left", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
-            option("filanthropy", "wind", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
-            option("chlorofil", "rainbow", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
-            option("fillet", "fish.fill", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
+            option("filosophy", "camera.filters", "your fils, melted into a slow liquid mesh.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
+            option("filharmonic", "wave.3.left", "your colors ripple across a gentle wave.", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
+            option("filanthropy", "wind", "your fils drift down like falling leaves.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
+            option("chlorofil", "rainbow", "your colors ribbon across the sky like an aurora.", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
+            option("fillet", "fish.fill", "your fils swim by as koi in a quiet pond.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
         ]
     }
 
