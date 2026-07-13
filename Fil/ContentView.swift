@@ -24,6 +24,9 @@ struct ContentView: View {
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
     /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
+    /// Live vertical offset of the search icon while swiping to switch modes.
+    @State private var searchSwipeOffset: CGFloat = 0
+    @State private var searchSwipePastThreshold = false
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -231,7 +234,8 @@ struct ContentView: View {
         .glassEffect()
     }
 
-    /// The search/back switcher. In the composer it opens the search screen; in search it returns.
+    /// The search/back switcher. Tap toggles; a vertical swipe also switches (up → search, down →
+    /// home) with the icon following the finger, a haptic at the threshold, and a spring commit.
     private var searchBackButton: some View {
         Button {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
@@ -241,11 +245,42 @@ struct ContentView: View {
                 .foregroundStyle(Theme.primaryText)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
+                .offset(y: searchSwipeOffset)
         }
         .buttonStyle(.plain)
         .disabled(!searchActive && notes.isEmpty)
         .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
         .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
+        .simultaneousGesture(modeSwitchDrag)
+    }
+
+    /// Up switches to search, down returns home — but only when that direction changes the mode.
+    private func searchSwipeActionable(_ translationHeight: CGFloat) -> Bool {
+        (translationHeight < 0 && !searchActive) || (translationHeight > 0 && searchActive)
+    }
+
+    private var modeSwitchDrag: some Gesture {
+        let threshold: CGFloat = 24
+        return DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                let t = value.translation.height
+                // Rubber-band toward a soft limit so the icon feels tethered, not thrown.
+                searchSwipeOffset = t / (1 + abs(t) / 26)
+                let past = abs(t) > threshold && searchSwipeActionable(t)
+                if past != searchSwipePastThreshold {
+                    searchSwipePastThreshold = past
+                    if past { UIImpactFeedbackGenerator(style: .soft).impactOccurred() }
+                }
+            }
+            .onEnded { value in
+                let t = value.translation.height
+                let commit = (abs(t) > threshold || abs(value.velocity.height) > 400) && searchSwipeActionable(t)
+                if commit {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = (t < 0) }
+                }
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { searchSwipeOffset = 0 }
+                searchSwipePastThreshold = false
+            }
     }
 
     private var filButton: some View {
