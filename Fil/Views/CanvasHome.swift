@@ -148,7 +148,7 @@ struct CanvasHome: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 20)
-        .padding(.top, 100)
+        .padding(.top, 80)
         .transition(.opacity)
     }
 
@@ -226,7 +226,7 @@ struct CanvasHome: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 20)
-        .padding(.top, 100)
+        .padding(.top, 80)
         .transition(.opacity)
     }
 
@@ -310,7 +310,7 @@ struct CanvasHome: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.top, 64)
+            .padding(.top, 80)
             .padding(.bottom, 80)
         }
         .scrollIndicators(.hidden)
