@@ -564,7 +564,8 @@ struct CanvasHome: View {
     /// Pro path: send the fil corpus + query to the surfacing proxy (Claude) for a warm summary and
     /// semantic/temporal/thematic selection.
     private func runCloudSurfacing(_ q: String) async {
-        let inputs = notes.map { note in
+        // Send a shortlist, not the whole library, so cost + latency don't scale with library size.
+        let inputs = candidateNotes(for: q).map { note in
             FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note), metadata: filMetadata(note))
         }
 
@@ -580,15 +581,15 @@ struct CanvasHome: View {
         }
     }
 
-    /// Free path: case-insensitive keyword/substring match over each fil's title + transcript. No
-    /// network, no summary, no counter — the free tier's way to find fils by words you remember.
-    /// (Semantic / temporal / thematic queries and the summary are the Pro upgrade.)
+    /// Free path: case-insensitive match over each fil's full text (title, transcript, and
+    /// filaments). No network, no summary, no counter — the free tier's way to find fils by words you
+    /// remember. (Semantic / temporal / thematic queries and the summary are the Pro upgrade.)
     private func runLocalSearch(_ q: String) {
         let terms = q.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
         guard !terms.isEmpty else { return }
 
         let scored = notes.compactMap { note -> (note: Note, hits: Int)? in
-            let haystack = (note.displayBadgeText + " " + note.transcript).lowercased()
+            let haystack = searchableText(note)
             let hits = terms.reduce(0) { $0 + (haystack.contains($1) ? 1 : 0) }
             return hits > 0 ? (note, hits) : nil
         }
@@ -599,6 +600,57 @@ struct CanvasHome: View {
 
         results = matched
         todoFilIDs = Set(matched.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
+    }
+
+    /// A fil's full searchable text, lowercased: title, transcript, its own keyword, and every
+    /// filament (attachment keyword + entry text / link captions / linked-note titles). Shared by
+    /// free local search and the cloud pre-filter.
+    private func searchableText(_ note: Note) -> String {
+        var parts = [note.title, note.transcript, note.keyword]
+        for attachment in note.attachments {
+            parts.append(attachment.keyword)
+            for entry in attachment.entries {
+                if let text = entry.text { parts.append(text) }
+                if let caption = entry.linkCaption { parts.append(caption) }
+                if let noteTitle = entry.noteTitle { parts.append(noteTitle) }
+            }
+        }
+        return parts.joined(separator: " ").lowercased()
+    }
+
+    /// Shortlist the fils sent to the cloud so cost (and latency) don't scale with library size.
+    /// Small libraries send everything; larger ones send the fils that match the query across all
+    /// text fields (best first), then fill with the most-recent fils for temporal context — capped.
+    /// A generous net, not a precise answer: Claude still does the fine selection on what it's given.
+    private func candidateNotes(for q: String) -> [Note] {
+        let sendAllThreshold = 50   // at or below this, the whole library is already cheap to send
+        guard notes.count > sendAllThreshold else { return notes }
+
+        let recentFloor = 40        // always include this many newest fils (covers "recently"/"today")
+        let maxCandidates = 60      // hard cap on what we send
+
+        var picked: [Note] = []
+        var seen = Set<UUID>()
+        func add(_ note: Note) {
+            if seen.insert(note.uuid).inserted { picked.append(note) }
+        }
+
+        // 1) Query-term matches across all fields, best first.
+        let terms = q.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+        if !terms.isEmpty {
+            let matches = notes.compactMap { note -> (note: Note, hits: Int)? in
+                let haystack = searchableText(note)
+                let hits = terms.reduce(0) { $0 + (haystack.contains($1) ? 1 : 0) }
+                return hits > 0 ? (note, hits) : nil
+            }
+            .sorted { ($0.hits, $0.note.timestamp) > ($1.hits, $1.note.timestamp) }
+            matches.forEach { add($0.note) }
+        }
+
+        // 2) Fill with the most-recent fils (notes is newest-first).
+        notes.prefix(recentFloor).forEach(add)
+
+        return Array(picked.prefix(maxCandidates))
     }
 
     /// Text handed to retrieval: the fil's title + a short content snippet, so topical relevance keys
