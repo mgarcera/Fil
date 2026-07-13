@@ -198,11 +198,10 @@ struct ContentView: View {
                     Button {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
                     } label: {
-                        Text(searchActive ? "back" : "search")
-                            .font(Theme.dmSans(15, weight: .semibold))
+                        Image(systemName: searchActive ? "arrow.left" : "magnifyingglass")
+                            .font(.system(size: 17, weight: .semibold))
                             .foregroundStyle(Theme.primaryText)
-                            .frame(height: 44)
-                            .padding(.horizontal, 12)
+                            .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
