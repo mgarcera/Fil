@@ -98,9 +98,13 @@ struct CanvasHome: View {
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
         .sheet(item: $selectedNote) { note in
-            NavigationStack { ArticleView(note: note) }
-                .presentationDetents([.fraction(0.6), .large])
-                .presentationBackground(Theme.background)
+            NavigationStack {
+                // Match the timeline's presentation: the X toolbar item + respecting the top safe
+                // area render the nav bar and space the fil's content correctly.
+                ArticleView(note: note, ignoresTopSafeArea: false, showsCloseButton: true)
+            }
+            .presentationDetents([.fraction(0.6), .large])
+            .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
@@ -264,13 +268,13 @@ struct CanvasHome: View {
                         Button { selectedNote = note } label: {
                             Group {
                                 if note.isImageFil {
-                                    NoteCardView(note: note, cardHeight: 40)
+                                    NoteCardView(note: note, cardHeight: 24)
                                 } else {
                                     NoteBlobShape(seed: note.blobShapeSeed)
                                         .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                                 }
                             }
-                            .frame(width: 40, height: 40)
+                            .frame(width: 24, height: 24)
                         }
                         .buttonStyle(.plain)
                     }
