@@ -283,25 +283,25 @@ private struct BorderedToggleStyle: ToggleStyle {
         HStack {
             configuration.label
             Spacer(minLength: 12)
-            Capsule()
-                .fill(configuration.isOn ? tint : Color.white.opacity(0.06))
-                .overlay {
-                    Capsule().strokeBorder(Color.white.opacity(configuration.isOn ? 0 : 0.4), lineWidth: 1.5)
-                }
-                .frame(width: 51, height: 31)
-                .overlay(alignment: configuration.isOn ? .trailing : .leading) {
-                    Circle()
-                        .fill(.white)
-                        .padding(2)
-                        .frame(width: 31, height: 31)
-                        .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
-                }
-                .contentShape(Capsule())
-                .onTapGesture {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        configuration.isOn.toggle()
+            ZStack {
+                Capsule()
+                    .fill(configuration.isOn ? tint : Color.white.opacity(0.06))
+                    .overlay {
+                        Capsule().strokeBorder(Color.white.opacity(configuration.isOn ? 0 : 0.4), lineWidth: 1.5)
                     }
+                Circle()
+                    .fill(.white)
+                    .frame(width: 27, height: 27)
+                    .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+                    .offset(x: configuration.isOn ? 11 : -11)   // glides between the two ends
+            }
+            .frame(width: 51, height: 31)
+            .contentShape(Capsule())
+            .onTapGesture {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    configuration.isOn.toggle()
                 }
+            }
         }
     }
 }
