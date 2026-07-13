@@ -15,6 +15,7 @@ struct SettingsView: View {
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     @AppStorage("isDarkMode") private var isDarkMode = true
+    @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
     @State private var section: SettingsSection = .appearance
     @State private var showFromMason = false
@@ -141,6 +142,12 @@ struct SettingsView: View {
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 22) {
             settingToggle("dark mode", isOn: $isDarkMode)
+
+            settingToggle(
+                "left-handed",
+                description: "put the search, fil, and send buttons on the left.",
+                isOn: $controlsOnLeft
+            )
 
             if !screensaverOptions.isEmpty {
                 VStack(alignment: .leading, spacing: 14) {

@@ -22,6 +22,8 @@ struct ContentView: View {
     @State private var searchActive = false          // header button ↔ canvas: search screen vs composer
     @State private var showingResults = false         // canvas → header: results on screen (show refresh)
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
+    /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
+    @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -194,58 +196,16 @@ struct ContentView: View {
     private var header: some View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                // Search/back + fil share one glass container: search/back, then fil.
-                HStack(spacing: 2) {
-                    // Blank-canvas home: the search/back switcher. In the composer it opens the
-                    // search screen; in search it returns to the composer.
-                    Button {
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
-                    } label: {
-                        Image(systemName: searchActive ? "arrow.left" : "magnifyingglass")
-                            .font(.system(size: 17, weight: .semibold))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!searchActive && notes.isEmpty)
-                    .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
-                    .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
-
-                    Button {
-                        SoundscapeManager.shared.playSettingsSound()
-                        showFilSetup = true
-                    } label: {
-                        Image("FilLogo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 24, height: 24)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Settings")
-                }
-                .padding(.horizontal, 6)
-                .glassEffect()
-
-                Spacer()
-
-                // Shown only while surfaced results are up: start a fresh search.
-                if showingResults {
-                    Button {
-                        newSearchRequested = true
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 46, height: 46)
-                            .contentShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .glassEffect(in: .circle)
-                    .accessibilityLabel("New search")
-                    .transition(.scale.combined(with: .opacity))
+                // Handedness: the search/fil cluster sits on the user's chosen side, the refresh on
+                // the other. See Settings → Appearance.
+                if controlsOnLeft {
+                    searchFilCluster
+                    Spacer()
+                    if showingResults { refreshButton }
+                } else {
+                    if showingResults { refreshButton }
+                    Spacer()
+                    searchFilCluster
                 }
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: showingResults)
@@ -253,6 +213,60 @@ struct ContentView: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 4)
+    }
+
+    /// Search/back + fil in one glass container: search/back, then fil.
+    private var searchFilCluster: some View {
+        HStack(spacing: 2) {
+            // Blank-canvas home: the search/back switcher. In the composer it opens the search
+            // screen; in search it returns to the composer.
+            Button {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
+            } label: {
+                Image(systemName: searchActive ? "arrow.left" : "magnifyingglass")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Theme.primaryText)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!searchActive && notes.isEmpty)
+            .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
+            .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
+
+            Button {
+                SoundscapeManager.shared.playSettingsSound()
+                showFilSetup = true
+            } label: {
+                Image("FilLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 24, height: 24)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
+        }
+        .padding(.horizontal, 6)
+        .glassEffect()
+    }
+
+    /// Shown only while surfaced results are up: start a fresh search.
+    private var refreshButton: some View {
+        Button {
+            newSearchRequested = true
+        } label: {
+            Image(systemName: "arrow.clockwise")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 46, height: 46)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .glassEffect(in: .circle)
+        .accessibilityLabel("New search")
+        .transition(.scale.combined(with: .opacity))
     }
 
     /// How many fils each screensaver needs before it unlocks. Denser modes (the wave

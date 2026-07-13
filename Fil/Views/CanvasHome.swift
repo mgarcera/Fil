@@ -9,6 +9,8 @@ struct CanvasHome: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
+    /// Handedness (shared with the header): the send FAB sits on the left when true, else right.
+    @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
     private enum Phase { case composing, creating, formed, querying, results }
 
@@ -91,10 +93,10 @@ struct CanvasHome: View {
         }
         // The send FAB floats as an overlay (not a ZStack sibling) so its Button reliably wins hit
         // testing over the full-screen background tap-catcher below.
-        .overlay(alignment: .bottomTrailing) {
+        .overlay(alignment: controlsOnLeft ? .bottomLeading : .bottomTrailing) {
             if phase == .composing && hasText {
                 sendFAB
-                    .padding(.trailing, 24)
+                    .padding(controlsOnLeft ? .leading : .trailing, 24)
                     .padding(.bottom, 24)
             }
         }
