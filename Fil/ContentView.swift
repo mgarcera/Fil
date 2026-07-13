@@ -239,7 +239,7 @@ struct ContentView: View {
     /// tactile way to trigger it. The icon itself stays put.
     private var searchBackButton: some View {
         Button { toggleSearch() } label: {
-            Image(systemName: searchActive ? "arrow.left" : "magnifyingglass")
+            Image(systemName: searchActive ? "house" : "magnifyingglass")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.primaryText)
                 .frame(width: 44, height: 44)
