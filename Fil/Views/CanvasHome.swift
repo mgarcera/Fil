@@ -33,9 +33,6 @@ struct CanvasHome: View {
     /// The header (owned by ContentView) drives `searchActive`: true enters the query screen, false
     /// returns to the composer.
     @Binding var searchActive: Bool
-    /// When true, the active input (compose or query) starts in the upper-left as a large, multi-line
-    /// surface for structured writing; when false it sits centered on screen. Toggled from the header.
-    @Binding var inputExpanded: Bool
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -130,15 +127,15 @@ struct CanvasHome: View {
     /// Writing surface: just the text input, left-aligned in the upper-left. Sending is the FAB.
     /// This is the home's resting state — "let a thought be" is the entrance.
     private var composer: some View {
-        VStack(alignment: inputExpanded ? .leading : .center, spacing: 0) {
+        VStack(alignment: .leading, spacing: 0) {
             TextField("", text: $text, axis: .vertical)
                 .font(Theme.dmSans(20, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(inputExpanded ? .leading : .center)
-                .lineLimit(inputExpanded ? 1...20 : 1...6)
+                .multilineTextAlignment(.leading)
+                .lineLimit(1...12)
                 .focused($fieldFocused)
                 .submitLabel(.return)
-                .overlay(alignment: inputExpanded ? .topLeading : .center) {
+                .overlay(alignment: .topLeading) {
                     if text.isEmpty {
                         AnimatedGradientRevealText(text: "let a thought be")
                             .font(Theme.dmSans(20, weight: .medium))
@@ -147,11 +144,11 @@ struct CanvasHome: View {
                     }
                 }
                 .onSubmit { Task { await createFil() } }
-            if inputExpanded { Spacer(minLength: 0) }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: inputExpanded ? .topLeading : .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 20)
-        .padding(.top, inputExpanded ? 64 : 0)
+        .padding(.top, 64)
         .transition(.opacity)
     }
 
@@ -194,14 +191,14 @@ struct CanvasHome: View {
     /// The query field to surface past fils, positioned exactly like the composer's "let a thought
     /// be" entrance — upper-left, left-aligned. Opened from the header search.
     private var queryField: some View {
-        VStack(alignment: inputExpanded ? .leading : .center, spacing: 0) {
-            TextField("", text: $query, axis: inputExpanded ? .vertical : .horizontal)
+        VStack(alignment: .leading, spacing: 0) {
+            TextField("", text: $query, axis: .horizontal)
                 .font(Theme.dmSans(20, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(inputExpanded ? .leading : .center)
+                .multilineTextAlignment(.leading)
                 .focused($queryFocused)
                 .submitLabel(.search)
-                .overlay(alignment: inputExpanded ? .topLeading : .center) {
+                .overlay(alignment: .topLeading) {
                     if query.isEmpty {
                         TimelineView(.periodic(from: .now, by: Self.queryPromptInterval)) { context in
                             let index = Int(context.date.timeIntervalSinceReferenceDate / Self.queryPromptInterval) % Self.queryPrompts.count
@@ -216,11 +213,11 @@ struct CanvasHome: View {
                     }
                 }
                 .onSubmit { Task { await runQuery() } }
-            if inputExpanded { Spacer(minLength: 0) }
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: inputExpanded ? .topLeading : .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 20)
-        .padding(.top, inputExpanded ? 64 : 0)
+        .padding(.top, 64)
         .transition(.opacity)
     }
 
