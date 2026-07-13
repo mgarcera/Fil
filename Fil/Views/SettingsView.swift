@@ -120,7 +120,7 @@ struct SettingsView: View {
             settingToggle(
                 "left-handed",
                 icon: "hand.point.left.fill",
-                description: "put the search, fil, and send buttons on the left.",
+                description: "buttons on the left.",
                 isOn: $controlsOnLeft
             )
 

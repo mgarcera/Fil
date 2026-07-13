@@ -39,6 +39,9 @@ struct CanvasHome: View {
     @Binding var showingResults: Bool
     /// Set true by the header's refresh button to start a fresh search; CanvasHome consumes it.
     @Binding var newSearchRequested: Bool
+    /// True while a screensaver is on screen — it overrides the keyboard (resigns composer/query
+    /// focus), and focus is restored to the current mode when it dismisses.
+    var screensaverActive: Bool = false
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -136,6 +139,27 @@ struct CanvasHome: View {
         // fil, returning from search) — like the query field — not re-forced on every phase change.
         .onChange(of: phase) { _, newPhase in
             showingResults = (newPhase == .results)
+        }
+        // A screensaver overrides the keyboard: drop focus while it's up, restore it on dismiss.
+        .onChange(of: screensaverActive) { _, active in
+            if active {
+                fieldFocused = false
+                queryFocused = false
+                // A screensaver launched from Settings dismisses its sheet ~0.35s later, and SwiftUI
+                // would otherwise restore first responder to the composer — re-clear once it settles.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                    if screensaverActive {
+                        fieldFocused = false
+                        queryFocused = false
+                    }
+                }
+            } else {
+                switch phase {
+                case .composing: fieldFocused = true
+                case .querying:  queryFocused = true
+                default:         break
+                }
+            }
         }
         .onAppear {
             // Cold launch lands in the composer — raise the keyboard once the view is ready.

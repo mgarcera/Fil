@@ -55,7 +55,7 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested)
+            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
@@ -412,11 +412,11 @@ struct ContentView: View {
             }
         }
         return [
-            option("filosophy", "camera.filters", "your fils, melted into a slow liquid mesh.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
-            option("filharmonic", "wave.3.left", "your colors ripple across a gentle wave.", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
-            option("filanthropy", "wind", "your fils drift down like falling leaves.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
-            option("chlorofil", "rainbow", "your colors ribbon across the sky like an aurora.", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
-            option("fillet", "fish.fill", "your fils swim by as koi in a quiet pond.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
+            option("filosophy", "camera.filters", "your thoughts as a lava lamp.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
+            option("filharmonic", "wave.3.left", "your thought bubbles rippling. (the more the better)", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
+            option("filanthropy", "wind", "your thought bubbles drifting and swirling.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
+            option("chlorofil", "rainbow", "your thoughts as an aurora. (uses your latest thoughts, so they'll always change color)", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
+            option("fillet", "fish.fill", "your thoughts...as fish food.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
         ]
     }
 
