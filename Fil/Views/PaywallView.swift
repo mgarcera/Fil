@@ -27,9 +27,9 @@ struct PaywallView: View {
         .subscriptionStoreControlStyle(.prominentPicker)
         .subscriptionStorePickerItemBackground(.ultraThinMaterial)
         .storeButton(.visible, for: .restorePurchases)
-        .storeButton(.visible, for: .policies)
-        .subscriptionStorePolicyDestination(url: Self.privacyURL, for: .privacyPolicy)
-        .subscriptionStorePolicyDestination(url: Self.termsURL, for: .termsOfService)
+        // Apple renders its policy buttons centered; we hide them and show our own left-aligned
+        // Terms + Privacy links in the header instead.
+        .storeButton(.hidden, for: .policies)
         .tint(Theme.filProIndigo)
         .background(Theme.background)
         .onInAppPurchaseCompletion { _, result in
@@ -41,38 +41,37 @@ struct PaywallView: View {
                 dismiss()
             }
         }
-        .overlay(alignment: .topTrailing) {
-            Button("close") { dismiss() }
-                .font(Theme.dmSans(14, weight: .semibold))
-                .foregroundStyle(Theme.secondaryText)
-                .padding(20)
-        }
     }
 
     /// Fil's own marketing content above Apple's plan controls. Calm and anti-optimization: it
     /// invites, it never pressures.
     private var marketingHeader: some View {
-        VStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
+            AnimatedGradientRevealText(text: "a smarter search.")
+                .font(Theme.dmSans(26, weight: .bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
             blobRow
-            VStack(spacing: 12) {
-                AnimatedGradientRevealText(text: "a smarter search")
-                    .font(Theme.dmSans(26, weight: .bold))
-                Text("don't just get words back, get what you were thinking.")
-                    .font(Theme.dmSans(15))
-                    .foregroundStyle(Theme.secondaryText)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                // Plain-language data disclosure, shown at the moment of opting in. Pairs with the
-                // privacy-policy link SubscriptionStoreView renders below.
-                Text("surfacing sends the relevant fil text to our ai provider (anthropic) to answer. it's never used to train models, and is deleted within 30 days. free keyword search stays on your device.")
-                    .font(Theme.dmSans(12))
-                    .foregroundStyle(Theme.tertiaryText)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 4)
+            Text("don't just get words back, get what you were thinking.")
+                .font(Theme.dmSans(15))
+                .foregroundStyle(Theme.secondaryText)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            // Plain-language data disclosure, shown at the moment of opting in.
+            Text("surfacing sends the relevant fil text to our ai provider (anthropic) to answer. it's never used to train models, and is deleted within 30 days. free keyword search stays on your device.")
+                .font(Theme.dmSans(12))
+                .foregroundStyle(Theme.tertiaryText)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 14) {
+                Link("terms", destination: Self.termsURL)
+                Link("privacy policy", destination: Self.privacyURL)
             }
-            .padding(.horizontal, 24)
+            .font(Theme.dmSans(12))
+            .tint(Theme.secondaryText)
         }
+        .padding(.horizontal, 24)
         .padding(.top, 24)
         .padding(.bottom, 8)
     }
@@ -89,6 +88,5 @@ struct PaywallView: View {
                     .frame(width: 48, height: 48)
             }
         }
-        .frame(maxWidth: .infinity)
     }
 }
