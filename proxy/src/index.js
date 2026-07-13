@@ -64,13 +64,22 @@ export default {
     const transactionId = request.headers.get("X-Fil-Transaction-Id") || "";
     if (!transactionId) return json({ error: "Fil Pro is required to surface." }, 401);
 
+    // Dev-only escape hatch: skip Apple verification so the local StoreKit config (fake purchases,
+    // invisible to Apple's servers) can drive the full Pro flow while testing. Secure by default —
+    // ONLY active when DEV_BYPASS is explicitly "1". Production never sets it, so verification is on.
+    const bypassVerification = env.DEV_BYPASS === "1";
+
     let originalId;
-    try {
-      originalId = await activeSubscriberId(transactionId, env);
-    } catch (e) {
-      return json({ error: "Couldn't verify your subscription." }, 502);
+    if (bypassVerification) {
+      originalId = `dev:${transactionId}`;
+    } else {
+      try {
+        originalId = await activeSubscriberId(transactionId, env);
+      } catch (e) {
+        return json({ error: "Couldn't verify your subscription." }, 502);
+      }
+      if (!originalId) return json({ error: "Fil Pro is required to surface." }, 403);
     }
-    if (!originalId) return json({ error: "Fil Pro is required to surface." }, 403);
 
     // Silent circuit-breaker: cap per-subscriber daily requests. Fails open on KV errors (the
     // Anthropic account spend cap is the hard backstop).

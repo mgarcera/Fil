@@ -56,6 +56,25 @@ npm run deploy                                 # prints the workers.dev URL
 
 Then in the app's proxy-config sheet, enter the deployed URL + the same `PROXY_SHARED_SECRET`.
 
+## Testing Fil Pro: dev vs official StoreKit
+
+Local StoreKit purchases (the `Products.storekit` file, run from Xcode) are fake — Apple's servers
+never see them, so the real App Store Server API can never verify them. A single proxy secret,
+`DEV_BYPASS`, flips between trusting the app (for local testing) and full Apple verification:
+
+```sh
+./switch-storekit.sh dev       # Apple verification OFF — test with the local Products.storekit
+./switch-storekit.sh official  # real verification ON — use a sandbox tester
+./switch-storekit.sh status    # show current mode
+```
+
+The app never changes between modes — it always sends the transaction id; the proxy decides whether
+to trust it. Secure by default: anything other than `DEV_BYPASS=1` (including unset) means full
+verification, so production is safe even if you forget to switch back.
+
+Also flip the Xcode side to match: **Product → Scheme → Edit Scheme → Run → Options → StoreKit
+Configuration** = `Products.storekit` for dev, `None` (+ a sandbox tester) for official.
+
 ## Smoke test
 
 ```sh
