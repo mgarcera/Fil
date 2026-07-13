@@ -185,7 +185,7 @@ struct CanvasHome: View {
     // MARK: - Capture states
 
     /// Writing surface: just the text input, left-aligned in the upper-left. Sending is the FAB.
-    /// This is the home's resting state — "let a thought be" is the entrance.
+    /// This is the home's resting state — "let thoughts be" is the entrance.
     private var composer: some View {
         VStack(alignment: .leading, spacing: 0) {
             TextField("", text: $text, axis: .vertical)
@@ -197,7 +197,7 @@ struct CanvasHome: View {
                 .submitLabel(.return)
                 .overlay(alignment: .topLeading) {
                     if text.isEmpty {
-                        AnimatedGradientRevealText(text: "let a thought be")
+                        AnimatedGradientRevealText(text: "let thoughts be")
                             .font(Theme.dmSans(20, weight: .medium))
                             .foregroundStyle(Theme.tertiaryText)
                             .allowsHitTesting(false)
