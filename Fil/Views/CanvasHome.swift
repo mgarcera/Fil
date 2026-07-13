@@ -278,6 +278,7 @@ struct CanvasHome: View {
                             }
                             .frame(width: 36, height: 36)
                             .scaleEffect(isLandfilling(note) ? 0.01 : 1, anchor: .center)
+                            .blur(radius: isLandfilling(note) ? 8 : 0)
                             .opacity(isLandfilling(note) ? 0 : 1)
                         }
                         .buttonStyle(.plain)
@@ -451,6 +452,7 @@ struct CanvasHome: View {
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
             .scaleEffect(isLandfilling(note) ? 0.01 : 1, anchor: .center)
+            .blur(radius: isLandfilling(note) ? 8 : 0)
             .opacity(isLandfilling(note) ? 0 : 1)
         }
         .buttonStyle(.plain)
@@ -565,12 +567,12 @@ struct CanvasHome: View {
         FilLandfil.cleanUpResources(for: note)
         let id = note.uuid
         SoundscapeManager.shared.playLandfilSound()
-        // Timeline-style deletion: the fil shrinks to nothing first, then it's removed + deleted.
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+        // Timeline-style deletion: the fil shrinks + blurs away first, then it's removed + deleted.
+        withAnimation(.easeOut(duration: 0.45)) {
             landfillingIDs.insert(id)
         }
         Task {
-            try? await Task.sleep(for: .milliseconds(360))
+            try? await Task.sleep(for: .milliseconds(450))
             withAnimation(.easeOut(duration: 0.2)) {
                 results.removeAll { $0.uuid == id }
                 todoFilIDs.remove(id)
@@ -697,7 +699,7 @@ struct CanvasHome: View {
         } catch {
             // Graceful fallback: show keyword matches with a gentle note rather than a bare error.
             runLocalSearch(q)
-            surfaceError = "couldn't reach surfacing just now, so these are keyword matches."
+            surfaceError = "showing keyword matches."
         }
     }
 
