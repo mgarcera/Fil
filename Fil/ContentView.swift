@@ -215,41 +215,53 @@ struct ContentView: View {
         .padding(.bottom, 4)
     }
 
-    /// Search/back + fil in one glass container: search/back, then fil.
+    /// Search/back + fil in one glass container. Order follows handedness: search/back then fil on
+    /// the left; fil then search/back on the right (so the switcher stays toward the screen edge).
     private var searchFilCluster: some View {
         HStack(spacing: 2) {
-            // Blank-canvas home: the search/back switcher. In the composer it opens the search
-            // screen; in search it returns to the composer.
-            Button {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
-            } label: {
-                Image(systemName: searchActive ? "arrow.left" : "magnifyingglass")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Theme.primaryText)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+            if controlsOnLeft {
+                searchBackButton
+                filButton
+            } else {
+                filButton
+                searchBackButton
             }
-            .buttonStyle(.plain)
-            .disabled(!searchActive && notes.isEmpty)
-            .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
-            .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
-
-            Button {
-                SoundscapeManager.shared.playSettingsSound()
-                showFilSetup = true
-            } label: {
-                Image("FilLogo")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 24, height: 24)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
         }
         .padding(.horizontal, 6)
         .glassEffect()
+    }
+
+    /// The search/back switcher. In the composer it opens the search screen; in search it returns.
+    private var searchBackButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
+        } label: {
+            Image(systemName: searchActive ? "arrow.left" : "magnifyingglass")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Theme.primaryText)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!searchActive && notes.isEmpty)
+        .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
+        .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
+    }
+
+    private var filButton: some View {
+        Button {
+            SoundscapeManager.shared.playSettingsSound()
+            showFilSetup = true
+        } label: {
+            Image("FilLogo")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 24, height: 24)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Settings")
     }
 
     /// Shown only while surfaced results are up: start a fresh search.
