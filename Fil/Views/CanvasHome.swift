@@ -81,9 +81,9 @@ struct CanvasHome: View {
             if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
                 recentChipsBar
             }
-            // Compose home: a quick shortcut to recently-made fils, above the keyboard. Hidden once
-            // you start writing, so it never competes with the blank page.
-            if phase == .composing && !hasText && !recentFils.isEmpty {
+            // Compose home: a quick shortcut to recently-made fils, above the keyboard while the
+            // field is focused and empty, so it never competes with the blank page or writing.
+            if phase == .composing && fieldFocused && !hasText && !recentFils.isEmpty {
                 recentFilsBar
             }
         }
@@ -264,13 +264,13 @@ struct CanvasHome: View {
                         Button { selectedNote = note } label: {
                             Group {
                                 if note.isImageFil {
-                                    NoteCardView(note: note, cardHeight: 52)
+                                    NoteCardView(note: note, cardHeight: 40)
                                 } else {
                                     NoteBlobShape(seed: note.blobShapeSeed)
                                         .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                                 }
                             }
-                            .frame(width: 52, height: 52)
+                            .frame(width: 40, height: 40)
                         }
                         .buttonStyle(.plain)
                     }
