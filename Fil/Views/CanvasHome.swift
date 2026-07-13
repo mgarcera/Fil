@@ -148,7 +148,7 @@ struct CanvasHome: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 20)
-        .padding(.top, 64)
+        .padding(.top, 100)
         .transition(.opacity)
     }
 
@@ -200,16 +200,25 @@ struct CanvasHome: View {
                 .submitLabel(.search)
                 .overlay(alignment: .topLeading) {
                     if query.isEmpty {
-                        TimelineView(.periodic(from: .now, by: Self.queryPromptInterval)) { context in
-                            let index = Int(context.date.timeIntervalSinceReferenceDate / Self.queryPromptInterval) % Self.queryPrompts.count
-                            let prompt = Self.queryPrompts[index]
-                            // Example prompts read as quoted phrases; the plain "search your thoughts" anchor doesn't.
-                            let display = prompt == "search your thoughts" ? prompt : "“\(prompt)”"
-                            AnimatedGradientRevealText(text: display, maxDuration: 1.2, settledOpacity: 0.4)
+                        if StoreManager.shared.isPro {
+                            // Pro: rotate through the smart-query examples (temporal/type/to-dos) —
+                            // accurate suggestions because cloud surfacing can actually answer them.
+                            TimelineView(.periodic(from: .now, by: Self.queryPromptInterval)) { context in
+                                let index = Int(context.date.timeIntervalSinceReferenceDate / Self.queryPromptInterval) % Self.queryPrompts.count
+                                let prompt = Self.queryPrompts[index]
+                                let display = prompt == "search your thoughts" ? prompt : "“\(prompt)”"
+                                AnimatedGradientRevealText(text: display, maxDuration: 1.2, settledOpacity: 0.4)
+                                    .font(Theme.dmSans(20, weight: .medium))
+                                    .foregroundStyle(Theme.primaryText)
+                            }
+                            .allowsHitTesting(false)
+                        } else {
+                            // Free: keyword-only search, so don't dangle smart-query suggestions.
+                            AnimatedGradientRevealText(text: "search by keyword", maxDuration: 1.2, settledOpacity: 0.4)
                                 .font(Theme.dmSans(20, weight: .medium))
                                 .foregroundStyle(Theme.primaryText)
+                                .allowsHitTesting(false)
                         }
-                        .allowsHitTesting(false)
                     }
                 }
                 .onSubmit { Task { await runQuery() } }
@@ -217,7 +226,7 @@ struct CanvasHome: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(.horizontal, 20)
-        .padding(.top, 64)
+        .padding(.top, 100)
         .transition(.opacity)
     }
 
