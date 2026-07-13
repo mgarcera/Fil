@@ -1,6 +1,6 @@
 # Fil — Privacy Policy
 
-*Last updated: July 12, 2026*
+*Last updated: July 13, 2026*
 
 Fil is built to keep your thoughts yours. It is a **local-first** app: your fils — voice
 recordings, transcripts, text, images, links, and titles — live on your device, not on our
@@ -8,15 +8,17 @@ servers. Mason Garcera (the developer of Fil) does not run a server that collect
 and Fil has no account to sign into.
 
 There is one optional exception, and we want to be upfront about it: **Fil Pro surfacing**, a paid
-feature that sends the text of fils relevant to a question you ask to an AI provider to answer it.
-It only runs when you choose to use it. Details are in "Surfacing with Fil Pro" below.
+feature that sends your fils' text to an AI provider, which finds and reflects the ones relevant to
+a question you ask. It only runs when you choose to use it. Details are in "Surfacing with Fil Pro"
+below.
 
 ## The short version
 - We don't collect, sell, or share your personal data.
 - Your fils are created, stored, and searched by keyword entirely on your device.
 - The **only** time anything leaves your device is if you subscribe to **Fil Pro** and run a
-  surfacing query. That sends the relevant fil text to our AI provider (Anthropic) to answer it. It
-  is **not used to train AI models** and is **deleted within 30 days**.
+  surfacing query. That sends your fils' text to our AI provider (Anthropic), which picks and
+  reflects the ones relevant to your question. It is **not used to train AI models** and is
+  **deleted within 30 days**.
 - No ads, no analytics SDKs, no third-party trackers, no login.
 
 ## What Fil stores, and where
@@ -28,9 +30,9 @@ exception is Fil Pro surfacing, described below.
 ## Surfacing with Fil Pro (cloud AI)
 Creating fils, storing them, and searching them by keyword all happen entirely on your device and
 never leave it. **Fil Pro** adds an optional feature called *surfacing*: when you ask Fil a question
-in your own words (for example, "what am I forgetting?"), the text of the fils relevant to that
-request is sent securely to our AI provider, **Anthropic**, which returns a short reflection and
-picks the fils that fit.
+in your own words (for example, "what am I forgetting?"), the text of your fils is sent securely to
+our AI provider, **Anthropic**, which picks the ones relevant to your request and returns a short
+reflection.
 
 - This happens **only** when you, as a Fil Pro subscriber, run a surfacing query. If you never do,
   nothing leaves your device.

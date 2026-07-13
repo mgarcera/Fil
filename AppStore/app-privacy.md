@@ -8,8 +8,8 @@ longer "Data Not Collected." Answer as follows.
 **"Do you or your third-party partners collect data from this app?" → Yes.**
 Declare exactly one data type:
 
-- **User Content → "Other User Content"** — the text of the fils relevant to a surfacing query,
-  sent to our AI provider (Anthropic) to answer it.
+- **User Content → "Other User Content"** — your fils' text, sent to our AI provider (Anthropic)
+  to answer a surfacing query.
   - **Used for:** App Functionality (only).
   - **Linked to the user's identity?** **No.** Fil has no account; nothing identifying is attached.
   - **Used for tracking?** **No.**
@@ -21,8 +21,8 @@ on-device and collect nothing; the free tier never transmits content.
 **No.** Fil does not track. No `NSUserTrackingUsageDescription`, no IDFA, no ATT prompt.
 
 ## Why this is accurate (keep for your records)
-- **Fil Pro surfacing:** when a subscriber asks a question in their own words, the relevant fil text
-  is sent to Anthropic to produce a reflection + pick matching fils. Apple treats transmitting user
+- **Fil Pro surfacing:** when a subscriber asks a question in their own words, their fils' text
+  is sent to Anthropic, which produces a reflection + picks the matching fils. Apple treats transmitting user
   content off-device as "collected," so it must be declared — as App Functionality, not linked, not
   tracking. Under Anthropic's commercial terms it is not used to train models and is deleted within
   ~30 days. Disclosed in the Privacy Policy and in an in-app note before first use.
