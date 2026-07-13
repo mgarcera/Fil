@@ -25,6 +25,12 @@ const ENTITLED_STATUSES = [1, 4];
 const APPSTORE_PROD = "https://api.storekit.itunes.apple.com";
 const APPSTORE_SANDBOX = "https://api.storekit-sandbox.itunes.apple.com";
 
+// Silent per-subscriber daily cap — a runaway/scripted guard, not a product limit. No human reaches
+// it. The Anthropic account spend cap is the outer backstop.
+const DAILY_LIMIT = 200;
+// Haiku 4.5 pricing per token (USD): $1/MTok in, $5/MTok out, $0.10/MTok cache read.
+const PRICE_IN = 1e-6, PRICE_OUT = 5e-6, PRICE_CACHE_READ = 0.1e-6;
+
 const SYSTEM_PROMPT = `You help someone explore their own private notes (they call each one a "fil"). Each note is listed as:
   N. (when it was made, its type, whether it has open to-dos) title: snippet
 Types are note, voice, link, photo.
@@ -50,20 +56,29 @@ Respond with ONLY a JSON object, no prose or code fences:
 {"summary": "...", "relevant": [numbers]}`;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method !== "POST") return json({ error: "Use POST." }, 405);
 
-    // Gate: verify an active Fil Pro subscription from the transaction id the app sends.
+    // Gate: verify an active Fil Pro subscription from the transaction id the app sends, and get the
+    // stable originalTransactionId to attribute usage by.
     const transactionId = request.headers.get("X-Fil-Transaction-Id") || "";
     if (!transactionId) return json({ error: "Fil Pro is required to surface." }, 401);
 
-    let entitled;
+    let originalId;
     try {
-      entitled = await isActiveSubscriber(transactionId, env);
+      originalId = await activeSubscriberId(transactionId, env);
     } catch (e) {
       return json({ error: "Couldn't verify your subscription." }, 502);
     }
-    if (!entitled) return json({ error: "Fil Pro is required to surface." }, 403);
+    if (!originalId) return json({ error: "Fil Pro is required to surface." }, 403);
+
+    // Silent circuit-breaker: cap per-subscriber daily requests. Fails open on KV errors (the
+    // Anthropic account spend cap is the hard backstop).
+    const day = new Date().toISOString().slice(0, 10);
+    try {
+      const used = parseInt(await env.FIL_USAGE?.get(`count:${originalId}:${day}`), 10) || 0;
+      if (used >= DAILY_LIMIT) return json({ error: "Daily surfacing limit reached. Try again tomorrow." }, 429);
+    } catch { /* fail open */ }
 
     if (!env.ANTHROPIC_API_KEY) return json({ error: "Proxy is missing its Anthropic key." }, 500);
 
@@ -128,21 +143,49 @@ export default {
     if (!parsed) return json({ error: "Couldn't read the model's response." }, 502);
 
     const u = data.usage || {};
+    const cost = costFromUsage(u);
     console.log(
-      `surface "${query}": ${parsed.relevant.length} fils | in ${u.input_tokens ?? 0} out ${u.output_tokens ?? 0} cacheRead ${u.cache_read_input_tokens ?? 0}`,
+      `surface "${query}": ${parsed.relevant.length} fils | in ${u.input_tokens ?? 0} out ${u.output_tokens ?? 0} cacheRead ${u.cache_read_input_tokens ?? 0} | $${cost.toFixed(5)}`,
     );
+    // Record usage after responding, so KV latency never delays the surfacing.
+    ctx.waitUntil(recordUsage(env, originalId, day, cost));
 
     return json({ summary: parsed.summary, relevant: parsed.relevant }, 200);
   },
 };
 
+/** Estimated USD cost of one Claude call from its token usage. */
+function costFromUsage(u) {
+  return (u.input_tokens ?? 0) * PRICE_IN
+    + (u.output_tokens ?? 0) * PRICE_OUT
+    + (u.cache_read_input_tokens ?? 0) * PRICE_CACHE_READ;
+}
+
+/** Best-effort per-subscriber attribution: bump today's request count and accumulate total cost. */
+async function recordUsage(env, originalId, day, cost) {
+  if (!env.FIL_USAGE) return;
+  try {
+    const countKey = `count:${originalId}:${day}`;
+    const used = parseInt(await env.FIL_USAGE.get(countKey), 10) || 0;
+    // ~2-day TTL so daily counters self-clean.
+    await env.FIL_USAGE.put(countKey, String(used + 1), { expirationTtl: 60 * 60 * 48 });
+
+    const costKey = `cost:${originalId}`;
+    const prior = parseFloat(await env.FIL_USAGE.get(costKey)) || 0;
+    await env.FIL_USAGE.put(costKey, (prior + cost).toFixed(6));
+  } catch {
+    /* best effort — attribution is protective, not critical */
+  }
+}
+
 // MARK: - App Store subscription verification
 
 /**
  * Ask Apple's App Store Server API for the subscription statuses tied to `transactionId` and return
- * true iff one of our products is in an entitled state. Tries production first, then sandbox.
+ * the entitled subscriber's stable `originalTransactionId` (or null if none is active). Tries
+ * production first, then sandbox.
  */
-async function isActiveSubscriber(transactionId, env) {
+async function activeSubscriberId(transactionId, env) {
   const token = await appStoreAuthToken(env);
   for (const base of [APPSTORE_PROD, APPSTORE_SANDBOX]) {
     const res = await fetch(`${base}/inApps/v1/subscriptions/${encodeURIComponent(transactionId)}`, {
@@ -150,23 +193,25 @@ async function isActiveSubscriber(transactionId, env) {
     });
     if (res.status === 404) continue; // unknown here — try the other environment
     if (!res.ok) continue;
-    const payload = await res.json();
-    if (subscriptionActive(payload)) return true;
+    const id = entitledOriginalId(await res.json());
+    if (id) return id;
   }
-  return false;
+  return null;
 }
 
-function subscriptionActive(payload) {
+function entitledOriginalId(payload) {
   for (const group of payload.data || []) {
     for (const tx of group.lastTransactions || []) {
       if (!ENTITLED_STATUSES.includes(tx.status)) continue;
       // The transaction info is a JWS from Apple (trusted TLS channel); read its payload to confirm
       // the product is one of ours, without needing to re-verify the signature.
       const info = decodeJWSPayload(tx.signedTransactionInfo);
-      if (info && PRODUCT_IDS.includes(info.productId)) return true;
+      if (info && PRODUCT_IDS.includes(info.productId)) {
+        return String(info.originalTransactionId || tx.originalTransactionId || info.transactionId);
+      }
     }
   }
-  return false;
+  return null;
 }
 
 /** Build and sign the ES256 JWT that authenticates calls to the App Store Server API. */

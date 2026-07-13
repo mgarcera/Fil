@@ -2,7 +2,14 @@ name = "fil-surfacing-proxy"
 main = "src/index.js"
 compatibility_date = "2026-07-01"
 
+# Per-user usage tracking (cost attribution + daily circuit-breaker).
+[[kv_namespaces]]
+binding = "FIL_USAGE"
+id = "1285ea1c02fd4c72992290ccca4fb90b"
+
 # Secrets are NOT set here — they'd be committed. Set them with:
 #   wrangler secret put ANTHROPIC_API_KEY
-#   wrangler secret put PROXY_SHARED_SECRET
+#   wrangler secret put APPSTORE_PRIVATE_KEY
+#   wrangler secret put APPSTORE_KEY_ID
+#   wrangler secret put APPSTORE_ISSUER_ID
 # For local `wrangler dev`, put them in .dev.vars (git-ignored) instead.
