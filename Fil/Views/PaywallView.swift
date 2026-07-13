@@ -8,9 +8,14 @@ import StoreKit
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
 
-    // TEMP (verdict): compare the calm blob header vs the orbiting-blobs header. Remove once chosen.
-    @State private var headerStyle: HeaderStyle = .blob
-    private enum HeaderStyle { case blob, orbit }
+    /// Gradient pairs for the static fil-blobs beside the gooey creating blob (mirrors the website's
+    /// "creating blob + a set of fils" composition).
+    private static let headerBlobs: [(String, String)] = [
+        ("#F24D59", "#E67333"),
+        ("#33BF99", "#408CD9"),
+        ("#6659CC", "#E8196A"),
+        ("#4DB366", "#D9A626"),
+    ]
 
     private static let privacyURL = URL(string: "https://rootcause.ltd/fil/privacy")!
     private static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
@@ -48,24 +53,7 @@ struct PaywallView: View {
     /// invites, it never pressures.
     private var marketingHeader: some View {
         VStack(spacing: 20) {
-            // TEMP (verdict) switcher.
-            Picker("header", selection: $headerStyle) {
-                Text("Blob").tag(HeaderStyle.blob)
-                Text("Orbit").tag(HeaderStyle.orbit)
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 40)
-
-            switch headerStyle {
-            case .blob:
-                NoteBlobShape(seed: 0.62)
-                    .fill(Theme.accentGradient)
-                    .frame(width: 120, height: 120)
-            case .orbit:
-                OrbitingBlobsHeader()
-                    .frame(height: 200)
-            }
-
+            blobRow
             VStack(spacing: 12) {
                 AnimatedGradientRevealText(text: "a smarter search")
                     .font(Theme.dmSans(26, weight: .bold))
@@ -88,59 +76,19 @@ struct PaywallView: View {
         .padding(.top, 24)
         .padding(.bottom, 8)
     }
-}
 
-/// A slow constellation of gradient fil-blobs orbiting on a tilted ellipse — an on-brand, calmer
-/// reinterpretation of the "paywall 3D effect" for the header. Blobs scale in one by one, then the
-/// ring drifts continuously.
-private struct OrbitingBlobsHeader: View {
-    /// Distinct gradient pairs (start, end) drawn from Theme's palettes, one per orbiting blob.
-    private static let pairs: [(String, String)] = [
-        ("#F24D59", "#E67333"),
-        ("#33BF99", "#408CD9"),
-        ("#6659CC", "#E8196A"),
-        ("#4DB366", "#D9A626"),
-        ("#8A4FD9", "#33B5D9"),
-    ]
-
-    @State private var trim: CGFloat = 0        // drives the one-by-one scale-in
-    @State private var rotation: CGFloat = 0    // drives the continuous orbit
-
-    var body: some View {
-        GeometryReader { proxy in
-            let diameter = min(proxy.size.width, proxy.size.height)
-            let radius = diameter / 2 - 24
-            let tilt = cos(62 * CGFloat.pi / 180) // vertical foreshortening → a tilted (3D) ellipse
-            let count = Self.pairs.count
-
-            ZStack {
-                ForEach(0..<count, id: \.self) { index in
-                    let angle = (CGFloat(index) / CGFloat(count)) * 360 + rotation
-                    let radians = angle * CGFloat.pi / 180
-                    let x = cos(radians) * radius
-                    let y = sin(radians) * radius * tilt
-
-                    // Each blob scales in over its slice of the trim sweep.
-                    let start = CGFloat(index) / CGFloat(count)
-                    let end = CGFloat(index + 1) / CGFloat(count)
-                    let appear = max(min((trim - start) / (end - start), 1), 0)
-
-                    NoteBlobShape(seed: Double(index) / Double(count))
-                        .fill(Theme.gradient(startHex: Self.pairs[index].0, endHex: Self.pairs[index].1, seed: Double(index)))
-                        .frame(width: 46, height: 46)
-                        .shadow(color: .black.opacity(0.12), radius: 6, x: 2, y: 4)
-                        .scaleEffect(appear)
-                        .offset(x: x, y: y)
-                }
+    /// The gooey "creating" blob (Fil's real one) on the left, then a row of static gradient fils —
+    /// mirrors the website's "mid-capture" composition and reuses the app's own blob pieces.
+    private var blobRow: some View {
+        HStack(spacing: 10) {
+            CreatingFilBlobView()
+                .frame(width: 60, height: 60)
+            ForEach(Array(Self.headerBlobs.enumerated()), id: \.offset) { index, pair in
+                NoteBlobShape(seed: Double(index) * 0.37 + 0.1)
+                    .fill(Theme.gradient(startHex: pair.0, endHex: pair.1, seed: Double(index)))
+                    .frame(width: 48, height: 48)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .rotationEffect(.degrees(-16))       // tilt the ellipse's major axis
         }
-        .task {
-            try? await Task.sleep(for: .seconds(0.1))
-            withAnimation(.easeOut(duration: 1.2)) { trim = 1 }
-            try? await Task.sleep(for: .seconds(0.6))
-            withAnimation(.linear(duration: 44).repeatForever(autoreverses: false)) { rotation = 360 }
-        }
+        .frame(maxWidth: .infinity)
     }
 }
