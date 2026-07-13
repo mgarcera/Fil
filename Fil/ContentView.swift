@@ -192,9 +192,10 @@ struct ContentView: View {
     private var header: some View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                HStack(spacing: 4) {
+                // Search/back + fil share one glass container: search/back, then fil.
+                HStack(spacing: 2) {
                     // Blank-canvas home: the search/back switcher. In the composer it opens the
-                    // search screen; in search it says "back" and returns to the composer.
+                    // search screen; in search it returns to the composer.
                     Button {
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
                     } label: {
@@ -208,26 +209,25 @@ struct ContentView: View {
                     .disabled(!searchActive && notes.isEmpty)
                     .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
                     .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
+
+                    Button {
+                        SoundscapeManager.shared.playSettingsSound()
+                        showFilSetup = true
+                    } label: {
+                        Image("FilLogo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Settings")
                 }
                 .padding(.horizontal, 6)
                 .glassEffect()
 
                 Spacer()
-
-                Button {
-                    SoundscapeManager.shared.playSettingsSound()
-                    showFilSetup = true
-                } label: {
-                    Image("FilLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
-                        .frame(width: 46, height: 46)
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .glassEffect(in: .circle)
-                .accessibilityLabel("Settings")
             }
         }
         .padding(.horizontal, 16)
