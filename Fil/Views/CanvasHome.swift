@@ -316,7 +316,7 @@ struct CanvasHome: View {
                 Text("found by keyword.")
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
-                Text("fil pro can read these and surface what fits.")
+                (Text("check out ") + filProWordmark + Text(" for a smart search"))
                     .font(Theme.dmSans(14))
                     .foregroundStyle(Theme.secondaryText)
             }
@@ -332,13 +332,18 @@ struct CanvasHome: View {
                 Text("no fils matched those words.")
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
-                Text("fil pro can surface by meaning, not just keywords.")
+                (Text("check out ") + filProWordmark + Text(" for a smart search"))
                     .font(Theme.dmSans(14))
                     .foregroundStyle(Theme.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
+    }
+
+    /// "fil pro" in the brand indigo, for inline use in the upgrade invites.
+    private var filProWordmark: Text {
+        Text("fil pro").foregroundStyle(Theme.filProIndigo)
     }
 
     private func blobCell(_ note: Note) -> some View {

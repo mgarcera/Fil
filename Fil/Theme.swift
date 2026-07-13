@@ -36,6 +36,8 @@ enum Theme {
 
     static let cardRadius: CGFloat = 22
     static let recordRed = Color(red: 0.9, green: 0.2, blue: 0.2)
+    /// Fil Pro brand accent (indigo) — used for the "fil pro" wordmark and the paywall tint.
+    static let filProIndigo = Color(hex: "#6659CC")
     static let accentGradientColors: [Color] = [Color(hex: "#33BF99"), .green, .blue, .pink, .orange, .indigo]
 
     /// The point size the `.body` text style resolves to at the default (Large) Dynamic Type

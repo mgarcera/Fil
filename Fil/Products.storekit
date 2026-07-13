@@ -28,7 +28,7 @@
           },
           "localizations" : [
             {
-              "description" : "Surface your thoughts with AI.",
+              "description" : "Intelligently surface your thoughts when you ask.",
               "displayName" : "Fil Pro (Monthly)",
               "locale" : "en_US"
             }
@@ -53,7 +53,7 @@
           },
           "localizations" : [
             {
-              "description" : "Surface your thoughts with AI.",
+              "description" : "Intelligently surface your thoughts when you ask.",
               "displayName" : "Fil Pro (Annual)",
               "locale" : "en_US"
             }

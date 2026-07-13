@@ -21,7 +21,7 @@ struct PaywallView: View {
         .storeButton(.visible, for: .policies)
         .subscriptionStorePolicyDestination(url: Self.privacyURL, for: .privacyPolicy)
         .subscriptionStorePolicyDestination(url: Self.termsURL, for: .termsOfService)
-        .tint(Color(hex: "#33BF99"))
+        .tint(Theme.filProIndigo)
         .background(Theme.background)
         .onInAppPurchaseCompletion { _, result in
             // Refresh entitlement deterministically here rather than racing the Transaction.updates
@@ -48,9 +48,9 @@ struct PaywallView: View {
                 .fill(Theme.accentGradient)
                 .frame(width: 120, height: 120)
             VStack(spacing: 12) {
-                AnimatedGradientRevealText(text: "surface your thoughts")
+                AnimatedGradientRevealText(text: "a smarter search")
                     .font(Theme.dmSans(26, weight: .bold))
-                Text("fil pro reads across your fils and reflects back what matters, when you ask. your thoughts stay yours.")
+                Text("don't just get words back, get what you were thinking.")
                     .font(Theme.dmSans(15))
                     .foregroundStyle(Theme.secondaryText)
                     .multilineTextAlignment(.center)
