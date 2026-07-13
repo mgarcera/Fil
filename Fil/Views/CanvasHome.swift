@@ -270,12 +270,13 @@ struct CanvasHome: View {
                             .foregroundStyle(Theme.secondaryText)
                     }
                     .padding(.top, 16)
-                } else if let surfaceError {
-                    Text(surfaceError)
-                        .font(Theme.dmSans(15))
-                        .foregroundStyle(.orange)
-                        .padding(.top, 16)
                 } else {
+                    if let surfaceError {
+                        // Gentle, non-blocking note (e.g. a cloud fallback to keyword results).
+                        Text(surfaceError)
+                            .font(Theme.dmSans(14))
+                            .foregroundStyle(Theme.secondaryText)
+                    }
                     if !summary.isEmpty {
                         AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                             .font(Theme.dmSans(16, weight: .medium))
@@ -285,9 +286,15 @@ struct CanvasHome: View {
                         freeSurfaceInvite
                     }
                     if results.isEmpty {
-                        Text("nothing surfaced for “\(query)”")
-                            .font(Theme.dmSans(15))
-                            .foregroundStyle(Theme.secondaryText)
+                        // Free users get an upgrade invite (AI can find by meaning, not just words)
+                        // exactly when keyword search comes up empty; Pro users see the plain miss.
+                        if !StoreManager.shared.isPro {
+                            freeEmptyInvite
+                        } else if surfaceError == nil {
+                            Text("nothing surfaced for “\(query)”")
+                                .font(Theme.dmSans(15))
+                                .foregroundStyle(Theme.secondaryText)
+                        }
                     } else {
                         scrapbook
                     }
@@ -310,6 +317,22 @@ struct CanvasHome: View {
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                 Text("fil pro can read these and surface what fits.")
+                    .font(Theme.dmSans(14))
+                    .foregroundStyle(Theme.secondaryText)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Shown to free users when keyword search finds nothing — the moment AI would help most.
+    private var freeEmptyInvite: some View {
+        Button { showPaywall = true } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("no fils matched those words.")
+                    .font(Theme.dmSans(15, weight: .medium))
+                    .foregroundStyle(Theme.primaryText)
+                Text("fil pro can surface by meaning, not just keywords.")
                     .font(Theme.dmSans(14))
                     .foregroundStyle(Theme.secondaryText)
             }
@@ -577,7 +600,9 @@ struct CanvasHome: View {
             // Capture the checklist membership once, so it's stable while the user toggles to-dos.
             todoFilIDs = Set(surfaced.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
         } catch {
-            surfaceError = (error as? ClaudeSurfacingService.SurfacingError)?.errorDescription ?? error.localizedDescription
+            // Graceful fallback: show keyword matches with a gentle note rather than a bare error.
+            runLocalSearch(q)
+            surfaceError = "couldn't reach surfacing just now, so these are keyword matches."
         }
     }
 
