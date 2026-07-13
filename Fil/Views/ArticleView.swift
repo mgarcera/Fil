@@ -35,6 +35,9 @@ struct ArticleView: View {
     @State private var pendingLandfilTodo: ArticleTodoLandfil?
     @State private var backlinkSheetDetent = PresentationDetent.fraction(0.6)
     @State private var backlinkNoteToOpen: Note?
+    /// True once the link description fetch has finished (found or not), so the "no description"
+    /// line only shows after we've actually tried — never while still loading.
+    @State private var descriptionFetchDone = false
     @State private var transcriptTextHeight: CGFloat = 100
     @State private var isEditingTranscript = false
     @State private var isAddingTodo = false
@@ -130,12 +133,25 @@ struct ArticleView: View {
             .ignoresSafeArea()
 
             if note.isLinkFil {
-                linkFilContentView
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    // Pinned to the top (link fils open at a taller detent). The space below is
-                    // intentionally open — room to grow as we parse more link metadata.
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                ScrollView {
+                    linkFilContentView
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                }
+                // Pinned to the top (link fils open at a taller detent); scrolls if the description
+                // runs long.
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                // Backfill the description for links made before this existed (or that failed the
+                // first fetch). Mark done either way so the "no description" line can show.
+                .task(id: note.uuid) {
+                    if (note.sourceDescription?.isEmpty ?? true), let url = note.sourceURL {
+                        if let description = await LinkFil.fetchDescription(for: url) {
+                            note.sourceDescription = description
+                            modelContext.saveOrLog()
+                        }
+                    }
+                    descriptionFetchDone = true
+                }
             } else {
                 ScrollView {
                     if topContentInset > 0 {
@@ -389,28 +405,21 @@ struct ArticleView: View {
     private var linkFilContentView: some View {
         VStack(spacing: 16) {
             if let url = note.sourceURL {
-                Button {
-                    linkBrowserURL = url
-                } label: {
-                    HStack(spacing: 9) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 11, weight: .semibold))
-                        Text(url.absoluteString)
-                            .font(Theme.dmMono(12))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-                        Spacer(minLength: 6)
-                        Image(systemName: "arrow.up.right")
-                            .font(.system(size: 12, weight: .semibold))
-                    }
-                    .foregroundStyle(Theme.secondaryText)
-                    .padding(.horizontal, 14)
-                    .frame(height: 42)
-                    .background(Theme.background.opacity(0.72), in: Capsule())
-                    .overlay(Capsule().stroke(Theme.divider.opacity(0.55), lineWidth: 1))
+                // The URL, display-only — opening is the "open" button below (tap or swipe up).
+                HStack(spacing: 9) {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text(url.absoluteString)
+                        .font(Theme.dmMono(12))
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 6)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Open link")
+                .foregroundStyle(Theme.secondaryText)
+                .padding(.horizontal, 14)
+                .frame(height: 42)
+                .background(Theme.background.opacity(0.72), in: Capsule())
+                .overlay(Capsule().stroke(Theme.divider.opacity(0.55), lineWidth: 1))
             }
 
             HStack(alignment: .center, spacing: 12) {
@@ -423,8 +432,65 @@ struct ArticleView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            // The page's description (fetched in the background), filling the space below the title.
+            if let description = note.sourceDescription?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !description.isEmpty {
+                Text(description)
+                    .font(Theme.dmSans(15, weight: .semibold))
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else if descriptionFetchDone {
+                Text("can't get a description from this page. must be interesting.")
+                    .font(Theme.dmSans(15, weight: .semibold))
+                    .foregroundStyle(Theme.secondaryText)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if note.sourceURL != nil {
+                openLinkButton
+            }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Opens the in-app browser. Tap or a deliberate swipe up both open it — the browser sheet then
+    /// slides up, so the upward gesture and the sheet's motion read as one continuous action.
+    private var openLinkButton: some View {
+        Button { openLink() } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("open")
+                    .font(Theme.dmSans(15, weight: .semibold))
+            }
+            .foregroundStyle(Theme.primaryText)
+            .frame(maxWidth: .infinity)
+            .frame(height: 46)
+            .background(Theme.cardBackground.opacity(0.8), in: Capsule())
+            .overlay(Capsule().stroke(Theme.divider.opacity(0.55), lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Open link")
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 12)
+                .onEnded { value in
+                    // Commit on a deliberate upward drag or a quick upward flick (same action as tap).
+                    let up = value.translation.height < -30 || value.velocity.height < -500
+                    if up { openLink() }
+                }
+        )
+    }
+
+    private func openLink() {
+        guard let url = note.sourceURL else { return }
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        #endif
+        linkBrowserURL = url
     }
 
     private var linkDisplayTitle: String {

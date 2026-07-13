@@ -34,6 +34,9 @@ final class Note {
     var threadedBacklinks: [ThreadedFilBacklink]
     var sourceURLString: String?
     var sourceTitle: String?
+    /// A link page's og:description / meta description, fetched in the background — shown in the link
+    /// sheet below the title. Optional (additive): older fils and pages without one leave it nil.
+    var sourceDescription: String? = nil
     @Attribute(.externalStorage) var sourceFaviconData: Data?
     @Relationship(deleteRule: .cascade, inverse: \KeywordAttachment.note)
     var attachments: [KeywordAttachment] = []

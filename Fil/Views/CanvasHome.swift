@@ -116,7 +116,8 @@ struct CanvasHome: View {
                 // area render the nav bar and space the fil's content correctly.
                 ArticleView(note: note, ignoresTopSafeArea: false, showsCloseButton: true)
             }
-            .presentationDetents([.fraction(0.6), .large])
+            // Link fils stay at the medium detent (no expand-to-full); other fils can go large.
+            .presentationDetents(note.isLinkFil ? [.fraction(0.6)] : [.fraction(0.6), .large])
             .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showPaywall) {
