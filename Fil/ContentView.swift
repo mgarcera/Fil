@@ -24,10 +24,6 @@ struct ContentView: View {
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
     /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
-    /// The step index the mode-switch wheel has reached within the current drag (each step flips).
-    @State private var swipeStep = 0
-    /// True while a mode-switch drag is in progress, so the canvas freezes keyboard focus until it ends.
-    @State private var isSwitchingModes = false
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -59,7 +55,7 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, isSwitchingModes: $isSwitchingModes)
+            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
@@ -235,13 +231,14 @@ struct ContentView: View {
         .glassEffect()
     }
 
-    /// The search/back switcher. Tap toggles; a vertical drag on the icon acts like a wheel —
-    /// every ~55pt of continuous drag (either direction) flips the mode with a haptic tick, so you
-    /// can keep dragging to keep cycling home ↔ search endlessly. The icon itself stays put.
+    /// True when tapping/swiping the switcher does nothing (composer, empty library).
+    private var switcherDisabled: Bool { !searchActive && notes.isEmpty }
+
+    /// The search/back switcher. Tap toggles home ↔ search; a deliberate vertical swipe on the icon
+    /// does the exact same thing (commit on release, past a threshold or a flick) — just a second,
+    /// tactile way to trigger it. The icon itself stays put.
     private var searchBackButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
-        } label: {
+        Button { toggleSearch() } label: {
             Image(systemName: searchActive ? "arrow.left" : "magnifyingglass")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Theme.primaryText)
@@ -249,30 +246,24 @@ struct ContentView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(!searchActive && notes.isEmpty)
-        .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
+        .disabled(switcherDisabled)
+        .opacity(switcherDisabled ? 0.45 : 1)
         .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
         .simultaneousGesture(modeSwitchDrag)
     }
 
+    private func toggleSearch() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
+    }
+
+    /// A vertical swipe on the switcher, committed on release — same effect as the tap.
     private var modeSwitchDrag: some Gesture {
-        let stepSize: CGFloat = 55
-        return DragGesture(minimumDistance: 12)
-            .onChanged { value in
-                isSwitchingModes = true   // freeze keyboard focus until the drag ends
-                let step = Int((value.translation.height / stepSize).rounded(.towardZero))
-                guard step != swipeStep else { return }
-                // Each detent crossed flips the mode; two modes, so parity of the delta decides.
-                let crossings = abs(step - swipeStep)
-                swipeStep = step
-                if crossings % 2 == 1 {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
-                }
+        DragGesture(minimumDistance: 12)
+            .onEnded { value in
+                let committed = abs(value.translation.height) > 30 || abs(value.velocity.height) > 500
+                guard committed, !switcherDisabled else { return }
                 UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-            }
-            .onEnded { _ in
-                swipeStep = 0
-                isSwitchingModes = false   // release: the canvas re-applies focus for the final mode
+                toggleSearch()
             }
     }
 
