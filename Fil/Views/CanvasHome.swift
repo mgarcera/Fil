@@ -336,17 +336,26 @@ struct CanvasHome: View {
                 if isRetrieving {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("surfacing…")
+                        Text("searching…")
                             .font(Theme.dmSans(15))
                             .foregroundStyle(Theme.secondaryText)
                     }
                     .padding(.top, 16)
                 } else {
                     if let surfaceError {
-                        // Gentle, non-blocking note (e.g. a cloud fallback to keyword results).
-                        Text(surfaceError)
-                            .font(Theme.dmSans(14))
-                            .foregroundStyle(Theme.secondaryText)
+                        // Gentle, non-blocking note when smart search fails and we fall back to keyword.
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(surfaceError)
+                                .font(Theme.dmSans(14))
+                                .foregroundStyle(Theme.secondaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            // Offer feedback only when we actually fell back to keyword matches (path E).
+                            if !results.isEmpty {
+                                Button("send feedback") { /* TODO: wire up the feedback destination */ }
+                                    .font(Theme.dmSans(14, weight: .medium))
+                                    .tint(Theme.filProIndigo)
+                            }
+                        }
                     }
                     if !summary.isEmpty {
                         AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
@@ -362,7 +371,7 @@ struct CanvasHome: View {
                         if !StoreManager.shared.isPro {
                             freeEmptyInvite
                         } else if surfaceError == nil {
-                            Text("nothing surfaced for “\(query)”")
+                            Text("nothing came up for “\(query)”")
                                 .font(Theme.dmSans(15))
                                 .foregroundStyle(Theme.secondaryText)
                         }
@@ -398,7 +407,7 @@ struct CanvasHome: View {
     private var freeEmptyInvite: some View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("no fils matched those words.")
+                Text("nothing came up for “\(query)”")
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                 filProInviteLine
@@ -697,9 +706,11 @@ struct CanvasHome: View {
             // Capture the checklist membership once, so it's stable while the user toggles to-dos.
             todoFilIDs = Set(surfaced.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
         } catch {
-            // Graceful fallback: show keyword matches with a gentle note rather than a bare error.
+            // Graceful fallback: run keyword search, and word the note by whether it found anything.
             runLocalSearch(q)
-            surfaceError = "showing keyword matches."
+            surfaceError = results.isEmpty
+                ? "smart search couldn't be reached, and no keyword matches either."   // path F
+                : "smart search is unavailable right now, so here are keyword matches." // path E
         }
     }
 
