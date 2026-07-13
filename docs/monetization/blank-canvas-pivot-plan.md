@@ -194,8 +194,11 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
 8. ⬜ **Re-home capture modes + onboarding (#5):** voice/photo/link capture and the first-fil seed
    reveal, so the paid home is also a complete capture home.
 
-**Still TODO (cost controls, deferred):** per-user cost attribution (Workers KV) + the silent
-~200/day circuit-breaker in the proxy; the payload cap / pre-filter (review #10).
+**Cost controls — DONE (2026-07-12):** per-user cost attribution (Workers KV, keyed on
+originalTransactionId) + the silent ~200/day circuit-breaker in the proxy; the payload pre-filter
+(client-side `candidateNotes`: direct multi-field text match over title/transcript/filaments +
+recent floor, capped at 60, only when the library exceeds ~50). Chose direct text search over
+embeddings (unreliable before). Known gap: purely-semantic old fils / temporal-past on big libraries.
 
 **Set-and-forget (not a code phase):** set the **Anthropic account-level spend cap** in the console
 — the outermost backstop. *(Confirm done.)*
