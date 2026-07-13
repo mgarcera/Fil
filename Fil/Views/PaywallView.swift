@@ -52,14 +52,14 @@ struct PaywallView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             blobRow
             Text("don't just get words back, get what you were thinking.")
-                .font(Theme.dmSans(15))
+                .font(Theme.dmSans(15, weight: .bold))
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
             // Plain-language data disclosure, shown at the moment of opting in.
-            Text("surfacing sends the relevant fil text to our ai provider (anthropic) to answer. it's never used to train models, and is deleted within 30 days. free keyword search stays on your device.")
-                .font(Theme.dmSans(12))
+            Text("smart search sends relevant text to our ai provider (anthropic) to answer. it's never used to train models and is deleted within 30 days. free keyword search stays on your device.")
+                .font(Theme.dmSans(15))
                 .foregroundStyle(Theme.tertiaryText)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
