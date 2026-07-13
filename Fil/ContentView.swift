@@ -192,23 +192,6 @@ struct ContentView: View {
     private var header: some View {
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                Button {
-                    SoundscapeManager.shared.playSettingsSound()
-                    showFilSetup = true
-                } label: {
-                    Image("FilLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
-                        .frame(width: 46, height: 46)
-                        .contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .glassEffect(in: .circle)
-                .accessibilityLabel("Settings")
-
-                Spacer()
-
                 HStack(spacing: 4) {
                     // Blank-canvas home: the search/back switcher. In the composer it opens the
                     // search screen; in search it says "back" and returns to the composer.
@@ -229,6 +212,23 @@ struct ContentView: View {
                 }
                 .padding(.horizontal, 6)
                 .glassEffect()
+
+                Spacer()
+
+                Button {
+                    SoundscapeManager.shared.playSettingsSound()
+                    showFilSetup = true
+                } label: {
+                    Image("FilLogo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .frame(width: 46, height: 46)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .glassEffect(in: .circle)
+                .accessibilityLabel("Settings")
             }
         }
         .padding(.horizontal, 16)
