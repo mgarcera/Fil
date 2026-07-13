@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showFilSetup = false
     @State private var searchActive = false          // header button ↔ canvas: search screen vs composer
+    @State private var inputExpanded = false          // header button ↔ canvas: centered vs upper-left large input
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -51,7 +52,7 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive)
+            CanvasHome(searchActive: $searchActive, inputExpanded: $inputExpanded)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
@@ -208,6 +209,19 @@ struct ContentView: View {
                     .disabled(!searchActive && notes.isEmpty)
                     .opacity(!searchActive && notes.isEmpty ? 0.45 : 1)
                     .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
+
+                    // Expand the active input into the upper-left large writing surface (and back).
+                    Button {
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { inputExpanded.toggle() }
+                    } label: {
+                        Image(systemName: inputExpanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(inputExpanded ? "Collapse input" : "Expand input")
                 }
                 .padding(.horizontal, 6)
                 .glassEffect()
