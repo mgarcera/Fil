@@ -56,6 +56,8 @@ struct CanvasHome: View {
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
     @State private var showPaywall = false
+    /// Fils mid-landfil: they shrink to nothing (like the timeline) before the actual delete.
+    @State private var landfillingIDs: Set<UUID> = []
     /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
     @AppStorage("recentSearchesRaw") private var recentSearchesRaw = ""
 
@@ -268,15 +270,18 @@ struct CanvasHome: View {
                         Button { selectedNote = note } label: {
                             Group {
                                 if note.isImageFil {
-                                    NoteCardView(note: note, cardHeight: 24)
+                                    NoteCardView(note: note, cardHeight: 36)
                                 } else {
                                     NoteBlobShape(seed: note.blobShapeSeed)
                                         .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
                                 }
                             }
-                            .frame(width: 24, height: 24)
+                            .frame(width: 36, height: 36)
+                            .scaleEffect(isLandfilling(note) ? 0.01 : 1, anchor: .center)
+                            .opacity(isLandfilling(note) ? 0 : 1)
                         }
                         .buttonStyle(.plain)
+                        .contextMenu { filContextMenu(note) }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -445,6 +450,8 @@ struct CanvasHome: View {
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
+            .scaleEffect(isLandfilling(note) ? 0.01 : 1, anchor: .center)
+            .opacity(isLandfilling(note) ? 0 : 1)
         }
         .buttonStyle(.plain)
         .contextMenu { filContextMenu(note) }
@@ -552,15 +559,26 @@ struct CanvasHome: View {
         }
     }
 
+    private func isLandfilling(_ note: Note) -> Bool { landfillingIDs.contains(note.uuid) }
+
     private func landfil(_ note: Note) {
         FilLandfil.cleanUpResources(for: note)
         let id = note.uuid
-        withAnimation(.easeOut(duration: 0.25)) {
-            results.removeAll { $0.uuid == id }
-            todoFilIDs.remove(id)
+        SoundscapeManager.shared.playLandfilSound()
+        // Timeline-style deletion: the fil shrinks to nothing first, then it's removed + deleted.
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            landfillingIDs.insert(id)
         }
-        modelContext.delete(note)
-        modelContext.saveOrLog()
+        Task {
+            try? await Task.sleep(for: .milliseconds(360))
+            withAnimation(.easeOut(duration: 0.2)) {
+                results.removeAll { $0.uuid == id }
+                todoFilIDs.remove(id)
+            }
+            modelContext.delete(note)
+            modelContext.saveOrLog()
+            landfillingIDs.remove(id)
+        }
     }
 
     /// Mirrors ContentView.toggleTodoFromSheet: normalize, bound-check, sound, toggle, save.
