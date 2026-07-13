@@ -30,7 +30,6 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    header
                     sectionTabs
                     sectionCard
                 }
@@ -50,23 +49,6 @@ struct SettingsView: View {
                 .presentationDetents([.large])
                 .presentationBackground(Theme.background)
         }
-    }
-
-    // MARK: - Header
-
-    private var header: some View {
-        HStack {
-            Text("fil")
-                .font(Theme.dmSans(18, weight: .bold))
-                .foregroundStyle(.white)
-
-            Spacer()
-
-            Text("settings")
-                .font(Theme.dmMono(12))
-                .foregroundStyle(.white.opacity(0.7))
-        }
-        .blurOpacityEffect(contentVisible)
     }
 
     // MARK: - Tabs
@@ -200,7 +182,7 @@ struct SettingsView: View {
                     .font(Theme.dmSans(16, weight: .medium))
                     .foregroundStyle(.white)
             }
-            .tint(section.backgroundColors[0])
+            .toggleStyle(BorderedToggleStyle(tint: section.backgroundColors[0]))
 
             if let description {
                 Text(description)
@@ -289,6 +271,38 @@ struct SettingsView: View {
                 .fill(.black.opacity(0.45))
         }
         .animation(.easeInOut(duration: 0.8), value: section)
+    }
+}
+
+/// A pill switch that keeps a clear outline when OFF (so it reads against the dark background),
+/// and fills with the section tint when ON.
+private struct BorderedToggleStyle: ToggleStyle {
+    var tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+            Spacer(minLength: 12)
+            Capsule()
+                .fill(configuration.isOn ? tint : Color.white.opacity(0.06))
+                .overlay {
+                    Capsule().strokeBorder(Color.white.opacity(configuration.isOn ? 0 : 0.4), lineWidth: 1.5)
+                }
+                .frame(width: 51, height: 31)
+                .overlay(alignment: configuration.isOn ? .trailing : .leading) {
+                    Circle()
+                        .fill(.white)
+                        .padding(2)
+                        .frame(width: 31, height: 31)
+                        .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+                }
+                .contentShape(Capsule())
+                .onTapGesture {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        configuration.isOn.toggle()
+                    }
+                }
+        }
     }
 }
 
