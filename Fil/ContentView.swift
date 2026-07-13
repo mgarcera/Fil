@@ -24,8 +24,8 @@ struct ContentView: View {
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
     /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
-    /// Tracks whether the mode-switch swipe has crossed its threshold (for a one-shot haptic).
-    @State private var searchSwipePastThreshold = false
+    /// The step index the mode-switch wheel has reached within the current drag (each step flips).
+    @State private var swipeStep = 0
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -233,9 +233,9 @@ struct ContentView: View {
         .glassEffect()
     }
 
-    /// The search/back switcher. Tap toggles; a vertical swipe on the icon also switches (up →
-    /// search, down → home) — Gmail-style. The icon itself stays put; a slow drag past the threshold
-    /// commits just as a flick does, with a haptic at the threshold.
+    /// The search/back switcher. Tap toggles; a vertical drag on the icon acts like a wheel —
+    /// every ~55pt of continuous drag (either direction) flips the mode with a haptic tick, so you
+    /// can keep dragging to keep cycling home ↔ search endlessly. The icon itself stays put.
     private var searchBackButton: some View {
         Button {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
@@ -253,31 +253,21 @@ struct ContentView: View {
         .simultaneousGesture(modeSwitchDrag)
     }
 
-    /// Up switches to search, down returns home — but only when that direction changes the mode.
-    private func searchSwipeActionable(_ translationHeight: CGFloat) -> Bool {
-        (translationHeight < 0 && !searchActive) || (translationHeight > 0 && searchActive)
-    }
-
     private var modeSwitchDrag: some Gesture {
-        let threshold: CGFloat = 30
+        let stepSize: CGFloat = 55
         return DragGesture(minimumDistance: 12)
             .onChanged { value in
-                // Haptic tick once the drag has clearly committed (slow drag counts, no flick needed).
-                let past = abs(value.translation.height) > threshold && searchSwipeActionable(value.translation.height)
-                if past != searchSwipePastThreshold {
-                    searchSwipePastThreshold = past
-                    if past { UIImpactFeedbackGenerator(style: .soft).impactOccurred() }
+                let step = Int((value.translation.height / stepSize).rounded(.towardZero))
+                guard step != swipeStep else { return }
+                // Each detent crossed flips the mode; two modes, so parity of the delta decides.
+                let crossings = abs(step - swipeStep)
+                swipeStep = step
+                if crossings % 2 == 1 {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
                 }
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             }
-            .onEnded { value in
-                let t = value.translation.height
-                // Commit on a slow drag past the threshold OR a quick flick.
-                let commit = (abs(t) > threshold || abs(value.velocity.height) > 500) && searchSwipeActionable(t)
-                if commit {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = (t < 0) }
-                }
-                searchSwipePastThreshold = false
-            }
+            .onEnded { _ in swipeStep = 0 }
     }
 
     private var filButton: some View {
