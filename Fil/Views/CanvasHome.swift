@@ -325,7 +325,7 @@ struct CanvasHome: View {
                     ForEach(recentFils) { note in
                         Button { selectedNote = note } label: {
                             Group {
-                                if note.isImageFil {
+                                if note.isImageFil || note.isLinkFil {
                                     NoteCardView(note: note, cardHeight: 36)
                                 } else {
                                     NoteBlobShape(seed: note.blobShapeSeed)
@@ -504,7 +504,7 @@ struct CanvasHome: View {
             // clipped, like the main-branch card) instead of a gradient blob.
             VStack(alignment: .center, spacing: 14) {
                 Group {
-                    if note.isImageFil {
+                    if note.isImageFil || note.isLinkFil {
                         NoteCardView(note: note, cardHeight: gridBlobSize)
                     } else {
                         NoteBlobShape(seed: note.blobShapeSeed)
@@ -698,16 +698,24 @@ struct CanvasHome: View {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
         SoundscapeManager.shared.startMeshDuringProcessSound()
 
-        let title = await ArticleGenerationService.shared.generateTitle(from: thought)
         let gradient = Theme.randomGradientPair()
-        let note = Note(
-            title: title,
-            transcript: thought,
-            keyword: title,
-            gradientStartHex: gradient.start,
-            gradientEndHex: gradient.end
-        )
-        modelContext.insert(note)
+        let note: Note
+        if let url = LinkFil.normalizedURL(from: thought) {
+            // A bare URL becomes a link fil (favicon + real title fetched in the background), no AI
+            // title. Let the gooey blob breathe a beat, since there's no title generation to fill it.
+            note = LinkFil.make(url: url, gradient: gradient, in: modelContext)
+            try? await Task.sleep(for: .milliseconds(700))
+        } else {
+            let title = await ArticleGenerationService.shared.generateTitle(from: thought)
+            note = Note(
+                title: title,
+                transcript: thought,
+                keyword: title,
+                gradientStartHex: gradient.start,
+                gradientEndHex: gradient.end
+            )
+            modelContext.insert(note)
+        }
         modelContext.saveOrLog()
 
         SoundscapeManager.shared.stopMeshDuringProcessSound()

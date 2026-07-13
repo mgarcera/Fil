@@ -626,53 +626,12 @@ struct ContentView: View {
     }
 
     private func normalizedLinkURL(from text: String) -> URL? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.contains(where: { $0.isWhitespace }) else { return nil }
-
-        let candidate = trimmed.lowercased().hasPrefix("http://") || trimmed.lowercased().hasPrefix("https://")
-            ? trimmed
-            : "https://\(trimmed)"
-        guard let url = URL(string: candidate),
-              let host = url.host(),
-              host.contains("."),
-              ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
-            return nil
-        }
-        return url
+        LinkFil.normalizedURL(from: text)
     }
 
     private func saveLinkNote(for url: URL, filID: UUID) {
-        let gradient = freshGradientPair()
-        let fallbackTitle = linkTitleFallback(for: url)
-        let note = Note(
-            title: fallbackTitle,
-            transcript: url.absoluteString,
-            keyword: "link",
-            gradientStartHex: gradient.start,
-            gradientEndHex: gradient.end,
-            sourceURLString: url.absoluteString,
-            sourceTitle: fallbackTitle
-        )
-        note.uuid = filID
-        modelContext.insert(note)
+        LinkFil.make(url: url, gradient: freshGradientPair(), uuid: filID, in: modelContext)
         SoundscapeManager.shared.playArticleMadeSound()
-
-        FaviconLoader.loadMetadata(for: url) { title, icon in
-            if let title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
-                note.title = title
-                note.sourceTitle = title
-            }
-            if let data = icon?.pngData() {
-                note.sourceFaviconData = data
-            }
-            modelContext.saveOrLog()
-        }
-    }
-
-    private func linkTitleFallback(for url: URL) -> String {
-        guard let host = url.host() else { return url.absoluteString }
-        let domain = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
-        return domain
     }
 
     private func saveImageFil(caption: String, imageData: [Data], todos: [String] = [], filID: UUID) async throws {
