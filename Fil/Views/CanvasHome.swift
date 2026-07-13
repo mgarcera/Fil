@@ -316,9 +316,7 @@ struct CanvasHome: View {
                 Text("found by keyword.")
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
-                (Text("check out ") + filProWordmark + Text(" for a smart search"))
-                    .font(Theme.dmSans(14))
-                    .foregroundStyle(Theme.secondaryText)
+                filProInviteLine
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -332,18 +330,34 @@ struct CanvasHome: View {
                 Text("no fils matched those words.")
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
-                (Text("check out ") + filProWordmark + Text(" for a smart search"))
-                    .font(Theme.dmSans(14))
-                    .foregroundStyle(Theme.secondaryText)
+                filProInviteLine
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
     }
 
-    /// "fil pro" in the brand indigo, for inline use in the upgrade invites.
-    private var filProWordmark: Text {
-        Text("fil pro").foregroundStyle(Theme.filProIndigo)
+    /// "check out fil pro for a smart search" with the "fil pro" wordmark in the multicolor accent
+    /// gradient. The full sentence lays out (and wraps) normally in secondary text; the gradient is
+    /// masked to show through only the "fil pro" glyphs via an aligned overlay.
+    private var filProInviteLine: some View {
+        let full = "check out fil pro for a smart search"
+        let word = "fil pro"
+
+        // Base sentence: gray, with the wordmark punched out (clear) so the gradient overlay shows.
+        var base = AttributedString(full)
+        if let range = base.range(of: word) { base[range].foregroundColor = .clear }
+
+        // Mask: only the wordmark opaque, rest clear — so the gradient fills just those glyphs.
+        var mask = AttributedString(full)
+        mask.foregroundColor = .clear
+        if let range = mask.range(of: word) { mask[range].foregroundColor = .black }
+
+        return Text(base)
+            .font(Theme.dmSans(14))
+            .foregroundStyle(Theme.secondaryText)
+            .overlay { Theme.accentGradient.mask(Text(mask).font(Theme.dmSans(14))) }
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private func blobCell(_ note: Note) -> some View {
