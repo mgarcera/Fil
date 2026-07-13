@@ -81,6 +81,11 @@ struct CanvasHome: View {
             if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
                 recentChipsBar
             }
+            // Compose home: a quick shortcut to recently-made fils, above the keyboard. Hidden once
+            // you start writing, so it never competes with the blank page.
+            if phase == .composing && !hasText && !recentFils.isEmpty {
+                recentFilsBar
+            }
         }
         // The send FAB floats as an overlay (not a ZStack sibling) so its Button reliably wins hit
         // testing over the full-screen background tap-catcher below.
@@ -243,6 +248,38 @@ struct CanvasHome: View {
         .padding(.horizontal, 20)
         .padding(.top, 80)
         .transition(.opacity)
+    }
+
+    /// The most recently created fils — a small, capped shortcut, not a full browse.
+    private var recentFils: [Note] { Array(notes.prefix(8)) }
+
+    /// Recently-made fils as small blob chips, bottom-anchored so they ride above the keyboard on the
+    /// compose home. Tap to open. Photo fils show their image, like the results grid.
+    private var recentFilsBar: some View {
+        VStack {
+            Spacer()
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(recentFils) { note in
+                        Button { selectedNote = note } label: {
+                            Group {
+                                if note.isImageFil {
+                                    NoteCardView(note: note, cardHeight: 52)
+                                } else {
+                                    NoteBlobShape(seed: note.blobShapeSeed)
+                                        .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                                }
+                            }
+                            .frame(width: 52, height: 52)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .padding(.bottom, 12)
     }
 
     /// Recently-searched terms as tappable glass chips, bottom-anchored so they ride above the
