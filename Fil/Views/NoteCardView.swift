@@ -68,18 +68,21 @@ struct NoteCardView: View {
         .overlay(selectionStroke)
     }
 
+    /// Favicon scales with the blob: bigger on the large search fils, smaller on the input-bar chips.
+    private var linkIconSize: CGFloat { max(14, cardHeight * 0.35) }
+
     @ViewBuilder
     private var linkBlobIcon: some View {
         if let faviconData = note.sourceFaviconData, let favicon = Image(data: faviconData) {
             favicon
                 .resizable()
                 .scaledToFit()
-                .frame(width: 28, height: 28)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .shadow(color: .black.opacity(0.18), radius: 4, x: 0, y: 2)
+                .frame(width: linkIconSize, height: linkIconSize)
+                .clipShape(RoundedRectangle(cornerRadius: linkIconSize * 0.25, style: .continuous))
+                .shadow(color: .black.opacity(0.18), radius: linkIconSize * 0.14, x: 0, y: 2)
         } else {
             Image(systemName: "link")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: linkIconSize * 0.55, weight: .semibold))
                 .foregroundStyle(.white.opacity(0.92))
         }
     }

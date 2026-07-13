@@ -132,7 +132,10 @@ struct ArticleView: View {
             if note.isLinkFil {
                 linkFilContentView
                     .padding(.horizontal, 16)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .padding(.top, 12)
+                    // Pinned to the top (link fils open at a taller detent). The space below is
+                    // intentionally open — room to grow as we parse more link metadata.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             } else {
                 ScrollView {
                     if topContentInset > 0 {
