@@ -129,13 +129,13 @@ struct CanvasHome: View {
                 query = ""
                 queryFocused = false
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
+                fieldFocused = true   // returning home: raise the composer keyboard
             }
         }
-        // Keep the header in sync (refresh only while results are up), and keep the composer focused
-        // so "let a thought be" always lands with the keyboard up, ready to type.
+        // Header sync only. Composer focus is set at genuine entry points (launch, after creating a
+        // fil, returning from search) — like the query field — not re-forced on every phase change.
         .onChange(of: phase) { _, newPhase in
             showingResults = (newPhase == .results)
-            fieldFocused = (newPhase == .composing)
         }
         .onAppear {
             // Cold launch lands in the composer — raise the keyboard once the view is ready.
@@ -674,6 +674,7 @@ struct CanvasHome: View {
         // Only return to the composer if the user hasn't navigated away (e.g. opened search) meanwhile.
         if phase == .formed {
             withAnimation(.easeOut(duration: 0.4)) { phase = .composing }
+            fieldFocused = true   // ready to write the next thought
         }
     }
 
