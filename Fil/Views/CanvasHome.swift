@@ -131,9 +131,17 @@ struct CanvasHome: View {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
             }
         }
-        // Keep the header in sync: it shows the refresh button only while results are up.
+        // Keep the header in sync (refresh only while results are up), and keep the composer focused
+        // so "let a thought be" always lands with the keyboard up, ready to type.
         .onChange(of: phase) { _, newPhase in
             showingResults = (newPhase == .results)
+            fieldFocused = (newPhase == .composing)
+        }
+        .onAppear {
+            // Cold launch lands in the composer — raise the keyboard once the view is ready.
+            if phase == .composing {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { fieldFocused = true }
+            }
         }
         // The header's refresh button asks for a fresh search.
         .onChange(of: newSearchRequested) { _, requested in
