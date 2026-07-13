@@ -24,8 +24,7 @@ struct ContentView: View {
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
     /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
-    /// Live vertical offset of the search icon while swiping to switch modes.
-    @State private var searchSwipeOffset: CGFloat = 0
+    /// Tracks whether the mode-switch swipe has crossed its threshold (for a one-shot haptic).
     @State private var searchSwipePastThreshold = false
 
     @Environment(\.requestReview) private var requestReview
@@ -234,8 +233,9 @@ struct ContentView: View {
         .glassEffect()
     }
 
-    /// The search/back switcher. Tap toggles; a vertical swipe also switches (up → search, down →
-    /// home) with the icon following the finger, a haptic at the threshold, and a spring commit.
+    /// The search/back switcher. Tap toggles; a vertical swipe on the icon also switches (up →
+    /// search, down → home) — Gmail-style. The icon itself stays put; a slow drag past the threshold
+    /// commits just as a flick does, with a haptic at the threshold.
     private var searchBackButton: some View {
         Button {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
@@ -245,7 +245,6 @@ struct ContentView: View {
                 .foregroundStyle(Theme.primaryText)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
-                .offset(y: searchSwipeOffset)
         }
         .buttonStyle(.plain)
         .disabled(!searchActive && notes.isEmpty)
@@ -260,13 +259,11 @@ struct ContentView: View {
     }
 
     private var modeSwitchDrag: some Gesture {
-        let threshold: CGFloat = 24
+        let threshold: CGFloat = 30
         return DragGesture(minimumDistance: 12)
             .onChanged { value in
-                let t = value.translation.height
-                // Rubber-band toward a soft limit so the icon feels tethered, not thrown.
-                searchSwipeOffset = t / (1 + abs(t) / 26)
-                let past = abs(t) > threshold && searchSwipeActionable(t)
+                // Haptic tick once the drag has clearly committed (slow drag counts, no flick needed).
+                let past = abs(value.translation.height) > threshold && searchSwipeActionable(value.translation.height)
                 if past != searchSwipePastThreshold {
                     searchSwipePastThreshold = past
                     if past { UIImpactFeedbackGenerator(style: .soft).impactOccurred() }
@@ -274,11 +271,11 @@ struct ContentView: View {
             }
             .onEnded { value in
                 let t = value.translation.height
-                let commit = (abs(t) > threshold || abs(value.velocity.height) > 400) && searchSwipeActionable(t)
+                // Commit on a slow drag past the threshold OR a quick flick.
+                let commit = (abs(t) > threshold || abs(value.velocity.height) > 500) && searchSwipeActionable(t)
                 if commit {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = (t < 0) }
                 }
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { searchSwipeOffset = 0 }
                 searchSwipePastThreshold = false
             }
     }
