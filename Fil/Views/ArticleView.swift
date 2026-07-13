@@ -133,25 +133,29 @@ struct ArticleView: View {
             .ignoresSafeArea()
 
             if note.isLinkFil {
-                ScrollView {
-                    linkFilContentView
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-                }
-                // Pinned to the top (link fils open at a taller detent); scrolls if the description
-                // runs long.
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                // Backfill the description for links made before this existed (or that failed the
-                // first fetch). Mark done either way so the "no description" line can show.
-                .task(id: note.uuid) {
-                    if (note.sourceDescription?.isEmpty ?? true), let url = note.sourceURL {
-                        if let description = await LinkFil.fetchDescription(for: url) {
-                            note.sourceDescription = description
-                            modelContext.saveOrLog()
+                linkFilContentView
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    // Pinned to the top; the sticky open button lives at the bottom.
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .overlay(alignment: .bottom) {
+                        if note.sourceURL != nil {
+                            openLinkButton
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 20)
                         }
                     }
-                    descriptionFetchDone = true
-                }
+                    // Backfill the description for links made before this existed (or that failed the
+                    // first fetch). Mark done either way so the "no description" line can show.
+                    .task(id: note.uuid) {
+                        if (note.sourceDescription?.isEmpty ?? true), let url = note.sourceURL {
+                            if let description = await LinkFil.fetchDescription(for: url) {
+                                note.sourceDescription = description
+                                modelContext.saveOrLog()
+                            }
+                        }
+                        descriptionFetchDone = true
+                    }
             } else {
                 ScrollView {
                     if topContentInset > 0 {
@@ -439,6 +443,7 @@ struct ArticleView: View {
                 Text(description)
                     .font(Theme.dmSans(15, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
+                    .lineLimit(10)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if descriptionFetchDone {
@@ -447,10 +452,6 @@ struct ArticleView: View {
                     .foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            if note.sourceURL != nil {
-                openLinkButton
             }
         }
         .frame(maxWidth: .infinity)
@@ -469,9 +470,7 @@ struct ArticleView: View {
             .foregroundStyle(Theme.primaryText)
             .frame(maxWidth: .infinity)
             .frame(height: 46)
-            .background(Theme.cardBackground.opacity(0.8), in: Capsule())
-            .overlay(Capsule().stroke(Theme.divider.opacity(0.55), lineWidth: 1))
-            .contentShape(Capsule())
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Open link")
