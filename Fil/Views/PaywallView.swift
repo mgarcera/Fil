@@ -58,7 +58,7 @@ struct PaywallView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
             // Plain-language data disclosure, shown at the moment of opting in.
-            Text("smart search sends relevant text to anthropic; it's never used to train models and is deleted within 30 days. free keyword search stays on your device.")
+            Text("to answer your search, smart search sends your notes' text to anthropic; it's never used to train models and is deleted within 30 days. free keyword search stays on your device.")
                 .font(Theme.dmSans(15))
                 .foregroundStyle(Theme.tertiaryText)
                 .multilineTextAlignment(.leading)
