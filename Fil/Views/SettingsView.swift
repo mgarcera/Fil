@@ -90,12 +90,13 @@ struct SettingsView: View {
             case .writing:
                 settingToggle(
                     "Use Lowercase",
+                    icon: "textformat.abc",
                     description: "render titles and transcripts in lowercase for a more casual voice.",
                     isOn: $prefersLowercase
                 )
 
             case .sound:
-                settingToggle("Sound Effects", isOn: $soundEnabled)
+                settingToggle("Sound Effects", icon: "music.note", isOn: $soundEnabled)
 
             case .appearance:
                 appearanceSection
@@ -112,12 +113,13 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            settingToggle("Dark Mode", isOn: $isDarkMode)
+            settingToggle("Dark Mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
 
             sectionDivider
 
             settingToggle(
                 "Left-handed",
+                icon: "hand.point.left.fill",
                 description: "put the search, fil, and send buttons on the left.",
                 isOn: $controlsOnLeft
             )
@@ -126,9 +128,7 @@ struct SettingsView: View {
                 sectionDivider
 
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Screensavers")
-                        .font(Theme.dmSans(16, weight: .medium))
-                        .foregroundStyle(.white)
+                    settingLabel("Screensavers", icon: "zzz")
 
                     ScrollView(.horizontal) {
                         HStack(spacing: 8) {
@@ -163,6 +163,7 @@ struct SettingsView: View {
 
             settingToggle(
                 "Auto Screensaver",
+                icon: "power",
                 description: autoScreensaverUnlocked
                     ? "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery."
                     : "unlocks once you have a few more fils.",
@@ -178,12 +179,10 @@ struct SettingsView: View {
         Divider().overlay(Color.white.opacity(0.14))
     }
 
-    private func settingToggle(_ title: String, description: String? = nil, isOn: Binding<Bool>) -> some View {
+    private func settingToggle(_ title: String, icon: String, description: String? = nil, isOn: Binding<Bool>) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Toggle(isOn: isOn) {
-                Text(title)
-                    .font(Theme.dmSans(16, weight: .medium))
-                    .foregroundStyle(.white)
+                settingLabel(title, icon: icon)
             }
             .toggleStyle(BorderedToggleStyle(tint: section.backgroundColors[0]))
 
@@ -193,6 +192,20 @@ struct SettingsView: View {
                     .foregroundStyle(.white.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    /// A leading SF Symbol + a title, sized to line up icons across rows. Shared by the toggles and
+    /// the Screensavers header.
+    private func settingLabel(_ title: String, icon: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundStyle(.white.opacity(0.85))
+                .frame(width: 22)
+            Text(title)
+                .font(Theme.dmSans(16, weight: .medium))
+                .foregroundStyle(.white)
         }
     }
 
