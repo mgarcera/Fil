@@ -7,16 +7,16 @@ recordings, transcripts, text, images, links, and titles — live on your device
 servers. Mason Garcera (the developer of Fil) does not run a server that collects your content,
 and Fil has no account to sign into.
 
-There is one optional exception, and we want to be upfront about it: **Fil Pro surfacing**, a paid
+There is one optional exception, and we want to be upfront about it: **Fil Pro smart search**, a paid
 feature that sends your fils' text to an AI provider, which finds and reflects the ones relevant to
-a question you ask. It only runs when you choose to use it. Details are in "Surfacing with Fil Pro"
+a question you ask. It only runs when you choose to use it. Details are in "Smart search with Fil Pro"
 below.
 
 ## The short version
 - We don't collect, sell, or share your personal data.
 - Your fils are created, stored, and searched by keyword entirely on your device.
 - The **only** time anything leaves your device is if you subscribe to **Fil Pro** and run a
-  surfacing query. That sends your fils' text to our AI provider (Anthropic), which picks and
+  smart search. That sends your fils' text to our AI provider (Anthropic), which picks and
   reflects the ones relevant to your question. It is **not used to train AI models** and is
   **deleted within 30 days**.
 - No ads, no analytics SDKs, no third-party trackers, no login.
@@ -25,16 +25,16 @@ below.
 Everything you create in Fil is stored **locally on your device** using Apple's on-device
 storage. A small amount is shared between Fil and its own Home Screen widget and Share extension
 through a private App Group container **on your device**. None of it is transmitted to us. The one
-exception is Fil Pro surfacing, described below.
+exception is Fil Pro smart search, described below.
 
-## Surfacing with Fil Pro (cloud AI)
+## Smart search with Fil Pro (cloud AI)
 Creating fils, storing them, and searching them by keyword all happen entirely on your device and
-never leave it. **Fil Pro** adds an optional feature called *surfacing*: when you ask Fil a question
+never leave it. **Fil Pro** adds an optional feature called *smart search*: when you ask Fil a question
 in your own words (for example, "what am I forgetting?"), the text of your fils is sent securely to
 our AI provider, **Anthropic**, which picks the ones relevant to your request and returns a short
 reflection.
 
-- This happens **only** when you, as a Fil Pro subscriber, run a surfacing query. If you never do,
+- This happens **only** when you, as a Fil Pro subscriber, run a smart search. If you never do,
   nothing leaves your device.
 - The text is used **only to answer your request**. Under Anthropic's commercial terms, it is **not
   used to train any AI models**, and Anthropic **deletes it within 30 days**.
@@ -43,7 +43,7 @@ reflection.
 
 ## Subscriptions
 Fil Pro is an auto-renewing subscription sold through Apple's App Store. Apple handles the payment;
-we never see your payment details. To verify that surfacing is available to you, Fil confirms your
+we never see your payment details. To verify that smart search is available to you, Fil confirms your
 subscription status with Apple. Manage or cancel anytime in **iOS Settings › Apple Account ›
 Subscriptions**.
 

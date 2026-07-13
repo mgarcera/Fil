@@ -1,7 +1,7 @@
 # Fil — App Privacy (App Store Connect answers)
 
 Fil is local-first with no analytics, ads, accounts, or third-party tracking SDKs. **One paid,
-opt-in feature (Fil Pro surfacing) transmits user content off-device**, so the questionnaire is no
+opt-in feature (Fil Pro smart search) transmits user content off-device**, so the questionnaire is no
 longer "Data Not Collected." Answer as follows.
 
 ## Data collection
@@ -9,7 +9,7 @@ longer "Data Not Collected." Answer as follows.
 Declare exactly one data type:
 
 - **User Content → "Other User Content"** — your fils' text, sent to our AI provider (Anthropic)
-  to answer a surfacing query.
+  to answer a smart search.
   - **Used for:** App Functionality (only).
   - **Linked to the user's identity?** **No.** Fil has no account; nothing identifying is attached.
   - **Used for tracking?** **No.**
@@ -21,7 +21,7 @@ on-device and collect nothing; the free tier never transmits content.
 **No.** Fil does not track. No `NSUserTrackingUsageDescription`, no IDFA, no ATT prompt.
 
 ## Why this is accurate (keep for your records)
-- **Fil Pro surfacing:** when a subscriber asks a question in their own words, their fils' text
+- **Fil Pro smart search:** when a subscriber asks a question in their own words, their fils' text
   is sent to Anthropic, which produces a reflection + picks the matching fils. Apple treats transmitting user
   content off-device as "collected," so it must be declared — as App Functionality, not linked, not
   tracking. Under Anthropic's commercial terms it is not used to train models and is deleted within
@@ -43,7 +43,7 @@ on-device and collect nothing; the free tier never transmits content.
       linked to identity, **not** used for tracking.
 - [ ] Tracking → **No**
 - [ ] Privacy Policy URL entered (hosted policy → `FilLinks.privacyPolicy`) — reflects the cloud
-      surfacing disclosure
+      smart search disclosure
 - [ ] Support URL entered (hosted support page → `FilLinks.support`)
 - [ ] Age rating completed (expected 4+)
 - [ ] Export compliance handled by `ITSAppUsesNonExemptEncryption = NO` (already in the build)
