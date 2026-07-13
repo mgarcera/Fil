@@ -33,6 +33,10 @@ struct CanvasHome: View {
     /// The header (owned by ContentView) drives `searchActive`: true enters the query screen, false
     /// returns to the composer.
     @Binding var searchActive: Bool
+    /// True while surfaced results are on screen, so the header can show a "new search" refresh.
+    @Binding var showingResults: Bool
+    /// Set true by the header's refresh button to start a fresh search; CanvasHome consumes it.
+    @Binding var newSearchRequested: Bool
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -112,6 +116,17 @@ struct CanvasHome: View {
                 query = ""
                 queryFocused = false
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
+            }
+        }
+        // Keep the header in sync: it shows the refresh button only while results are up.
+        .onChange(of: phase) { _, newPhase in
+            showingResults = (newPhase == .results)
+        }
+        // The header's refresh button asks for a fresh search.
+        .onChange(of: newSearchRequested) { _, requested in
+            if requested {
+                beginSurface()
+                newSearchRequested = false
             }
         }
     }
@@ -350,7 +365,7 @@ struct CanvasHome: View {
     /// gradient. The full sentence lays out (and wraps) normally in secondary text; the gradient is
     /// masked to show through only the "fil pro" glyphs via an aligned overlay.
     private var filProInviteLine: some View {
-        let full = "check out fil pro for a smart search"
+        let full = "check out fil pro for a smarter search."
         let word = "fil pro"
 
         // Base sentence: gray, with the wordmark punched out (clear) so the gradient overlay shows.
@@ -524,13 +539,6 @@ struct CanvasHome: View {
                 .font(Theme.dmSans(24, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
             Spacer()
-            Button("new") {
-                query = ""
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
-                queryFocused = true
-            }
-            .font(Theme.dmSans(14, weight: .semibold))
-            .foregroundStyle(Theme.secondaryText)
         }
     }
 

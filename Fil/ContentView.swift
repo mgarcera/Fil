@@ -20,6 +20,8 @@ struct ContentView: View {
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showFilSetup = false
     @State private var searchActive = false          // header button ↔ canvas: search screen vs composer
+    @State private var showingResults = false         // canvas → header: results on screen (show refresh)
+    @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -51,7 +53,7 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive)
+            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
@@ -228,7 +230,25 @@ struct ContentView: View {
                 .glassEffect()
 
                 Spacer()
+
+                // Shown only while surfaced results are up: start a fresh search.
+                if showingResults {
+                    Button {
+                        newSearchRequested = true
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 46, height: 46)
+                            .contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(in: .circle)
+                    .accessibilityLabel("New search")
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: showingResults)
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
