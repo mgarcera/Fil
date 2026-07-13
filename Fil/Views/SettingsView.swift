@@ -107,13 +107,13 @@ struct SettingsView: View {
             switch section {
             case .writing:
                 settingToggle(
-                    "use lowercase",
+                    "Use Lowercase",
                     description: "render titles and transcripts in lowercase for a more casual voice.",
                     isOn: $prefersLowercase
                 )
 
             case .sound:
-                settingToggle("sound effects", isOn: $soundEnabled)
+                settingToggle("Sound Effects", isOn: $soundEnabled)
 
             case .appearance:
                 appearanceSection
@@ -123,35 +123,27 @@ struct SettingsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(22)
-        .background(
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(Color.white.opacity(0.1))
-                .background(
-                    RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(.ultraThinMaterial.opacity(0.45))
-                )
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-        }
+        .padding(.vertical, 4)
         .blurOpacityEffect(contentVisible)
     }
 
     private var appearanceSection: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            settingToggle("dark mode", isOn: $isDarkMode)
+        VStack(alignment: .leading, spacing: 18) {
+            settingToggle("Dark Mode", isOn: $isDarkMode)
+
+            sectionDivider
 
             settingToggle(
-                "left-handed",
+                "Left-handed",
                 description: "put the search, fil, and send buttons on the left.",
                 isOn: $controlsOnLeft
             )
 
             if !screensaverOptions.isEmpty {
+                sectionDivider
+
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("screensavers")
+                    Text("Screensavers")
                         .font(Theme.dmSans(16, weight: .medium))
                         .foregroundStyle(.white)
 
@@ -182,8 +174,10 @@ struct SettingsView: View {
                 }
             }
 
+            sectionDivider
+
             settingToggle(
-                "auto screensaver",
+                "Auto Screensaver",
                 description: autoScreensaverUnlocked
                     ? "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery."
                     : "unlocks once you have a few more fils.",
@@ -192,6 +186,11 @@ struct SettingsView: View {
             .disabled(!autoScreensaverUnlocked)
             .opacity(autoScreensaverUnlocked ? 1 : 0.5)
         }
+    }
+
+    /// The hairline between settings options (matches the About section's dividers).
+    private var sectionDivider: some View {
+        Divider().overlay(Color.white.opacity(0.14))
     }
 
     private func settingToggle(_ title: String, description: String? = nil, isOn: Binding<Bool>) -> some View {
