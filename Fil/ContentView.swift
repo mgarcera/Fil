@@ -26,6 +26,8 @@ struct ContentView: View {
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
     /// The step index the mode-switch wheel has reached within the current drag (each step flips).
     @State private var swipeStep = 0
+    /// True while a mode-switch drag is in progress, so the canvas freezes keyboard focus until it ends.
+    @State private var isSwitchingModes = false
 
     @Environment(\.requestReview) private var requestReview
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
@@ -57,7 +59,7 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested)
+            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, isSwitchingModes: $isSwitchingModes)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it.
@@ -257,6 +259,7 @@ struct ContentView: View {
         let stepSize: CGFloat = 55
         return DragGesture(minimumDistance: 12)
             .onChanged { value in
+                isSwitchingModes = true   // freeze keyboard focus until the drag ends
                 let step = Int((value.translation.height / stepSize).rounded(.towardZero))
                 guard step != swipeStep else { return }
                 // Each detent crossed flips the mode; two modes, so parity of the delta decides.
@@ -267,7 +270,10 @@ struct ContentView: View {
                 }
                 UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             }
-            .onEnded { _ in swipeStep = 0 }
+            .onEnded { _ in
+                swipeStep = 0
+                isSwitchingModes = false   // release: the canvas re-applies focus for the final mode
+            }
     }
 
     private var filButton: some View {

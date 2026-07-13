@@ -39,6 +39,9 @@ struct CanvasHome: View {
     @Binding var showingResults: Bool
     /// Set true by the header's refresh button to start a fresh search; CanvasHome consumes it.
     @Binding var newSearchRequested: Bool
+    /// True while the header's mode-switch wheel is being dragged. Keyboard focus is frozen during
+    /// the drag (so rapid toggles don't churn first responder) and re-applied when it ends.
+    @Binding var isSwitchingModes: Bool
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -129,13 +132,23 @@ struct CanvasHome: View {
                 query = ""
                 queryFocused = false
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
-                fieldFocused = true   // returning home: raise the composer keyboard
+                if !isSwitchingModes { fieldFocused = true }   // returning home: raise the composer keyboard
             }
         }
         // Header sync only. Composer focus is set at genuine entry points (launch, after creating a
         // fil, returning from search) — like the query field — not re-forced on every phase change.
         .onChange(of: phase) { _, newPhase in
             showingResults = (newPhase == .results)
+        }
+        // When the mode-switch wheel is released, apply focus for the mode it landed on (during the
+        // drag focus was frozen, so the keyboard didn't churn through every detent).
+        .onChange(of: isSwitchingModes) { _, switching in
+            guard !switching else { return }
+            switch phase {
+            case .composing: fieldFocused = true
+            case .querying:  queryFocused = true
+            default:         break
+            }
         }
         .onAppear {
             // Cold launch lands in the composer — raise the keyboard once the view is ready.
@@ -155,7 +168,7 @@ struct CanvasHome: View {
     private func beginSurface() {
         query = ""
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
-        queryFocused = true
+        if !isSwitchingModes { queryFocused = true }   // frozen mid-wheel; re-applied on release
     }
 
     // MARK: - Capture states
