@@ -33,7 +33,6 @@ struct SettingsView: View {
                     sectionTabs
                     sectionCard
                 }
-                .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 24)
             }
@@ -79,6 +78,7 @@ struct SettingsView: View {
             }
         }
         .scrollIndicators(.hidden)
+        .contentMargins(.horizontal, 20, for: .scrollContent)
         .blurOpacityEffect(contentVisible)
     }
 
@@ -105,6 +105,7 @@ struct SettingsView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
         .padding(.vertical, 4)
         .blurOpacityEffect(contentVisible)
     }
@@ -153,6 +154,8 @@ struct SettingsView: View {
                         }
                     }
                     .scrollIndicators(.hidden)
+                    .contentMargins(.horizontal, 20, for: .scrollContent)
+                    .padding(.horizontal, -20)   // bleed the row out of the section's 20pt inset
                 }
             }
 
