@@ -24,7 +24,13 @@ struct PaywallView: View {
         .tint(Color(hex: "#33BF99"))
         .background(Theme.background)
         .onInAppPurchaseCompletion { _, result in
-            if case .success(.success) = result { dismiss() }
+            // Refresh entitlement deterministically here rather than racing the Transaction.updates
+            // listener, so isPro is true before the paywall dismisses and the next query routes to
+            // the cloud.
+            if case .success(.success) = result {
+                await StoreManager.shared.refresh()
+                dismiss()
+            }
         }
         .overlay(alignment: .topTrailing) {
             Button("close") { dismiss() }
