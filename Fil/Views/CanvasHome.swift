@@ -54,6 +54,12 @@ struct CanvasHome: View {
     /// Which surfaced fils go in the to-do checklist, captured once per query so completing a to-do
     /// doesn't reflow the fil into the grid mid-tap.
     @State private var todoFilIDs: Set<UUID> = []
+    /// The search phase to restore when the user returns from home, so a search survives a home trip.
+    /// Only the header refresh button starts a fresh search (via `beginSurface`).
+    @State private var savedSearchPhase: Phase?
+    /// Surfaced grid blobs that have popped in. They reveal one-by-one like a fil being created;
+    /// gating scale/opacity on this drives that entrance (and survives a home trip, so no re-pop).
+    @State private var revealedResultIDs: Set<UUID> = []
     @State private var summary = ""
     /// A surfaced fil pending landfil confirmation (drives the shared alert).
     @State private var pendingLandfilNote: Note?
@@ -127,9 +133,17 @@ struct CanvasHome: View {
         // the composer. (There's no tap-anywhere-to-go-back; the header button is the switcher.)
         .onChange(of: searchActive) { _, active in
             if active {
-                if phase != .querying && phase != .results { beginSurface() }
+                // Returning to search: restore the search that was on screen, else start fresh.
+                if let saved = savedSearchPhase {
+                    savedSearchPhase = nil
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = saved }
+                    if saved == .querying { queryFocused = true }
+                } else if phase != .querying && phase != .results {
+                    beginSurface()
+                }
             } else {
-                query = ""
+                // Going home: keep the query + results so they're still there on return. Don't clear.
+                if phase == .querying || phase == .results { savedSearchPhase = phase }
                 queryFocused = false
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
                 fieldFocused = true   // returning home: raise the composer keyboard
@@ -176,8 +190,16 @@ struct CanvasHome: View {
         }
     }
 
+    /// Start a fresh search: clear any prior results and the remembered search, and open an empty
+    /// query field. The header refresh button is the only way to reach this once results are up.
     private func beginSurface() {
+        savedSearchPhase = nil
         query = ""
+        summary = ""
+        surfaceError = nil
+        results = []
+        todoFilIDs = []
+        revealedResultIDs = []
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
         queryFocused = true
     }
@@ -227,7 +249,7 @@ struct CanvasHome: View {
 
     private var creatingBlob: some View {
         CreatingFilBlobView()
-            .frame(width: 130, height: 130)
+            .frame(width: 190, height: 190)
             .transition(.asymmetric(
                 insertion: .scale(scale: 0.2).combined(with: .opacity),
                 removal: .opacity
@@ -241,7 +263,7 @@ struct CanvasHome: View {
         if let note = formedNote {
             NoteBlobShape(seed: note.blobShapeSeed)
                 .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                .frame(width: 130, height: 130)
+                .frame(width: 190, height: 190)
                 .transition(Self.popTransition)
         }
     }
@@ -494,9 +516,9 @@ struct CanvasHome: View {
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-            .scaleEffect(isLandfilling(note) ? 0.01 : 1, anchor: .center)
+            .scaleEffect(blobShown(note) ? 1 : 0.01, anchor: .center)
             .blur(radius: isLandfilling(note) ? 8 : 0)
-            .opacity(isLandfilling(note) ? 0 : 1)
+            .opacity(blobShown(note) ? 1 : 0)
         }
         .buttonStyle(.plain)
         .contextMenu { filContextMenu(note) }
@@ -694,10 +716,11 @@ struct CanvasHome: View {
         // The gooey blob gives way to the fil's final randomized blob (pop), holds a beat, then fades.
         formedNote = note
         withAnimation(Self.popAnimation) { phase = .formed }
-        try? await Task.sleep(for: .milliseconds(750))
+        try? await Task.sleep(for: .milliseconds(1100))
         // Only return to the composer if the user hasn't navigated away (e.g. opened search) meanwhile.
         if phase == .formed {
-            withAnimation(.easeOut(duration: 0.4)) { phase = .composing }
+            // Pop back out the same way it came in (same bouncy spring + scale/opacity transition).
+            withAnimation(Self.popAnimation) { phase = .composing }
             fieldFocused = true   // ready to write the next thought
         }
     }
@@ -723,6 +746,24 @@ struct CanvasHome: View {
         }
 
         isRetrieving = false
+        revealResults(gridResults)
+    }
+
+    /// Pop the surfaced blobs in one after another — each scales up from ~0 with the same bouncy
+    /// spring a freshly created fil uses, for the scrapbook reveal.
+    private func revealResults(_ blobs: [Note]) {
+        revealedResultIDs = []
+        for (i, note) in blobs.enumerated() {
+            let id = note.uuid
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.06) {
+                withAnimation(Self.popAnimation) { _ = revealedResultIDs.insert(id) }
+            }
+        }
+    }
+
+    /// A grid blob is visible once it has popped in (revealed) and isn't being landfilled.
+    private func blobShown(_ note: Note) -> Bool {
+        revealedResultIDs.contains(note.uuid) && !isLandfilling(note)
     }
 
     /// Pro path: send the fil corpus + query to the surfacing proxy (Claude) for a warm summary and
