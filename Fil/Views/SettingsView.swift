@@ -100,17 +100,6 @@ struct SettingsView: View {
     private var sectionCard: some View {
         VStack(alignment: .leading, spacing: 20) {
             switch section {
-            case .writing:
-                settingToggle(
-                    "use lowercase",
-                    icon: "textformat.abc",
-                    description: "render titles and transcripts in lowercase for a more casual voice.",
-                    isOn: $prefersLowercase
-                )
-
-            case .sound:
-                settingToggle("sound effects", icon: "music.note", isOn: $soundEnabled)
-
             case .appearance:
                 appearanceSection
 
@@ -140,6 +129,19 @@ struct SettingsView: View {
                 description: "buttons on the left.",
                 isOn: $controlsOnLeft
             )
+
+            sectionDivider
+
+            settingToggle(
+                "use lowercase",
+                icon: "textformat.abc",
+                description: "render titles and transcripts in lowercase for a more casual voice.",
+                isOn: $prefersLowercase
+            )
+
+            sectionDivider
+
+            settingToggle("sound effects", icon: "music.note", isOn: $soundEnabled)
 
             if !screensaverOptions.isEmpty {
                 sectionDivider
@@ -368,8 +370,6 @@ struct ScreensaverOption: Identifiable {
 
 private enum SettingsSection: String, CaseIterable, Identifiable {
     case appearance
-    case writing
-    case sound
     case subscription
     case about
 
@@ -378,8 +378,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .appearance: "Appearance"
-        case .writing: "Writing"
-        case .sound: "Sound"
         case .subscription: "Fil Pro"
         case .about: "About"
         }
@@ -390,10 +388,6 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         switch self {
         case .appearance:
             [Color(hex: "#0EA5E9"), Color(hex: "#14B8A6"), Color(hex: "#22C55E")]
-        case .writing:
-            [Color(hex: "#6366F1"), Color(hex: "#EC4899"), Color(hex: "#0EA5E9")]
-        case .sound:
-            [Color(hex: "#4F46E5"), Color(hex: "#7C3AED"), Color(hex: "#2563EB")]
         case .subscription:
             [Color(hex: "#6659CC"), Color(hex: "#408CD9"), Color(hex: "#E8196A")]
         case .about:
