@@ -19,6 +19,7 @@ struct SettingsView: View {
 
     @State private var section: SettingsSection = .appearance
     @State private var showFromMason = false
+    @State private var showFeedback = false
     @State private var contentVisible = false
 
     @Environment(\.openURL) private var openURL
@@ -28,15 +29,24 @@ struct SettingsView: View {
             ambientBackground
                 .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    sectionTabs
-                    sectionCard
+            VStack(alignment: .leading, spacing: 28) {
+                sectionTabs
+                    .padding(.top, 16)
+
+                if section == .subscription {
+                    // The paywall (SubscriptionStoreView) scrolls + reflects Free/Pro on its own, so
+                    // it's rendered full-height here rather than nested in the card's ScrollView.
+                    PaywallView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .blurOpacityEffect(contentVisible)
+                } else {
+                    ScrollView {
+                        sectionCard
+                            .padding(.bottom, 24)
+                    }
+                    .scrollIndicators(.hidden)
                 }
-                .padding(.top, 16)
-                .padding(.bottom, 24)
             }
-            .scrollIndicators(.hidden)
         }
         .task {
             withAnimation(.smooth(duration: 0.7, extraBounce: 0)) {
@@ -47,6 +57,9 @@ struct SettingsView: View {
             FromMasonFilCard()
                 .presentationDetents([.large])
                 .presentationBackground(Theme.background)
+        }
+        .sheet(isPresented: $showFeedback) {
+            FeedbackSheet()
         }
     }
 
@@ -100,6 +113,10 @@ struct SettingsView: View {
 
             case .appearance:
                 appearanceSection
+
+            case .subscription:
+                // Rendered full-height in the body (not inside the card's ScrollView).
+                EmptyView()
 
             case .about:
                 aboutContent
@@ -226,8 +243,12 @@ struct SettingsView: View {
             aboutRow("support") { openURL(FilLinks.support) }
             aboutRow("privacy policy") { openURL(FilLinks.privacyPolicy) }
             aboutRow("terms of service") { openURL(FilLinks.termsOfService) }
-            aboutRow("contact & feedback") { openURL(FilLinks.contactEmail) }
-            aboutRow("rate fil") { openURL(FilLinks.writeReview) }
+            
+            Divider().overlay(Color.white.opacity(0.14))
+            
+            
+            aboutRow("send feedback") { showFeedback = true }
+            aboutRow("rate fil on the app store") { openURL(FilLinks.writeReview) }
 
             Divider().overlay(Color.white.opacity(0.14))
 
@@ -346,6 +367,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     case appearance
     case writing
     case sound
+    case subscription
     case about
 
     var id: String { rawValue }
@@ -355,6 +377,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .appearance: "Appearance"
         case .writing: "Writing"
         case .sound: "Sound"
+        case .subscription: "Fil Pro"
         case .about: "About"
         }
     }
@@ -368,6 +391,8 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
             [Color(hex: "#6366F1"), Color(hex: "#EC4899"), Color(hex: "#0EA5E9")]
         case .sound:
             [Color(hex: "#4F46E5"), Color(hex: "#7C3AED"), Color(hex: "#2563EB")]
+        case .subscription:
+            [Color(hex: "#6659CC"), Color(hex: "#408CD9"), Color(hex: "#E8196A")]
         case .about:
             [Color(hex: "#F59E0B"), Color(hex: "#F97316"), Color(hex: "#EAB308")]
         }

@@ -81,6 +81,7 @@ struct CanvasHome: View {
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
     @State private var showPaywall = false
+    @State private var showFeedback = false
     // Voice capture: the mic glyph starts recording; the gooey blob pulses while recording, then
     // flows into the same creation animation typed/link fils use.
     @State private var recorder = VoiceRecorderViewModel()
@@ -171,6 +172,9 @@ struct CanvasHome: View {
             PaywallView()
                 .presentationDetents([.large])
                 .presentationBackground(Theme.background)
+        }
+        .sheet(isPresented: $showFeedback) {
+            FeedbackSheet(context: "smart search fell back to keyword for: “\(query)”")
         }
         .sheet(isPresented: $showMicPriming) {
             MicPrimingSheet(
@@ -602,7 +606,7 @@ struct CanvasHome: View {
                                 .fixedSize(horizontal: false, vertical: true)
                             // Offer feedback only when we actually fell back to keyword matches (path E).
                             if !results.isEmpty {
-                                Button("send feedback") { /* TODO: wire up the feedback destination */ }
+                                Button("send feedback") { showFeedback = true }
                                     .font(Theme.dmSans(14, weight: .medium))
                                     .tint(Theme.filProIndigo)
                             }
