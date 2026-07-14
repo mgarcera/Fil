@@ -19,6 +19,8 @@ struct PaywallView: View {
 
     private static let privacyURL = URL(string: "https://rootcause.ltd/fil/privacy")!
     private static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    /// The web feature page detailing everything smart search can find (free vs Pro).
+    private static let smartSearchURL = URL(string: "https://rootcause.ltd/fil/smart-search")!
 
     var body: some View {
         SubscriptionStoreView(productIDs: StoreManager.ProductID.all) {
@@ -57,6 +59,17 @@ struct PaywallView: View {
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
+            // Keeps the paywall lean; the full free-vs-Pro capability list lives on the web.
+            Link(destination: Self.smartSearchURL) {
+                HStack(spacing: 4) {
+                    Text("see everything smart search finds")
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .font(Theme.dmSans(14, weight: .medium))
+            }
+            .tint(Theme.filProIndigo)
+            .frame(maxWidth: .infinity, alignment: .leading)
             // Plain-language data disclosure, shown at the moment of opting in.
             Text("to answer your search, smart search sends your notes' text to anthropic; it's never used to train models and is deleted within 30 days. free keyword search stays on your device.")
                 .font(Theme.dmSans(15))

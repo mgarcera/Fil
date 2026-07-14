@@ -1143,9 +1143,18 @@ struct CanvasHome: View {
     /// filament (attachment keyword + entry text / link captions / linked-note titles). Shared by
     /// free local search and the cloud pre-filter.
     private func searchableText(_ note: Note) -> String {
-        [note.title, note.transcript, note.keyword, filamentContent(note)]
+        [note.title, note.transcript, note.keyword, todoText(note), filamentContent(note)]
             .joined(separator: " ")
             .lowercased()
+    }
+
+    /// The fil's to-do item text (open + done), so searches match a to-do's words, not just its
+    /// presence. Blank rows dropped.
+    private func todoText(_ note: Note) -> String {
+        note.todos
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     /// The meaningful text carried by a fil's filaments — attached notes, links (caption + URL),
@@ -1220,6 +1229,10 @@ struct CanvasHome: View {
         }
         // Include filament content so Claude can surface a fil by what's attached to it (a linked
         // note, a link, a PDF), capped so per-fil payload cost stays bounded.
+        let todos = todoText(note).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !todos.isEmpty {
+            text += " — to-dos: \(String(todos.prefix(160)))"
+        }
         let filaments = filamentContent(note).trimmingCharacters(in: .whitespacesAndNewlines)
         if !filaments.isEmpty {
             text += " — attached: \(String(filaments.prefix(200)))"
