@@ -73,8 +73,9 @@ struct ComposerTextView: UIViewRepresentable {
             if parent.isFocused { parent.isFocused = false }
         }
 
-        /// Add "record voice" to the field's edit menu (both the caret menu and the selection menu),
-        /// alongside the system items (paste, autofill, …).
+        /// Build the field's edit menu: paste first (only when there's something to paste), then our
+        /// capture actions, then the remaining system items. Our custom paste replaces the system's
+        /// one — which we strip below — so it isn't duplicated when it leads.
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
             let record = UIAction(title: "record voice", image: UIImage(systemName: "mic.fill")) { [weak self] _ in
                 self?.parent.onRecordVoice()
@@ -82,7 +83,29 @@ struct ComposerTextView: UIViewRepresentable {
             let photo = UIAction(title: "add photo", image: UIImage(systemName: "photo")) { [weak self] _ in
                 self?.parent.onAddPhoto()
             }
-            return UIMenu(children: [record, photo] + suggestedActions)
+
+            var leading: [UIMenuElement] = []
+            let pasteboard = UIPasteboard.general
+            if pasteboard.hasStrings || pasteboard.hasURLs {
+                leading.append(UIAction(title: "paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in
+                    textView.paste(nil)
+                })
+            }
+            leading.append(contentsOf: [record, photo])
+
+            // Drop the system's own paste so ours (above) isn't duplicated; keep everything else.
+            let remaining = suggestedActions.compactMap(Self.strippingPaste)
+            return UIMenu(children: leading + remaining)
+        }
+
+        /// Recursively removes a "paste" command from a menu element (English-only title match; the
+        /// app ships in English today). Returns nil if the element itself is the paste action.
+        private static func strippingPaste(_ element: UIMenuElement) -> UIMenuElement? {
+            if let menu = element as? UIMenu {
+                return menu.replacingChildren(menu.children.compactMap(strippingPaste))
+            }
+            if element.title.lowercased() == "paste" { return nil }
+            return element
         }
     }
 }
