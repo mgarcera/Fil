@@ -360,8 +360,9 @@ struct ArticleView: View {
                 }
             }
 
+            // Caption sits directly under the photo(s), always visible (not gated on the detent).
             let caption = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if selectedPresentationDetent == .large, !caption.isEmpty {
+            if !caption.isEmpty {
                 Text(caption)
                     .font(Theme.dmMono(13))
                     .foregroundStyle(Theme.secondaryText)
@@ -387,7 +388,8 @@ struct ArticleView: View {
     }
 
     private var imageFilCarouselHeight: CGFloat {
-        selectedPresentationDetent == .large ? 560 : 340
+        // Expand the photo on the full detent; compact stays a peek with the caption below it.
+        selectedPresentationDetent == .large ? 640 : 340
     }
 
     private func openImageFilPreview(selectedIndex: Int) {

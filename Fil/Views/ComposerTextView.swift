@@ -10,6 +10,7 @@ struct ComposerTextView: UIViewRepresentable {
     @Binding var text: String
     @Binding var isFocused: Bool
     var onRecordVoice: () -> Void
+    var onAddPhoto: () -> Void
 
     /// Matches Theme.dmSans(20, .medium): the system body font scaled to 20pt so it tracks Dynamic Type.
     static var font: UIFont {
@@ -69,7 +70,10 @@ struct ComposerTextView: UIViewRepresentable {
             let record = UIAction(title: "record voice", image: UIImage(systemName: "mic.fill")) { [weak self] _ in
                 self?.parent.onRecordVoice()
             }
-            return UIMenu(children: [record] + suggestedActions)
+            let photo = UIAction(title: "add photo", image: UIImage(systemName: "photo")) { [weak self] _ in
+                self?.parent.onAddPhoto()
+            }
+            return UIMenu(children: [record, photo] + suggestedActions)
         }
     }
 }

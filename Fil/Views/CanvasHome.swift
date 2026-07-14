@@ -1,8 +1,18 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
+import QuickLook
 #if canImport(UIKit)
 import UIKit
 #endif
+
+/// A photo picked into the composer, held as a card in the deck until the fil is sent.
+private struct PendingPhoto: Identifiable {
+    let id = UUID()
+    let itemID: String?   // the picker asset id, used to skip re-picking one already staged
+    let image: UIImage
+    let data: Data
+}
 
 /// Fil's home: a blank capture-first canvas. You type a thought and it pops into being as a fil;
 /// tapping search opens a query field. Fil Pro gets cloud AI surfacing (a warm summary +
@@ -76,6 +86,16 @@ struct CanvasHome: View {
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showMicPriming = false
     @State private var recordingPulse = false
+    // Photo capture: "add photo" in the composer edit menu opens the picker.
+    @State private var showPhotoPicker = false
+    @State private var photoItems: [PhotosPickerItem] = []
+    /// Photos picked but not yet sent — shown as a strip above the composer; words can be added first.
+    @State private var pendingPhotos: [PendingPhoto] = []
+    /// Staged photos tapped for a native QuickLook preview (temp file URLs; current + the full set).
+    @State private var previewImageURL: URL?
+    @State private var previewImageURLs: [URL] = []
+    /// The fil sheet's current detent, bound so ArticleView knows when it's expanded to full.
+    @State private var filSheetDetent: PresentationDetent = .fraction(0.6)
     /// Fils mid-landfil: they shrink to nothing (like the timeline) before the actual delete.
     @State private var landfillingIDs: Set<UUID> = []
     /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
@@ -109,13 +129,14 @@ struct CanvasHome: View {
             }
             // Compose home: a quick shortcut to recently-made fils, above the keyboard while the
             // field is focused and empty, so it never competes with the blank page or writing.
-            if phase == .composing && fieldFocused && !hasText && !recentFils.isEmpty {
+            if phase == .composing && fieldFocused && !hasText && pendingPhotos.isEmpty && !recentFils.isEmpty {
                 recentFilsBar
             }
         }
         // The send FAB floats as an overlay (not a ZStack sibling) so its Button reliably wins hit
         // testing over the full-screen background tap-catcher below.
         .overlay(alignment: controlsOnLeft ? .bottomLeading : .bottomTrailing) {
+            // Send needs words — even with photos staged, the user types a caption first.
             if phase == .composing && hasText {
                 sendFAB
                     .padding(controlsOnLeft ? .leading : .trailing, 24)
@@ -130,14 +151,14 @@ struct CanvasHome: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
-        .sheet(item: $selectedNote) { note in
+        .sheet(item: $selectedNote, onDismiss: { filSheetDetent = .fraction(0.6) }) { note in
             NavigationStack {
                 // Match the timeline's presentation: the X toolbar item + respecting the top safe
                 // area render the nav bar and space the fil's content correctly.
-                ArticleView(note: note, ignoresTopSafeArea: false, showsCloseButton: true)
+                ArticleView(note: note, ignoresTopSafeArea: false, showsCloseButton: true, selectedPresentationDetent: $filSheetDetent)
             }
             // Link fils stay at the medium detent (no expand-to-full); other fils can go large.
-            .presentationDetents(note.isLinkFil ? [.fraction(0.6)] : [.fraction(0.6), .large])
+            .presentationDetents(note.isLinkFil ? [.fraction(0.6)] : [.fraction(0.6), .large], selection: $filSheetDetent)
             .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showPaywall) {
@@ -155,6 +176,30 @@ struct CanvasHome: View {
             )
             .presentationDetents([.medium])
             .presentationBackground(Theme.background)
+        }
+        .quickLookPreview($previewImageURL, in: previewImageURLs)
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 10, matching: .images, photoLibrary: .shared())
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task {
+                var seenIDs = Set(pendingPhotos.compactMap(\.itemID))
+                var seenData = Set(pendingPhotos.map(\.data))
+                var loaded: [PendingPhoto] = []
+                for item in items {
+                    let itemID = item.itemIdentifier
+                    if let itemID, seenIDs.contains(itemID) { continue }   // already staged — skip re-pick
+                    guard let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) else { continue }
+                    if seenData.contains(data) { continue }                // fallback: identical bytes
+                    loaded.append(PendingPhoto(itemID: itemID, image: image, data: data))
+                    if let itemID { seenIDs.insert(itemID) }
+                    seenData.insert(data)
+                }
+                photoItems = []
+                if !loaded.isEmpty {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos.append(contentsOf: loaded) }
+                }
+                fieldFocused = true   // keep composing — words can be added to the photos before sending
+            }
         }
         .landfilConfirmation(item: $pendingLandfilNote, message: { _ in
             "this fil will be deleted. this cannot be undone."
@@ -242,11 +287,21 @@ struct CanvasHome: View {
     /// This is the home's resting state — "let thoughts be" is the entrance.
     private var composer: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // UITextView-backed so "record voice" (and later "add photo") live in its edit menu.
-            ComposerTextView(text: $text, isFocused: $fieldFocused, onRecordVoice: startVoiceCapture)
+            // Staged photos ride above the input as a scrollable strip of rounded squares.
+            if !pendingPhotos.isEmpty {
+                photoThumbnailStrip
+                    .padding(.bottom, 16)
+            }
+            // UITextView-backed so "record voice" / "add photo" live in its edit menu.
+            ComposerTextView(
+                text: $text,
+                isFocused: $fieldFocused,
+                onRecordVoice: startVoiceCapture,
+                onAddPhoto: { showPhotoPicker = true }
+            )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .overlay(alignment: .topLeading) {
-                    if text.isEmpty {
+                    if text.isEmpty && pendingPhotos.isEmpty {
                         AnimatedGradientRevealText(text: "let thoughts be")
                             .font(Theme.dmSans(20, weight: .medium))
                             .foregroundStyle(Theme.tertiaryText)
@@ -272,6 +327,64 @@ struct CanvasHome: View {
         }
         .buttonStyle(.plain)
         .transition(.scale.combined(with: .opacity))
+    }
+
+    /// Write the staged photos to temp files and open the tapped one in native QuickLook (swipeable).
+    private func openPendingPreview(_ tapped: PendingPhoto) {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("fil-compose-preview", isDirectory: true)
+        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        var urls: [URL] = []
+        var tappedURL: URL?
+        for photo in pendingPhotos {
+            let url = tempDir.appendingPathComponent("pending-\(photo.id.uuidString).jpg")
+            if (try? photo.data.write(to: url)) != nil {
+                urls.append(url)
+                if photo.id == tapped.id { tappedURL = url }
+            }
+        }
+        previewImageURLs = urls
+        previewImageURL = tappedURL
+    }
+
+    /// Staged photos as rounded squares in a horizontal scroller above the input; ✕ removes one.
+    private var photoThumbnailStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 10) {
+                ForEach(pendingPhotos) { photo in
+                    Button { openPendingPreview(photo) } label: {
+                        Image(uiImage: photo.image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 72, height: 72)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .overlay(alignment: .topTrailing) {
+                        // A generous (invisible) hit area around the small ✕, easier to tap.
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                pendingPhotos.removeAll { $0.id == photo.id }
+                            }
+                        } label: {
+                            Color.clear
+                                .frame(width: 40, height: 40)
+                                .overlay(alignment: .topTrailing) {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 22, height: 22)
+                                        .background(.black.opacity(0.5), in: Circle())
+                                        .padding(3)
+                                }
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .scrollIndicators(.hidden)
     }
 
     /// A stop button, shown below the gooey blob while recording. Tapping it ends the recording and
@@ -310,10 +423,17 @@ struct CanvasHome: View {
     @ViewBuilder
     private var formedBlob: some View {
         if let note = formedNote {
-            NoteBlobShape(seed: note.blobShapeSeed)
-                .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                .frame(width: 190, height: 190)
-                .transition(Self.popTransition)
+            Group {
+                if hasBlobArtwork(note) {
+                    // Photo / link / voice reveal their artwork as they settle, like in the grid.
+                    NoteCardView(note: note, cardHeight: 190)
+                } else {
+                    NoteBlobShape(seed: note.blobShapeSeed)
+                        .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                }
+            }
+            .frame(width: 190, height: 190)
+            .transition(Self.popTransition)
         }
     }
 
@@ -737,6 +857,12 @@ struct CanvasHome: View {
     }
 
     private func createFil() async {
+        // Photos pending → this is a photo fil (the text becomes its caption).
+        if !pendingPhotos.isEmpty {
+            await createImageFil(images: pendingPhotos.map(\.data), caption: text)
+            return
+        }
+
         let thought = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !thought.isEmpty else { return }
 
@@ -830,6 +956,47 @@ struct CanvasHome: View {
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
+        modelContext.insert(note)
+        modelContext.saveOrLog()
+
+        SoundscapeManager.shared.stopMeshDuringProcessSound()
+        SoundscapeManager.shared.playArticleMadeSound()
+
+        formedNote = note
+        withAnimation(Self.popAnimation) { phase = .formed }
+        try? await Task.sleep(for: .milliseconds(1100))
+        if phase == .formed {
+            withAnimation(Self.popAnimation) { phase = .composing }
+            fieldFocused = true
+        }
+    }
+
+    // MARK: - Photo capture
+
+    /// Turn a picked image into an image fil, flowing through the same gooey-blob creation animation.
+    /// Turn the pending photos (+ optional caption) into one image fil, flowing through the same
+    /// gooey-blob creation animation typed fils use.
+    private func createImageFil(images: [Data], caption: String) async {
+        let caption = caption.trimmingCharacters(in: .whitespacesAndNewlines)
+        text = ""
+        fieldFocused = false
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos = [] }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
+        SoundscapeManager.shared.startMeshDuringProcessSound()
+
+        // With a caption, title generation fills the dwell; without one, hold the gooey blob a beat.
+        if caption.isEmpty { try? await Task.sleep(for: .milliseconds(500)) }
+        let title = caption.isEmpty ? "" : await ArticleGenerationService.shared.generateTitle(from: caption)
+
+        let gradient = Theme.randomGradientPair()
+        let note = Note(
+            title: title,
+            transcript: caption,
+            keyword: title,
+            gradientStartHex: gradient.start,
+            gradientEndHex: gradient.end
+        )
+        note.imageFilImages = images.enumerated().map { index, data in NoteImage(data: data, order: index, note: note) }
         modelContext.insert(note)
         modelContext.saveOrLog()
 

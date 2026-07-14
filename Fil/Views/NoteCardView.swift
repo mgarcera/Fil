@@ -51,15 +51,17 @@ struct NoteCardView: View {
                     Text(blobWordCount == 1 ? "word" : "words")
                         .font(Theme.dmMono(10))
                         .foregroundStyle(blobTextColor.opacity(0.75))
-                } else {
-                    // Small blobs (the input-bar chips) show just the time; bigger search blobs also
-                    // show the waveform, scaled up with the blob (like the link favicons).
-                    if showsVoiceWaveform {
-                        CompactWaveformView(duration: note.duration, color: blobTextColor)
-                            .scaleEffect(cardHeight / 98)
-                    }
+                } else if showsVoiceWaveform {
+                    // Bigger search blobs: the waveform (scaled up with the blob) + the time.
+                    CompactWaveformView(duration: note.duration, color: blobTextColor)
+                        .scaleEffect(cardHeight / 98)
                     Text(formatDuration(note.duration))
                         .font(Theme.dmMono(voiceMetricFont))
+                        .foregroundStyle(blobTextColor.opacity(0.9))
+                } else {
+                    // Small chips: a play glyph instead of the time (too small for both).
+                    Image(systemName: "play.fill")
+                        .font(.system(size: max(11, cardHeight * 0.3), weight: .semibold))
                         .foregroundStyle(blobTextColor.opacity(0.9))
                 }
             }
