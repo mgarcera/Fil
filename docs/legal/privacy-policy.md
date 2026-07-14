@@ -4,7 +4,7 @@
 
 Fil is built to keep your thoughts yours. It is a **local-first** app: your fils (voice
 recordings, transcripts, text, images, links, and titles) live on your device, not on our
-servers. Mason Garcera (the developer of Fil) does not run a server that collects your content,
+servers. Rootcause LLC (the maker of Fil) does not run a server that collects your content,
 and Fil has no account to sign into.
 
 There is one optional exception, and we want to be upfront about it: **Fil Pro smart search**, a paid
@@ -84,4 +84,4 @@ data is included under Apple's terms.
 If this policy changes, we'll update this page and the date above.
 
 ## Contact
-Questions? Email **mason@garcera.us**.
+Questions? Email **mason@rootcause.ltd**.

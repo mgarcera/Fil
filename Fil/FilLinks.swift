@@ -11,7 +11,7 @@ enum FilLinks {
     static let support = URL(string: "https://rootcause.ltd/fil/support")!
 
     /// Contact / feedback address (also the App Store Connect support contact).
-    static let contactEmail = URL(string: "mailto:mason@garcera.us")!
+    static let contactEmail = URL(string: "mailto:mason@rootcause.ltd")!
 
     // TODO(launch): set the numeric App Store ID once the app record exists in App Store Connect.
     static let appStoreID = "0000000000"

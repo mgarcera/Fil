@@ -2,7 +2,7 @@
 
 *Last updated: July 13, 2026*
 
-These terms are a simple agreement between you and Mason Garcera ("we", "us"), the maker of Fil.
+These terms are a simple agreement between you and Rootcause LLC ("we", "us"), the maker of Fil.
 By using Fil, you agree to them. Your use of Fil from the App Store is also governed by Apple's
 Licensed Application End User License Agreement (the "Standard EULA"); where these terms are
 silent, Apple's Standard EULA applies.
@@ -48,4 +48,4 @@ consequential damages, or for any loss of data, arising from your use of Fil.
 We may update these terms; continued use after an update means you accept the revised terms.
 
 ## Contact
-Questions? Email **mason@garcera.us**.
+Questions? Email **mason@rootcause.ltd**.

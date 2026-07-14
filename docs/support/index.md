@@ -1,7 +1,7 @@
 # Fil Support
 
 Fil is a quiet place to speak your mind and let thoughts be. If something isn't working, or you
-have an idea, email **mason@garcera.us**, and a real person (Mason) reads every message.
+have an idea, email **mason@rootcause.ltd**, and a real person (Mason) reads every message.
 
 ## Frequently asked
 
@@ -56,4 +56,4 @@ Delete a single fil in the app ("landfil"). To remove everything, delete the app
 Some ambient screensavers unlock as you create fils (10 or more). Keep filling.
 
 ## Contact
-**mason@garcera.us**
+**mason@rootcause.ltd**
