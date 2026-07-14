@@ -1143,16 +1143,32 @@ struct CanvasHome: View {
     /// filament (attachment keyword + entry text / link captions / linked-note titles). Shared by
     /// free local search and the cloud pre-filter.
     private func searchableText(_ note: Note) -> String {
-        var parts = [note.title, note.transcript, note.keyword]
+        [note.title, note.transcript, note.keyword, filamentContent(note)]
+            .joined(separator: " ")
+            .lowercased()
+    }
+
+    /// The meaningful text carried by a fil's filaments — attached notes, links (caption + URL),
+    /// linked-fil titles, PDF names, and simple markers for media. Shared by the free keyword
+    /// haystack and the Pro cloud payload so rich content is searchable in both.
+    private func filamentContent(_ note: Note) -> String {
+        var parts: [String] = []
         for attachment in note.attachments {
             parts.append(attachment.keyword)
             for entry in attachment.entries {
-                if let text = entry.text { parts.append(text) }
-                if let caption = entry.linkCaption { parts.append(caption) }
+                switch entry.kind {
+                case .textNote:   if let t = entry.text { parts.append(t) }
+                case .link:       parts.append(contentsOf: [entry.linkCaption, entry.text].compactMap { $0 })
+                case .linkedNote: if let t = entry.text { parts.append(t) }   // the linked fil's title
+                case .pdf:        if let n = entry.pdfName { parts.append(n) }
+                case .video:      parts.append("video")
+                case .recording:  parts.append("voice memo")
+                case .image:      parts.append("photo")
+                }
                 if let noteTitle = entry.noteTitle { parts.append(noteTitle) }
             }
         }
-        return parts.joined(separator: " ").lowercased()
+        return parts.joined(separator: " ")
     }
 
     /// Shortlist the fils sent to the cloud so cost (and latency) don't scale with library size.
@@ -1195,12 +1211,20 @@ struct CanvasHome: View {
     private func clusterText(_ note: Note) -> String {
         let title = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        var text: String
         switch (title.isEmpty, body.isEmpty) {
-        case (false, false): return "\(title): \(String(body.prefix(140)))"
-        case (false, true):  return title
-        case (true, false):  return String(body.prefix(140))
-        case (true, true):   return "fil"
+        case (false, false): text = "\(title): \(String(body.prefix(140)))"
+        case (false, true):  text = title
+        case (true, false):  text = String(body.prefix(140))
+        case (true, true):   text = "fil"
         }
+        // Include filament content so Claude can surface a fil by what's attached to it (a linked
+        // note, a link, a PDF), capped so per-fil payload cost stays bounded.
+        let filaments = filamentContent(note).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !filaments.isEmpty {
+            text += " — attached: \(String(filaments.prefix(200)))"
+        }
+        return text
     }
 
     /// Compact "(when, type, to-dos)" tag so Claude can answer temporal / type / to-do queries,
