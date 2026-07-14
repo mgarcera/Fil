@@ -18,7 +18,7 @@ struct PaywallView: View {
     ]
 
     private static let privacyURL = URL(string: "https://rootcause.ltd/fil/privacy")!
-    private static let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!
+    private static let termsURL = URL(string: "https://rootcause.ltd/fil/terms")!
     /// The web feature page detailing everything smart search can find (free vs Pro).
     private static let smartSearchURL = URL(string: "https://rootcause.ltd/fil/smart-search")!
 

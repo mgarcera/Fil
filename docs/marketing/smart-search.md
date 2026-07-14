@@ -3,7 +3,7 @@
 fil gives you two ways to find your thoughts. one is free and stays on your phone. the other, fil
 pro, understands what you meant.
 
-## free — keyword search
+## free keyword search
 
 type a word and fil finds every fil that contains it, instantly, right on your device. nothing
 leaves your phone. it looks through:
@@ -18,14 +18,14 @@ leaves your phone. it looks through:
 
 it matches the exact words you remember.
 
-## fil pro — smart search
+## fil pro smart search
 
 ask in your own words and fil understands what you meant, not just the letters you typed. it looks
 through everything free search does, and it understands more than words:
 
-- **meaning** — "the times i felt stuck", "my ideas about the app"
-- **time** — "what did i note last week", "what have i been forgetting"
-- **kind** — "my photos", "my links", "my to-dos"
+- **meaning**: "the times i felt stuck", "my ideas about the app"
+- **time**: "what did i note last week", "what have i been forgetting"
+- **kind**: "my photos", "my links", "my to-dos"
 
 then it reflects back what those fils were about, in a sentence or two, in your own voice.
 

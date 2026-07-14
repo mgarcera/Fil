@@ -1,9 +1,9 @@
-# Fil — Privacy Policy
+# Fil Privacy Policy
 
 *Last updated: July 13, 2026*
 
-Fil is built to keep your thoughts yours. It is a **local-first** app: your fils — voice
-recordings, transcripts, text, images, links, and titles — live on your device, not on our
+Fil is built to keep your thoughts yours. It is a **local-first** app: your fils (voice
+recordings, transcripts, text, images, links, and titles) live on your device, not on our
 servers. Mason Garcera (the developer of Fil) does not run a server that collects your content,
 and Fil has no account to sign into.
 
@@ -38,7 +38,7 @@ reflection.
   nothing leaves your device.
 - The text is used **only to answer your request**. Under Anthropic's commercial terms, it is **not
   used to train any AI models**, and Anthropic **deletes it within 30 days**.
-- No name or account is attached — Fil has no account.
+- No name or account is attached; Fil has no account.
 - **Free keyword search never uses the cloud** and never leaves your device.
 
 ## Subscriptions
@@ -48,13 +48,13 @@ subscription status with Apple. Manage or cancel anytime in **iOS Settings › A
 Subscriptions**.
 
 ## Permissions Fil asks for, and why
-- **Microphone** — to record voice notes. Recording only happens when you start it.
-- **Speech Recognition** — to turn recordings into text. Fil requests **on-device** transcription
+- **Microphone**: to record voice notes. Recording only happens when you start it.
+- **Speech Recognition**: to turn recordings into text. Fil requests **on-device** transcription
   whenever your device supports it, so your audio stays on the device. On devices that don't
   support on-device speech recognition, iOS may send the audio to **Apple's** speech recognition
   service to produce the transcript; that is handled by Apple under Apple's Privacy Policy, and
   Fil does not receive or store that audio anywhere else.
-- **Camera** — only if you choose to add a photo to a fil.
+- **Camera**: only if you choose to add a photo to a fil.
 
 You can change these any time in **iOS Settings › Fil**.
 
@@ -64,8 +64,8 @@ your device. Your note content is not sent to us or to a cloud service for this.
 
 ## Link previews
 If you save or share a link into Fil, the app fetches that page's icon and title to show a
-preview (via Apple's LinkPresentation). That request goes to the website you linked — the same as
-opening the link — and the preview is stored on your device.
+preview (via Apple's LinkPresentation). That request goes to the website you linked (the same as
+opening the link), and the preview is stored on your device.
 
 ## What we don't do
 - No analytics, no advertising, no tracking across apps or websites.
