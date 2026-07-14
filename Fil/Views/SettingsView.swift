@@ -135,7 +135,7 @@ struct SettingsView: View {
             settingToggle(
                 "use lowercase",
                 icon: "textformat.abc",
-                description: "render titles and transcripts in lowercase for a more casual voice.",
+                description: "render titles and voice recording transcripts in lowercase for a more casual voice.",
                 isOn: $prefersLowercase
             )
 
@@ -245,6 +245,7 @@ struct SettingsView: View {
 
             Divider().overlay(Color.white.opacity(0.14))
 
+            aboutRow("website") { openURL(FilLinks.website) }
             aboutRow("support") { openURL(FilLinks.support) }
             aboutRow("privacy policy") { openURL(FilLinks.privacyPolicy) }
             aboutRow("terms of service") { openURL(FilLinks.termsOfService) }
