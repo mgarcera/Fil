@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 import QuickLook
+import StoreKit
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -26,7 +27,23 @@ struct CanvasHome: View {
     /// Handedness (shared with the header): the send FAB sits on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
+    // First-run onboarding, re-homed here because creation now happens on the canvas (not through
+    // ContentView.createFil). See docs/onboarding/.
+    @AppStorage("didSeedWelcomeFil") private var didSeedWelcomeFil = false
+    /// Epoch seconds of the user's first real fil; 0 until then. Gates the one-time seed reveal.
+    @AppStorage("firstUserFilAt") private var firstUserFilAt: Double = 0
+    /// Ask for a rating at most once, after the user has felt the core loop a few times.
+    @AppStorage("didRequestReview") private var didRequestReview = false
+    @Environment(\.requestReview) private var requestReview
+    /// True only while the quiet "that's a fil" congrats is on screen (before the seed reveal).
+    @State private var showWelcomeCongrats = false
+    @State private var seedStage: SeedStage = .none
+    @State private var seedNote: Note?
+
     private enum Phase { case composing, recording, creating, formed, querying, results }
+    /// The one-time "from mason" seed reveal is smaller than a user's own fil: a little creating
+    /// blob morphs into the note blob right by the input, rather than the full-screen hero.
+    private enum SeedStage { case none, creating, formed }
 
     /// The settled fil blob pops in — scales up from near-zero with a snappy, punchy spring.
     private static let popTransition = AnyTransition.scale(scale: 0.01).combined(with: .opacity)
@@ -61,6 +78,10 @@ struct CanvasHome: View {
     @State private var text = ""
     /// The just-made fil, so the gooey creating blob can settle into its final randomized blob.
     @State private var formedNote: Note?
+    /// Drives the settled blob's pop in AND out via scale/opacity. A plain state (not a transition)
+    /// because a `switch`/`if` removal transition is unreliable here — the blob would pop in and then
+    /// vanish with no outro.
+    @State private var formedShown = false
 
     // Surfacing (dev-key Claude spike)
     @State private var query = ""
@@ -120,12 +141,21 @@ struct CanvasHome: View {
 
             switch phase {
             case .composing: composer
-            // Recording and creating share ONE gooey blob so it never tears down between them; it
-            // then morphs into the settled note blob.
-            case .recording, .creating: creatingGooey
-            case .formed:    formedBlob
             case .querying:  queryField
             case .results:   resultsList
+            // The creation blobs are rendered below as boolean-gated views, not switch cases: a
+            // switch animates a case's insertion but drops its removal transition, so the note blob
+            // would pop in with no outro. Gating on `phase` animates both directions.
+            case .recording, .creating, .formed: Color.clear
+            }
+
+            // Recording and creating share ONE gooey blob so it never tears down between them; it
+            // then morphs into the settled note blob, which pops out the same way it popped in.
+            if phase == .recording || phase == .creating {
+                creatingGooey
+            }
+            if phase == .formed {
+                formedBlob
             }
 
             if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
@@ -133,7 +163,8 @@ struct CanvasHome: View {
             }
             // Compose home: a quick shortcut to recently-made fils, above the keyboard while the
             // field is focused and empty, so it never competes with the blank page or writing.
-            if phase == .composing && fieldFocused && !hasText && pendingPhotos.isEmpty && !recentFils.isEmpty {
+            // Also shown during the seed reveal — the seed morphs in as the bar's leading chip.
+            if phase == .composing && fieldFocused && !hasText && pendingPhotos.isEmpty && (!recentFils.isEmpty || seedStage != .none) {
                 recentFilsBar
             }
         }
@@ -152,6 +183,13 @@ struct CanvasHome: View {
             if phase == .recording {
                 stopButton
                     .padding(.bottom, 90)
+            }
+        }
+        // A quiet beat after the user's very first fil, before the "from mason" seed reveals.
+        .overlay {
+            if showWelcomeCongrats {
+                welcomeCongratsOverlay
+                    .transition(.opacity)
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
@@ -449,7 +487,8 @@ struct CanvasHome: View {
     }
 
     /// The fil's final, settled randomized blob — same shape/gradient the grid card shows. It pops in
-    /// over the gooey creating blob (the "blob turns into a fil" morph), holds, then fades.
+    /// over the gooey creating blob (the "blob turns into a fil" morph), holds, then pops back out —
+    /// both driven by `formedShown` (scale + opacity), so the outro is guaranteed.
     @ViewBuilder
     private var formedBlob: some View {
         if let note = formedNote {
@@ -463,7 +502,8 @@ struct CanvasHome: View {
                 }
             }
             .frame(width: 190, height: 190)
-            .transition(Self.popTransition)
+            .scaleEffect(formedShown ? 1 : 0.02)
+            .opacity(formedShown ? 1 : 0)
         }
     }
 
@@ -528,7 +568,12 @@ struct CanvasHome: View {
             Spacer()
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    ForEach(recentFils) { note in
+                    // The seed morphs in as the leading chip (gooey → note blob) right here in the bar;
+                    // the real seed chip below is held back until the morph finishes so it doesn't dupe.
+                    if seedStage != .none {
+                        seedInlineReveal
+                    }
+                    ForEach(recentFils.filter { seedStage == .none || $0.uuid != seedNote?.uuid }) { note in
                         Button { selectedNote = note } label: {
                             Group {
                                 if hasBlobArtwork(note) {
@@ -927,6 +972,9 @@ struct CanvasHome: View {
             note = LinkFil.make(url: url, gradient: gradient, in: modelContext)
             try? await Task.sleep(for: .milliseconds(700))
         } else {
+            // Floor the creating beat so a near-instant title (e.g. a two-word thought) still lets
+            // the gooey blob breathe rather than snapping straight to the settled fil.
+            let started = Date()
             let title = await ArticleGenerationService.shared.generateTitle(from: thought)
             note = Note(
                 title: title,
@@ -936,22 +984,15 @@ struct CanvasHome: View {
                 gradientEndHex: gradient.end
             )
             modelContext.insert(note)
+            let elapsed = Date().timeIntervalSince(started)
+            if elapsed < 0.7 { try? await Task.sleep(for: .seconds(0.7 - elapsed)) }
         }
         modelContext.saveOrLog()
 
         SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        // The gooey blob gives way to the fil's final randomized blob (pop), holds a beat, then fades.
-        formedNote = note
-        withAnimation(Self.popAnimation) { phase = .formed }
-        try? await Task.sleep(for: .milliseconds(1100))
-        // Only return to the composer if the user hasn't navigated away (e.g. opened search) meanwhile.
-        if phase == .formed {
-            // Pop back out the same way it came in (same bouncy spring + scale/opacity transition).
-            withAnimation(Self.popAnimation) { phase = .composing }
-            fieldFocused = true   // ready to write the next thought
-        }
+        await settleCreatedFil(note)
     }
 
     // MARK: - Voice capture
@@ -1008,13 +1049,7 @@ struct CanvasHome: View {
         SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        formedNote = note
-        withAnimation(Self.popAnimation) { phase = .formed }
-        try? await Task.sleep(for: .milliseconds(1100))
-        if phase == .formed {
-            withAnimation(Self.popAnimation) { phase = .composing }
-            fieldFocused = true
-        }
+        await settleCreatedFil(note)
     }
 
     // MARK: - Photo capture
@@ -1030,9 +1065,9 @@ struct CanvasHome: View {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
         SoundscapeManager.shared.startMeshDuringProcessSound()
 
-        // With a caption, title generation fills the dwell; without one, hold the gooey blob a beat.
-        if caption.isEmpty { try? await Task.sleep(for: .milliseconds(500)) }
-        let title = caption.isEmpty ? "" : await ArticleGenerationService.shared.generateTitle(from: caption)
+        // Photo fils always carry a caption (the send FAB requires text), so its title generation
+        // fills the creating dwell.
+        let title = await ArticleGenerationService.shared.generateTitle(from: caption)
 
         let gradient = Theme.randomGradientPair()
         let note = Note(
@@ -1049,13 +1084,162 @@ struct CanvasHome: View {
         SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
+        await settleCreatedFil(note)
+    }
+
+    // MARK: - Creation tail + first-run payoff
+
+    /// Shared tail for every user creation path: settle the gooey blob into the note's final blob,
+    /// hold a beat, then return to the composer — and run the first-run payoff after a real fil.
+    private func settleCreatedFil(_ note: Note) async {
         formedNote = note
-        withAnimation(Self.popAnimation) { phase = .formed }
+        formedShown = false
+        // Gooey fades out (phase) as the settled blob pops in (formedShown) — the "blob → fil" morph.
+        withAnimation(.easeOut(duration: 0.25)) { phase = .formed }
+        withAnimation(Self.popAnimation) { formedShown = true }
         try? await Task.sleep(for: .milliseconds(1100))
+        // Only return to the composer if the user hasn't navigated away (e.g. opened search) meanwhile.
         if phase == .formed {
-            withAnimation(Self.popAnimation) { phase = .composing }
-            fieldFocused = true
+            // Fixed-duration outro (not a spring): its settle time is deterministic, so the wait
+            // below always outlasts it and the blob is fully gone before we swap back to the
+            // composer — otherwise the removal sometimes cut the shrink off (outro "only sometimes").
+            withAnimation(.easeIn(duration: 0.28)) { formedShown = false }
+            try? await Task.sleep(for: .milliseconds(300))
+            withAnimation(.easeOut(duration: 0.2)) { phase = .composing }
+            fieldFocused = true   // ready to write the next thought
         }
+        await afterUserFilCreated()
+    }
+
+    /// After a user's own fil: the gentle review ask, and — on their first ever fil — a quiet
+    /// congrats beat followed by the one-time "from mason" seed reveal.
+    private func afterUserFilCreated() async {
+        maybeRequestReview()
+        // Seed only once, and only when we're back on the composer (not if the user navigated away
+        // during the settle) — otherwise wait and reveal after their next fil.
+        guard firstUserFilAt == 0, phase == .composing, !didSeedWelcomeFil else { return }
+        firstUserFilAt = Date.now.timeIntervalSince1970
+        await revealWelcomeFil()
+    }
+
+    /// A quiet congratulation, then the "from mason" seed fil revealed as a small creating blob that
+    /// morphs into the note blob right by the input — a gentle welcome, not the full-screen hero the
+    /// user's own fils get. Stays on the composer throughout. Runs once, ever.
+    private func revealWelcomeFil() async {
+        didSeedWelcomeFil = true
+        withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = true }
+        try? await Task.sleep(for: .seconds(2.2))
+        withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = false }
+        try? await Task.sleep(for: .milliseconds(350))
+
+        let note = insertWelcomeFil()
+        modelContext.saveOrLog()
+        seedNote = note
+
+        // Small gooey creating blob by the input…
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { seedStage = .creating }
+        SoundscapeManager.shared.startMeshDuringProcessSound()
+        try? await Task.sleep(for: .milliseconds(900))
+        SoundscapeManager.shared.stopMeshDuringProcessSound()
+        SoundscapeManager.shared.playArticleMadeSound()
+
+        // …morphs into the settled note blob, holds, then hands off to its real recent-fil chip.
+        withAnimation(Self.popAnimation) { seedStage = .formed }
+        try? await Task.sleep(for: .milliseconds(1500))
+        // Instant, un-animated swap: the reveal chip and the real chip are the same blob at the same
+        // spot, so dropping the reveal (and letting the ForEach include the seed) is seamless.
+        seedStage = .none
+        seedNote = nil
+        fieldFocused = true
+    }
+
+    /// Builds the fixed "from mason" seed fil (no AI) with two sample filaments: a "filament" text
+    /// note and a "here" word that opens a bundled tutorial video. Deletable like any fil.
+    private func insertWelcomeFil() -> Note {
+        let note = Note(
+            title: WelcomeFil.title,
+            transcript: WelcomeFil.transcript,
+            keyword: WelcomeFil.title,
+            gradientStartHex: WelcomeFil.gradientStart,
+            gradientEndHex: WelcomeFil.gradientEnd
+        )
+
+        let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
+        filament.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.filamentNote, noteTitle: WelcomeFil.filamentNoteTitle)]
+        // The "here" filament holds a tutorial video: copy the bundled clip into the documents dir
+        // (where .video entries resolve) so it behaves like any user-added video.
+        let example = KeywordAttachment(keyword: WelcomeFil.exampleKeyword, note: note)
+        if let bundledVideo = Bundle.main.url(
+            forResource: WelcomeFil.exampleVideoResource,
+            withExtension: WelcomeFil.exampleVideoExtension
+        ) {
+            // Named for how it should read in the QuickLook title bar ("a vid").
+            let filename = "a vid.\(WelcomeFil.exampleVideoExtension)"
+            let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
+            // Decoded path: the space in "a vid.mp4" would percent-encode under .path(), so
+            // fileExists(atPath:) must use the real filesystem path or it never finds the copy.
+            let destPath = dest.path(percentEncoded: false)
+            if !FileManager.default.fileExists(atPath: destPath) {
+                try? FileManager.default.copyItem(at: bundledVideo, to: dest)
+                FileProtection.protectAtRest(dest)
+            }
+            if FileManager.default.fileExists(atPath: destPath) {
+                example.entries = [AttachmentEntry.video(path: filename)]
+            }
+        }
+        note.attachments = [filament, example]
+
+        modelContext.insert(note)
+        return note
+    }
+
+    /// Requests an App Store review after a genuine "aha" moment — a fil the user just made — but
+    /// only once, and only after a few fils, so the ask lands on a happy beat. StoreKit throttles
+    /// how often the prompt actually shows.
+    private func maybeRequestReview() {
+        guard !didRequestReview, notes.count >= 3 else { return }
+        didRequestReview = true
+        Task {
+            try? await Task.sleep(for: .seconds(1.5))
+            requestReview()
+        }
+    }
+
+    /// The "from mason" seed's small reveal, sized and placed like a recent-fil chip: a little
+    /// creating blob that morphs into the note's settled blob (same transitions as the full-screen
+    /// creation — gooey fades as the note blob pops in).
+    @ViewBuilder
+    private var seedInlineReveal: some View {
+        ZStack {
+            if seedStage == .creating {
+                CreatingFilBlobView()
+                    // The gooey blob wobbles past its frame; scale it down so it doesn't clip in the
+                    // small chip slot (the settled note blob already fits at full size).
+                    .scaleEffect(0.7)
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.2).combined(with: .opacity),
+                        removal: .opacity
+                    ))
+            } else if seedStage == .formed, let note = seedNote {
+                NoteBlobShape(seed: note.blobShapeSeed)
+                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                    .transition(Self.popTransition)
+            }
+        }
+        .frame(width: 36, height: 36)
+        .allowsHitTesting(false)
+    }
+
+    /// A quiet, calm beat after the user's first fil — no confetti. Fades before the seed reveal.
+    private var welcomeCongratsOverlay: some View {
+        ZStack {
+            Theme.background.opacity(0.55).ignoresSafeArea()
+            Text("that's a thought.\nit's yours.")
+                .font(Theme.dmSans(24, weight: .bold))
+                .foregroundStyle(Theme.primaryText)
+                .multilineTextAlignment(.center)
+        }
+        .allowsHitTesting(false)
     }
 
     private func runQuery() async {

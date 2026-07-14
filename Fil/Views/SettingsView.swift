@@ -162,7 +162,7 @@ struct SettingsView: View {
                 icon: "power",
                 description: autoScreensaverUnlocked
                     ? "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery."
-                    : "unlocks once you have a few more fils.",
+                    : "unlocks once you have a few more thoughts.",
                 isOn: $autoScreensaverEnabled
             )
             .disabled(!autoScreensaverUnlocked)

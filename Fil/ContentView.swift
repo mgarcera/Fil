@@ -25,18 +25,10 @@ struct ContentView: View {
     /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
-    @Environment(\.requestReview) private var requestReview
-    /// Ask for a rating at most once, after the user has felt the core loop a few times.
-    @AppStorage("didRequestReview") private var didRequestReview = false
-
-    // First-run onboarding (action-first + "from mason" seed fil). See docs/onboarding/.
-    @AppStorage("didSeedWelcomeFil") private var didSeedWelcomeFil = false
     /// First-party, on-device activation instrumentation (no third-party SDK). Epoch seconds.
+    /// (The first-fil payoff — congrats, "from mason" seed, review ask — now lives in CanvasHome,
+    /// where creation happens.)
     @AppStorage("firstLaunchAt") private var firstLaunchAt: Double = 0
-    @AppStorage("firstUserFilAt") private var firstUserFilAt: Double = 0
-    /// True only while the welcome seed fil is animating in, so it isn't counted as a user fil.
-    @State private var isSeedingWelcomeFil = false
-    @State private var showWelcomeCongrats = false
     @FocusState private var isComposerFocused: Bool
     @State private var isCreatingTextEntry = false
     private let temporaryDraftStore = TemporaryFilDraftStore.shared
@@ -150,24 +142,6 @@ struct ContentView: View {
             if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
             ingestSharedDrafts()
         }
-        .overlay {
-            if showWelcomeCongrats {
-                welcomeCongratsOverlay
-                    .transition(.opacity)
-            }
-        }
-    }
-
-    /// A quiet, calm beat after the user's first fil — no confetti. Fades before the seed reveal.
-    private var welcomeCongratsOverlay: some View {
-        ZStack {
-            Theme.background.opacity(0.55).ignoresSafeArea()
-            Text("that's a fil.\nit's yours.")
-                .font(Theme.dmSans(24, weight: .bold))
-                .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(.center)
-        }
-        .allowsHitTesting(false)
     }
 
     @ViewBuilder
@@ -412,10 +386,10 @@ struct ContentView: View {
             }
         }
         return [
-            option("filosophy", "camera.filters", "your thoughts as a lava lamp.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
-            option("filharmonic", "wave.3.left", "your thought bubbles rippling. (the more the better)", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
-            option("filanthropy", "wind", "your thought bubbles drifting and swirling.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
-            option("chlorofil", "rainbow", "your thoughts as an aurora. (uses your latest thoughts, so they'll always change color)", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
+            option("filosophy", "camera.filters", "a lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
+            option("filharmonic", "wave.3.left", "watch your thoughts ripple. (the more the better)", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
+            option("filanthropy", "wind", "watch your thoughts drift and swirl.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
+            option("chlorofil", "rainbow", "your thoughts in streaks of light. (uses your latest thoughts, so they'll always change color)", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
             option("fillet", "fish.fill", "your thoughts...as fish food.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
         ]
     }
@@ -462,84 +436,6 @@ struct ContentView: View {
             try? await Task.sleep(for: .milliseconds(300))
         }
         finishCreatingFil(filID)
-
-        guard succeeded else { return }
-        // The welcome seed fil also runs through createFil — don't treat it as a user fil.
-        guard !isSeedingWelcomeFil else { return }
-
-        if firstUserFilAt == 0 { firstUserFilAt = Date.now.timeIntervalSince1970 }
-        maybeRequestReview()
-        maybeRevealWelcomeFil()
-    }
-
-    /// After the user's own first fil, offer a quiet congratulation, then reveal the one-time
-    /// "from mason" seed fil — animated in through the normal creation path so the reveal itself
-    /// demonstrates the creation blob + discoverability. Runs exactly once, ever.
-    private func maybeRevealWelcomeFil() {
-        guard !didSeedWelcomeFil else { return }
-        didSeedWelcomeFil = true
-        Task { @MainActor in
-            withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = true }
-            try? await Task.sleep(for: .seconds(2.2))
-            withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = false }
-            try? await Task.sleep(for: .milliseconds(350))
-            isSeedingWelcomeFil = true
-            await createFil { filID in insertWelcomeFil(filID) }
-            isSeedingWelcomeFil = false
-        }
-    }
-
-    /// Builds the fixed "from mason" seed fil (no AI) with two sample filaments. Deletable like
-    /// any fil; seeded only once (guarded by `didSeedWelcomeFil`).
-    private func insertWelcomeFil(_ filID: UUID) {
-        let note = Note(
-            title: WelcomeFil.title,
-            transcript: WelcomeFil.transcript,
-            keyword: WelcomeFil.title,
-            gradientStartHex: WelcomeFil.gradientStart,
-            gradientEndHex: WelcomeFil.gradientEnd
-        )
-        note.uuid = filID
-
-        let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
-        filament.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.filamentNote, noteTitle: WelcomeFil.filamentNoteTitle)]
-        // The "here" filament holds a tutorial video: copy the bundled clip into the documents dir
-        // (where .video entries resolve) so it behaves like any user-added video.
-        let example = KeywordAttachment(keyword: WelcomeFil.exampleKeyword, note: note)
-        if let bundledVideo = Bundle.main.url(
-            forResource: WelcomeFil.exampleVideoResource,
-            withExtension: WelcomeFil.exampleVideoExtension
-        ) {
-            // Named for how it should read in the QuickLook title bar ("a vid").
-            let filename = "a vid.\(WelcomeFil.exampleVideoExtension)"
-            let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
-            // Decoded path: the space in "a vid.mp4" would percent-encode under .path(), so
-            // fileExists(atPath:) must use the real filesystem path or it never finds the copy.
-            let destPath = dest.path(percentEncoded: false)
-            if !FileManager.default.fileExists(atPath: destPath) {
-                try? FileManager.default.copyItem(at: bundledVideo, to: dest)
-                FileProtection.protectAtRest(dest)
-            }
-            if FileManager.default.fileExists(atPath: destPath) {
-                example.entries = [AttachmentEntry.video(path: filename)]
-            }
-        }
-        note.attachments = [filament, example]
-
-        modelContext.insert(note)
-        SoundscapeManager.shared.playArticleMadeSound()
-    }
-
-    /// Requests an App Store review after a genuine "aha" moment — a fil the user just made —
-    /// but only once, and only after they've created a few fils, so the ask lands on a happy beat
-    /// rather than cold. StoreKit itself further throttles how often the prompt actually shows.
-    private func maybeRequestReview() {
-        guard !didRequestReview, notes.count >= 3 else { return }
-        didRequestReview = true
-        Task {
-            try? await Task.sleep(for: .seconds(1.5))
-            requestReview()
-        }
     }
 
     private func handleIncomingURL(_ url: URL) {
