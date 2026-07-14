@@ -135,7 +135,7 @@ struct SelectableTextView: UIViewRepresentable {
                 textView.selectedTextRange = nil
             }
 
-            let todoAction = UIAction(title: "make to-do", image: UIImage(systemName: "checkmark.circle")) { [weak self] _ in
+            let todoAction = UIAction(title: "add to do", image: UIImage(systemName: "checkmark.circle")) { [weak self] _ in
                 guard let self else { return }
                 let selectedText = (textView.text as NSString).substring(with: range)
                 guard !selectedText.isEmpty else { return }
@@ -278,7 +278,7 @@ final class FilSelectableNSTextView: NSTextView {
         )
         menu.item(at: 0)?.target = self
         menu.insertItem(
-            withTitle: "make to-do",
+            withTitle: "add to do",
             action: #selector(makeTodoFromSelection(_:)),
             keyEquivalent: "",
             at: 1

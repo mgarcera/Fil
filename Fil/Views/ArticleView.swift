@@ -188,7 +188,9 @@ struct ArticleView: View {
         .overlay(alignment: .topTrailing) {
             pinToast
         }
-        .toolbar(note.isLinkFil ? .hidden : .automatic, for: .navigationBar)
+        // Hide the nav bar only for a *root* link fil (it has its own open + swipe-to-dismiss). A
+        // link fil pushed inside the filament stack keeps its bar, so there's a back button.
+        .toolbar(note.isLinkFil && filSheetPath.isEmpty ? .hidden : .automatic, for: .navigationBar)
         .onAppear {
             normalizeTodoCompletionStates()
             if hasAudioRecording {
@@ -374,10 +376,6 @@ struct ArticleView: View {
             // To-dos (and the add control) surface only at the full detent, so the compact
             // image view stays clean.
             if selectedPresentationDetent == .large {
-                Divider()
-                    .overlay(Theme.divider)
-                    .padding(.top, 4)
-
                 if !note.todos.isEmpty {
                     todoQuoteList
                 }
@@ -530,10 +528,6 @@ struct ArticleView: View {
             titleView
 
             transcriptSection
-
-            Divider()
-                .overlay(Theme.divider)
-                .padding(.top, 4)
 
             if !note.todos.isEmpty {
                 todoQuoteList
@@ -757,6 +751,7 @@ struct ArticleView: View {
                 }
             }
             .padding(.top, 2)
+            .padding(.leading, 20)
             .landfilConfirmation(item: $pendingLandfilTodo) { pending in
                 "“\(pending.text)” will be deleted. this cannot be undone."
             } onConfirm: { pending in
@@ -770,39 +765,42 @@ struct ArticleView: View {
     /// to-do app, action items are just one kind of thought that lands in it.
     @ViewBuilder
     private var addTodoControl: some View {
-        if isAddingTodo {
-            HStack(alignment: .center, spacing: 12) {
-                TodoStatusCircle(isCompleted: false)
+        Group {
+            if isAddingTodo {
+                HStack(alignment: .center, spacing: 12) {
+                    TodoStatusCircle(isCompleted: false)
 
-                TextField("to-do", text: $newTodoText)
-                    .font(Theme.dmMono(13))
-                    .foregroundStyle(Theme.secondaryText)
-                    .focused($isTodoFieldFocused)
-                    .submitLabel(.done)
-                    .onSubmit { commitNewTodo() }
-
-                Button(action: commitNewTodo) {
-                    Image(systemName: "return")
-                        .font(.system(size: 12, weight: .bold))
+                    TextField("to do", text: $newTodoText)
+                        .font(Theme.dmSans(16))
                         .foregroundStyle(Theme.secondaryText)
+                        .focused($isTodoFieldFocused)
+                        .submitLabel(.done)
+                        .onSubmit { commitNewTodo() }
+
+                    Button(action: commitNewTodo) {
+                        Image(systemName: "return")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(Theme.secondaryText)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 2)
+            } else {
+                Button(action: startAddingTodo) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text("to do")
+                            .font(Theme.dmSans(16))
+                    }
+                    .foregroundStyle(Theme.tertiaryText)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
-        } else {
-            Button(action: startAddingTodo) {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text("to-do")
-                        .font(Theme.dmMono(12))
-                }
-                .foregroundStyle(Theme.tertiaryText)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 2)
         }
+        .padding(.leading, 20)
     }
 
     private func startAddingTodo() {

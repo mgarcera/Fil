@@ -781,11 +781,15 @@ struct CanvasHome: View {
 
                     // All of the fil's to-dos (completed ones struck through), reusing the model's
                     // stable row items so completing one strikes in place instead of vanishing.
-                    ForEach(note.todoRowItems, id: \.id) { item in
-                        TodoRowContent(text: item.text, isCompleted: item.done) {
-                            toggleTodo(note, item.index)
+                    // Indented past the header blob (26) + spacing (12) so the circle sits under the title.
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(note.todoRowItems, id: \.id) { item in
+                            TodoRowContent(text: item.text, isCompleted: item.done) {
+                                toggleTodo(note, item.index)
+                            }
                         }
                     }
+                    .padding(.leading, 38)
                 }
             }
         }
