@@ -63,6 +63,7 @@ struct KeywordPopup: View {
     @State private var dragSnapshot: [UUID] = []
     @State private var didCompleteDrop = false
     @State private var showNotePicker = false
+    @State private var showFilLinkPicker = false
     @State private var showCamera = false
     @State private var showPDFImporter = false
     @State private var recordingEntryID: UUID?
@@ -77,6 +78,8 @@ struct KeywordPopup: View {
 
     private let maxSlots = 32
     private let cornerRadius: CGFloat = 30
+    /// Matches CanvasHome.gridBlobSize so the link picker's blobs are the same size as search blobs.
+    private let linkPickerBlobSize: CGFloat = 150
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
 
     var body: some View {
@@ -255,6 +258,64 @@ struct KeywordPopup: View {
                 }
             }
         }
+        .sheet(isPresented: $showFilLinkPicker) {
+            filLinkPickerSheet
+        }
+    }
+
+    /// "link a thought": pick another fil to link, shown as blobs (the same NoteCardView component
+    /// as the search grid) rather than a menu of titles.
+    private var filLinkPickerSheet: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)], spacing: 24) {
+                    ForEach(otherNotes) { otherNote in
+                        Button {
+                            appendLinkedNote(otherNote)
+                            showFilLinkPicker = false
+                        } label: {
+                            VStack(spacing: 10) {
+                                NoteCardView(note: otherNote, cardHeight: linkPickerBlobSize)
+                                    .frame(width: linkPickerBlobSize, height: linkPickerBlobSize)
+                                    .frame(maxWidth: .infinity)
+                                filLinkTitle(otherNote)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(20)
+            }
+            .scrollIndicators(.hidden)
+            .navigationTitle("link a thought")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("cancel") { showFilLinkPicker = false }
+                }
+            }
+        }
+        .presentationDetents([.large, .fraction(0.6)])
+        .presentationBackground(Theme.background)
+    }
+
+    /// Fil title under a picker blob, styled like the search grid: a one-line title centers, a title
+    /// that wraps to 2+ lines left-aligns (ViewThatFits, no manual line counting).
+    private func filLinkTitle(_ note: Note) -> some View {
+        let trimmed = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = trimmed.isEmpty ? "fil" : trimmed
+        return ViewThatFits(in: .horizontal) {
+            Text(label)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            Text(label)
+                .multilineTextAlignment(.leading)
+                .frame(width: linkPickerBlobSize, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(Theme.dmSans(15, weight: .medium))
+        .foregroundStyle(Theme.primaryText)
+        .frame(width: linkPickerBlobSize)
     }
 
     // MARK: - Entry Views
@@ -385,11 +446,21 @@ struct KeywordPopup: View {
         return Group {
             if let target {
                 NavigationLink(value: FilSheetRoute.linkedNote(target.uuid)) {
-                    LinkedNoteAttachmentTile(target: target, cornerRadius: cornerRadius)
+                    linkedFilBlob(target)
                 }
             } else {
                 Button {} label: {
-                    LinkedNoteAttachmentTile(target: nil, cornerRadius: cornerRadius)
+                    Color.clear
+                        .aspectRatio(1, contentMode: .fit)
+                        .overlay {
+                            NoteBlobShape(seed: 0.5)
+                                .fill(Theme.cardBackground)
+                                .overlay {
+                                    Image(systemName: "link.circle.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(.white.opacity(0.7))
+                                }
+                        }
                 }
                 .disabled(true)
             }
@@ -400,22 +471,28 @@ struct KeywordPopup: View {
         }
     }
 
+    /// A linked fil rendered with the SAME blob component (NoteCardView) the search grid and input
+    /// bar use — so a linked photo shows its image, a voice fil its waveform, etc. Fills the cell.
+    private func linkedFilBlob(_ target: Note) -> some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                GeometryReader { geo in
+                    NoteCardView(note: target, cardHeight: geo.size.height)
+                }
+            }
+    }
+
     // MARK: - Add Button
 
     private var addButton: some View {
         Menu {
             if otherNotes.count > 0 {
                 Section {
-                    Menu {
-                        ForEach(otherNotes) { otherNote in
-                            Button {
-                                appendLinkedNote(otherNote)
-                            } label: {
-                                Label(otherNote.title, systemImage: "waveform")
-                            }
-                        }
+                    Button {
+                        showFilLinkPicker = true
                     } label: {
-                        Label("Thread another fil", systemImage: "link.circle")
+                        Label("link a thought", systemImage: "link.circle")
                     }
                 }
             }
@@ -426,12 +503,12 @@ struct KeywordPopup: View {
                     noteEditorDetent = .large
                     editingNoteID = entry.id
                 } label: {
-                    Label("Note", systemImage: "note.text")
+                    Label("write note", systemImage: "note.text")
                 }
                 Button {
                     startMemoRecording()
                 } label: {
-                    Label("Voice Memo", systemImage: "mic.fill")
+                    Label("record", systemImage: "mic.fill")
                 }
                 Button {
                     beginAddingLink()
@@ -443,23 +520,25 @@ struct KeywordPopup: View {
                 Button {
                     photoPickerPresented = true
                 } label: {
-                    Label("Camera Roll", systemImage: "photo")
-                }
-                Button {
-                    videoPickerPresented = true
-                } label: {
-                    Label("Video", systemImage: "video")
+                    Label("add photo", systemImage: "photo")
                 }
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {
                         showCamera = true
                     } label: {
-                        Label("Take Photo", systemImage: "camera")
+                        Label("take a photo", systemImage: "camera")
                     }
+                }
+                Button {
+                    videoPickerPresented = true
+                } label: {
+                    Label("add video", systemImage: "video")
+                }
+                if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {
                         showVideoCamera = true
                     } label: {
-                        Label("Record Video", systemImage: "video.badge.plus")
+                        Label("take a video", systemImage: "video.badge.plus")
                     }
                 }
             }
@@ -467,7 +546,7 @@ struct KeywordPopup: View {
                 Button {
                     showPDFImporter = true
                 } label: {
-                    Label("Upload PDF", systemImage: "doc.fill")
+                    Label("upload PDF", systemImage: "doc.fill")
                 }
             }
         } label: {
@@ -696,16 +775,8 @@ struct KeywordPopup: View {
     }
 
     private func appendLinkedNote(_ linkedNote: Note) {
+        // One-directional: the link lives only on this fil. The target gets no backlink.
         appendEntry(.linkedNote(id: linkedNote.uuid, title: linkedNote.title))
-
-        let backlink = ThreadedFilBacklink(parentNoteID: note.uuid, parentKeyword: keyword)
-        let alreadyLinked = linkedNote.threadedBacklinks.contains {
-            $0.parentNoteID == backlink.parentNoteID && $0.parentKeyword == backlink.parentKeyword
-        }
-        if !alreadyLinked {
-            linkedNote.threadedBacklinks.append(backlink)
-        }
-
         modelContext.saveOrLog()
     }
 
@@ -1131,41 +1202,6 @@ private struct NoteAttachmentTile: View {
     }
 }
 
-private struct LinkedNoteAttachmentTile: View {
-    let target: Note?
-    let cornerRadius: CGFloat
-
-    var body: some View {
-        ZStack {
-            if let target {
-                if let imageData = target.imageData, let image = Image(data: imageData) {
-                    image
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Theme.gradient(startHex: target.gradientStartHex, endHex: target.gradientEndHex)
-                }
-            } else {
-                Theme.cardBackground
-            }
-
-            if let target, !target.keyword.isEmpty {
-                Text(target.keyword)
-                    .font(Theme.dmSans(11, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 6)
-            } else {
-                Image(systemName: "link.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.white.opacity(0.7))
-            }
-        }
-        .aspectRatio(1, contentMode: .fill)
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-    }
-}
 
 private struct AddAttachmentTile: View {
     let cornerRadius: CGFloat

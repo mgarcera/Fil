@@ -43,14 +43,8 @@ struct NoteCardView: View {
                 } else if note.isLinkFil {
                     linkBlobIcon
                 } else if note.audioFilePath.isEmpty {
-                    // Mirrors the audio fil: the word count is the prominent content
-                    // (like the waveform) with the DM Mono unit underneath (like the duration).
-                    Text("\(blobWordCount)")
-                        .font(Theme.dmMono(12, weight: .bold))
-                        .foregroundStyle(blobTextColor.opacity(0.95))
-                    Text(blobWordCount == 1 ? "word" : "words")
-                        .font(Theme.dmMono(10))
-                        .foregroundStyle(blobTextColor.opacity(0.75))
+                    // Text fils are just a clean gradient blob (title lives beside/under the blob).
+                    EmptyView()
                 } else if showsVoiceWaveform {
                     // Bigger search blobs: the waveform (scaled up with the blob) + the time.
                     CompactWaveformView(duration: note.duration, color: blobTextColor)
@@ -101,21 +95,6 @@ struct NoteCardView: View {
                 .stroke(selectionStrokeColor, lineWidth: selectionStrokeLineWidth)
                 .shadow(color: .black.opacity(selectionStrokeShadowOpacity), radius: 5, x: 0, y: 2)
         }
-    }
-
-    /// Words of the note's text content (transcript preferred, else title), used for
-    /// both the snippet and the word-count metric so the two always agree.
-    private var blobSourceWords: [String] {
-        let source = [note.transcript, note.title]
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .first { !$0.isEmpty } ?? "fil"
-        return source
-            .split(whereSeparator: { $0.isWhitespace })
-            .map(String.init)
-    }
-
-    private var blobWordCount: Int {
-        blobSourceWords.count
     }
 
     /// Near-black on light blobs, white on dark ones, so the word count stays legible
