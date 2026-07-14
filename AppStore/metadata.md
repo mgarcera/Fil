@@ -47,18 +47,22 @@ organize yourself. some thoughts just need to exist.
 
 speak your mind. let it be.
 
-questions or ideas? mason@garcera.us
+questions or ideas? mason@rootcause.ltd
 ```
 
 ## What's New (version 1.0)
 ```
 the first fil. speak your mind and let it be — talk, and your words become a short, findable note,
-right on your device. no account, no ads. tell me what to build next: mason@garcera.us
+right on your device. no account, no ads. tell me what to build next: mason@rootcause.ltd
 ```
 
 ## Also set in App Store Connect
-- **Privacy Policy URL:** the hosted `docs/legal/privacy-policy.md` (matches `FilLinks.privacyPolicy`).
-- **Support URL:** the hosted `docs/support/` page (matches `FilLinks.support`).
+- **Legal entity / copyright:** Rootcause LLC. Set the app's copyright to `© 2026 Rootcause LLC`.
+- **Support contact email (App Information):** `mason@rootcause.ltd`.
+- **Privacy Policy URL:** `https://rootcause.ltd/fil/privacy` (matches `FilLinks.privacyPolicy`).
+- **Support URL:** `https://rootcause.ltd/fil/support` (matches `FilLinks.support`).
+- **Terms of Use (EULA):** paste the `/fil/terms` text into the custom EULA field (or link it) so it
+  matches the paywall + in-app Terms link (`FilLinks.termsOfService`).
 - **Age rating:** no objectionable content (expected 4+).
 - **Price:** Free (v1). See LAUNCH_READINESS_AUDIT.md for the Pro fast-follow plan.
 - Enroll in the **Small Business Program** before any future paid tier.

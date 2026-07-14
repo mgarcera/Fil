@@ -130,7 +130,7 @@ blobs; keep the rest near-monochrome.]`
 >
 > [ App Store ]   ·   [ privacy ]   ·   [ terms ]   ·   [ support ]   ·   [ press ]
 >
-> made by mason · mason@garcera.us
+> made by mason · mason@rootcause.ltd
 >
 > `© 2026`
 
