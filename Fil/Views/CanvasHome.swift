@@ -96,6 +96,9 @@ struct CanvasHome: View {
     @State private var previewImageURLs: [URL] = []
     /// The fil sheet's current detent, bound so ArticleView knows when it's expanded to full.
     @State private var filSheetDetent: PresentationDetent = .fraction(0.6)
+    /// Navigation path inside the fil sheet, so filaments (and linked fils) can push. Without this,
+    /// tapping "filament" / a highlighted word had nowhere to go — the feature was unreachable.
+    @State private var filSheetPath: [FilSheetRoute] = []
     /// Fils mid-landfil: they shrink to nothing (like the timeline) before the actual delete.
     @State private var landfillingIDs: Set<UUID> = []
     /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
@@ -151,11 +154,14 @@ struct CanvasHome: View {
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
-        .sheet(item: $selectedNote, onDismiss: { filSheetDetent = .fraction(0.6) }) { note in
-            NavigationStack {
+        .sheet(item: $selectedNote, onDismiss: { filSheetDetent = .fraction(0.6); filSheetPath.removeAll() }) { note in
+            NavigationStack(path: $filSheetPath) {
                 // Match the timeline's presentation: the X toolbar item + respecting the top safe
                 // area render the nav bar and space the fil's content correctly.
-                ArticleView(note: note, ignoresTopSafeArea: false, showsCloseButton: true, selectedPresentationDetent: $filSheetDetent)
+                ArticleView(note: note, ignoresTopSafeArea: false, showsCloseButton: true, filSheetPath: $filSheetPath, selectedPresentationDetent: $filSheetDetent)
+                    .navigationDestination(for: FilSheetRoute.self) { route in
+                        filSheetDestination(route)
+                    }
             }
             // Link fils stay at the medium detent (no expand-to-full); other fils can go large.
             .presentationDetents(note.isLinkFil ? [.fraction(0.6)] : [.fraction(0.6), .large], selection: $filSheetDetent)
@@ -269,6 +275,25 @@ struct CanvasHome: View {
 
     /// Start a fresh search: clear any prior results and the remembered search, and open an empty
     /// query field. The header refresh button is the only way to reach this once results are up.
+    /// Destinations pushed inside the fil sheet: a filament (keyword) popup, or a linked fil.
+    @ViewBuilder
+    private func filSheetDestination(_ route: FilSheetRoute) -> some View {
+        switch route {
+        case .keyword(let noteID, let keyword):
+            if let routeNote = notes.first(where: { $0.uuid == noteID }) {
+                KeywordPopup(note: routeNote, keyword: keyword)
+            } else {
+                MissingLinkedFilView()
+            }
+        case .linkedNote(let linkedNoteID):
+            if let linkedNote = notes.first(where: { $0.uuid == linkedNoteID }) {
+                ArticleView(note: linkedNote, showsThreadedFilRows: false, ignoresTopSafeArea: false, filSheetPath: $filSheetPath)
+            } else {
+                MissingLinkedFilView()
+            }
+        }
+    }
+
     private func beginSurface() {
         savedSearchPhase = nil
         query = ""
