@@ -473,7 +473,7 @@ struct CanvasHome: View {
     /// be" entrance — upper-left, left-aligned. Opened from the header search.
     private var queryField: some View {
         VStack(alignment: .leading, spacing: 0) {
-            TextField("", text: $query, axis: .horizontal)
+            TextField("", text: $query, axis: .vertical)
                 .font(Theme.dmSans(20, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
                 .multilineTextAlignment(.leading)
@@ -502,7 +502,14 @@ struct CanvasHome: View {
                         }
                     }
                 }
-                .onSubmit { Task { await runQuery() } }
+                // A vertical-axis TextField wraps long queries, but the return key inserts a newline
+                // instead of submitting; treat that newline as "search" so return still runs the query.
+                .onChange(of: query) { _, newValue in
+                    if newValue.contains("\n") {
+                        query = newValue.replacingOccurrences(of: "\n", with: "")
+                        Task { await runQuery() }
+                    }
+                }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

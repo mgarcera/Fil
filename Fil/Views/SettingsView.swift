@@ -256,7 +256,7 @@ struct SettingsView: View {
             Divider().overlay(Color.white.opacity(0.14))
 
             Text("version \(appVersion)")
-                .font(Theme.dmMono(12))
+                .font(Theme.dmSans(12))
                 .foregroundStyle(.white.opacity(0.5))
         }
     }

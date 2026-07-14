@@ -46,6 +46,15 @@ struct ComposerTextView: UIViewRepresentable {
         }
     }
 
+    /// Constrain the text view to the width SwiftUI proposes so it wraps (and grows in height)
+    /// instead of running off to the right. Without this, a scroll-disabled UITextView reports its
+    /// single-line intrinsic width and the text never line-breaks.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0, width < .infinity else { return nil }
+        let fitted = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: fitted.height)
+    }
+
     func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
 
     final class Coordinator: NSObject, UITextViewDelegate {
