@@ -743,19 +743,24 @@ struct CanvasHome: View {
     // runQuery) so completing a to-do can't reflow a fil out of the checklist mid-tap.
     private var todoResults: [Note] { results.filter { todoFilIDs.contains($0.uuid) } }
     private var gridResults: [Note] { results.filter { !todoFilIDs.contains($0.uuid) } }
+    private var photoResults: [Note] { gridResults.filter { $0.isImageFil } }
+    private var otherResults: [Note] { gridResults.filter { !$0.isImageFil } }
 
-    /// Summary sits above; here photos + notes + links share the grid, and any to-do fils get a
-    /// checklist beneath. A pure "to-dos" query shows just the checklist.
+    /// Summary sits above; below it the results order is to-dos, then photos, then everything else
+    /// (notes / links / voice).
     private var scrapbook: some View {
         VStack(alignment: .leading, spacing: 28) {
-            if !gridResults.isEmpty {
-                LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
-                    ForEach(gridResults, id: \.uuid) { blobCell($0) }
-                }
-            }
             if !todoResults.isEmpty { todoChecklist(todoResults) }
+            if !photoResults.isEmpty { blobGrid(photoResults) }
+            if !otherResults.isEmpty { blobGrid(otherResults) }
         }
         .padding(.top, 4)
+    }
+
+    private func blobGrid(_ notes: [Note]) -> some View {
+        LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
+            ForEach(notes, id: \.uuid) { blobCell($0) }
+        }
     }
 
     /// TodoSheet-style checklist: each fil as a bold header (blob + title), its open to-dos beneath.
