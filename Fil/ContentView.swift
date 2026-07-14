@@ -399,7 +399,7 @@ struct ContentView: View {
             screensaverOptions: screensaverOptions,
             autoScreensaverUnlocked: notes.count >= koiPondUnlockThreshold
         )
-            .presentationDetents([.fraction(0.6)])
+            .presentationDetents([.fraction(0.6), .large])
             .presentationBackground(Theme.background)
     }
 

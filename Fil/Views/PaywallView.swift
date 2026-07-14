@@ -6,6 +6,10 @@ import StoreKit
 /// header. Purchases flow through `Transaction.updates`, which `StoreManager` observes to flip
 /// `isPro`, so app-wide gating updates automatically. See docs/monetization/blank-canvas-pivot-plan.md.
 struct PaywallView: View {
+    /// When embedded in the Settings sheet the sheet has its own dismissal (tabs + drag), so the
+    /// native close (X) button is redundant; standalone presentation keeps it.
+    var showsDismiss: Bool = true
+
     @Environment(\.dismiss) private var dismiss
 
     /// Gradient pairs for the static fil-blobs beside the gooey creating blob (mirrors the website's
@@ -28,12 +32,17 @@ struct PaywallView: View {
         }
         .subscriptionStoreControlStyle(.prominentPicker)
         .subscriptionStorePickerItemBackground(.ultraThinMaterial)
+        // Drop StoreKit's default per-plan marketing icon (the star beside "your plan").
+        .subscriptionStoreControlIcon { _, _ in EmptyView() }
         .storeButton(.visible, for: .restorePurchases)
         // Apple renders its policy buttons centered; we hide them and show our own left-aligned
         // Terms + Privacy links in the header instead.
         .storeButton(.hidden, for: .policies)
+        .storeButton(showsDismiss ? .visible : .hidden, for: .cancellation)
         .tint(Theme.filProIndigo)
-        .background(Theme.background)
+        // Standalone gets its own opaque backdrop; embedded stays clear so the Settings sheet's
+        // ambient background shows through and it blends in.
+        .background(showsDismiss ? Theme.background : Color.clear)
         .onInAppPurchaseCompletion { _, result in
             // Refresh entitlement deterministically here rather than racing the Transaction.updates
             // listener, so isPro is true before the paywall dismisses and the next query routes to
@@ -71,7 +80,7 @@ struct PaywallView: View {
             .tint(Theme.filProIndigo)
             .frame(maxWidth: .infinity, alignment: .leading)
             // Plain-language data disclosure, shown at the moment of opting in.
-            Text("to answer your search, smart search sends your notes' text to anthropic; it's never used to train models and is deleted within 30 days. free keyword search stays on your device.")
+            Text("to answer your search, smart search sends relevant text to our ai provider (anthropic). it's never used to train models and is deleted within 30 days. free keyword search stays on your device.")
                 .font(Theme.dmSans(15))
                 .foregroundStyle(Theme.tertiaryText)
                 .multilineTextAlignment(.leading)

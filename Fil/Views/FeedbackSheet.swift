@@ -19,13 +19,13 @@ struct FeedbackSheet: View {
     @FocusState private var messageFocused: Bool
 
     private enum Outcome { case sent, failed }
-    private let sentiments = ["😍", "🙂", "😐", "🙁", "🐛"]
+    private let sentiments = ["😍", "☺️", "😡", "😒", "😭", "🐛"]
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("what's on your mind? a real person (mason) reads every note.")
+                    Text("how's it going?")
                         .font(Theme.dmSans(15))
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -47,7 +47,7 @@ struct FeedbackSheet: View {
 
                     ZStack(alignment: .topLeading) {
                         if message.isEmpty {
-                            Text("your feedback")
+                            Text("your thoughts")
                                 .font(Theme.dmSans(16))
                                 .foregroundStyle(Theme.tertiaryText)
                                 .padding(.top, 8)
@@ -99,10 +99,10 @@ struct FeedbackSheet: View {
         .presentationDetents([.large])
         .presentationBackground(Theme.background)
         .onAppear { messageFocused = true }
-        .alert("thank you", isPresented: alertBinding(.sent)) {
+        .alert("thank you!", isPresented: alertBinding(.sent)) {
             Button("ok") { dismiss() }
         } message: {
-            Text("your note is on its way to mason.")
+            Text("your feedback has been sent!")
         }
         .alert("couldn't send", isPresented: alertBinding(.failed)) {
             Button("ok") {}

@@ -31,12 +31,12 @@ struct SettingsView: View {
 
             VStack(alignment: .leading, spacing: 28) {
                 sectionTabs
-                    .padding(.top, 16)
+                    .padding(.top, 32)
 
                 if section == .subscription {
                     // The paywall (SubscriptionStoreView) scrolls + reflects Free/Pro on its own, so
                     // it's rendered full-height here rather than nested in the card's ScrollView.
-                    PaywallView()
+                    PaywallView(showsDismiss: false)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .blurOpacityEffect(contentVisible)
                 } else {
@@ -146,7 +146,10 @@ struct SettingsView: View {
 
                 VStack(alignment: .leading, spacing: 16) {
                     settingLabel("screensavers", icon: "zzz")
+                    // Indent rows so their icons line up under the word "screensavers"
+                    // (header icon frame width 22 + HStack spacing 12).
                     ForEach(screensaverOptions) { screensaverRow($0) }
+                        .padding(.leading, 34)
                 }
             }
 
@@ -247,7 +250,7 @@ struct SettingsView: View {
             Divider().overlay(Color.white.opacity(0.14))
             
             
-            aboutRow("send feedback") { showFeedback = true }
+            aboutRow("open feedback form") { showFeedback = true }
             aboutRow("rate fil on the app store") { openURL(FilLinks.writeReview) }
 
             Divider().overlay(Color.white.opacity(0.14))

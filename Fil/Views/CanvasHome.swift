@@ -606,7 +606,7 @@ struct CanvasHome: View {
                                 .fixedSize(horizontal: false, vertical: true)
                             // Offer feedback only when we actually fell back to keyword matches (path E).
                             if !results.isEmpty {
-                                Button("send feedback") { showFeedback = true }
+                                Button("open feedback form") { showFeedback = true }
                                     .font(Theme.dmSans(14, weight: .medium))
                                     .tint(Theme.filProIndigo)
                             }
