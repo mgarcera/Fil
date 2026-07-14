@@ -26,6 +26,9 @@ struct CanvasHome: View {
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     /// Handedness (shared with the header): the send FAB sits on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
+    /// When on, a created fil animates as a small blob in the recent-fils strip (like the "from
+    /// mason" reveal) instead of the full-screen gooey → note blob. Off = the big center animation.
+    @AppStorage("smallCreationAnimation") private var smallCreationAnimation = false
 
     // First-run onboarding, re-homed here because creation now happens on the canvas (not through
     // ContentView.createFil). See docs/onboarding/.
@@ -163,8 +166,10 @@ struct CanvasHome: View {
             }
             // Compose home: a quick shortcut to recently-made fils, above the keyboard while the
             // field is focused and empty, so it never competes with the blank page or writing.
-            // Also shown during the seed reveal — the seed morphs in as the bar's leading chip.
-            if phase == .composing && fieldFocused && !hasText && pendingPhotos.isEmpty && (!recentFils.isEmpty || seedStage != .none) {
+            // Always shown while a mini creation/seed reveal is animating (even with the keyboard
+            // down, e.g. voice/photo) — the new blob morphs in as the bar's leading chip.
+            if phase == .composing && pendingPhotos.isEmpty
+                && (seedStage != .none || (fieldFocused && !hasText && !recentFils.isEmpty)) {
                 recentFilsBar
             }
         }
@@ -593,10 +598,13 @@ struct CanvasHome: View {
                     }
                 }
                 .padding(.horizontal, 20)
+                // Vertical room so the mini creation blob's pop-in apex (the spring overshoots past
+                // 1.0) isn't clipped by the horizontal strip's bounds.
+                .padding(.vertical, 12)
             }
             .scrollIndicators(.hidden)
         }
-        .padding(.bottom, 12)
+        .padding(.bottom, 4)
     }
 
     /// Recently-searched terms as tappable glass chips, bottom-anchored so they ride above the
@@ -958,11 +966,9 @@ struct CanvasHome: View {
         guard !thought.isEmpty else { return }
 
         text = ""
-        fieldFocused = false
 
-        // Gooey creating blob plops in (its own regular color), holds while the fil forms.
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
-        SoundscapeManager.shared.startMeshDuringProcessSound()
+        // Gooey creating blob plops in (full-screen, or mini in the recents strip), holds while the fil forms.
+        beginCreation()
 
         let gradient = Theme.randomGradientPair()
         let note: Note
@@ -1025,8 +1031,7 @@ struct CanvasHome: View {
             return
         }
 
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
-        SoundscapeManager.shared.startMeshDuringProcessSound()
+        beginCreation()
 
         let transcript = ((try? await recorder.transcribe(url: url)) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1060,10 +1065,8 @@ struct CanvasHome: View {
     private func createImageFil(images: [Data], caption: String) async {
         let caption = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         text = ""
-        fieldFocused = false
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos = [] }
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
-        SoundscapeManager.shared.startMeshDuringProcessSound()
+        beginCreation()
 
         // Photo fils always carry a caption (the send FAB requires text), so its title generation
         // fills the creating dwell.
@@ -1089,24 +1092,50 @@ struct CanvasHome: View {
 
     // MARK: - Creation tail + first-run payoff
 
+    /// Start the creating animation for a user fil. Full-screen gooey by default; when the
+    /// small-creation setting is on, a mini gooey in the recent-fils strip while the composer stays.
+    private func beginCreation() {
+        if smallCreationAnimation {
+            // Keep the composer in place; the little blob forms in the recent-fils strip.
+            withAnimation(.easeOut(duration: 0.25)) { phase = .composing }
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { seedStage = .creating }
+        } else {
+            fieldFocused = false
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
+        }
+        SoundscapeManager.shared.startMeshDuringProcessSound()
+    }
+
     /// Shared tail for every user creation path: settle the gooey blob into the note's final blob,
     /// hold a beat, then return to the composer — and run the first-run payoff after a real fil.
+    /// Mirrors the two creating styles set up by `beginCreation`.
     private func settleCreatedFil(_ note: Note) async {
-        formedNote = note
-        formedShown = false
-        // Gooey fades out (phase) as the settled blob pops in (formedShown) — the "blob → fil" morph.
-        withAnimation(.easeOut(duration: 0.25)) { phase = .formed }
-        withAnimation(Self.popAnimation) { formedShown = true }
-        try? await Task.sleep(for: .milliseconds(1100))
-        // Only return to the composer if the user hasn't navigated away (e.g. opened search) meanwhile.
-        if phase == .formed {
-            // Fixed-duration outro (not a spring): its settle time is deterministic, so the wait
-            // below always outlasts it and the blob is fully gone before we swap back to the
-            // composer — otherwise the removal sometimes cut the shrink off (outro "only sometimes").
-            withAnimation(.easeIn(duration: 0.28)) { formedShown = false }
-            try? await Task.sleep(for: .milliseconds(300))
-            withAnimation(.easeOut(duration: 0.2)) { phase = .composing }
-            fieldFocused = true   // ready to write the next thought
+        if smallCreationAnimation {
+            // Mini: the little gooey in the recent strip morphs into the note blob, then hands off
+            // to that fil's real recent chip (same blob, same spot — seamless).
+            seedNote = note
+            withAnimation(Self.popAnimation) { seedStage = .formed }
+            try? await Task.sleep(for: .milliseconds(1500))
+            seedStage = .none
+            seedNote = nil
+            fieldFocused = true
+        } else {
+            formedNote = note
+            formedShown = false
+            // Gooey fades out (phase) as the settled blob pops in (formedShown) — the "blob → fil" morph.
+            withAnimation(.easeOut(duration: 0.25)) { phase = .formed }
+            withAnimation(Self.popAnimation) { formedShown = true }
+            try? await Task.sleep(for: .milliseconds(1100))
+            // Only return to the composer if the user hasn't navigated away (e.g. opened search) meanwhile.
+            if phase == .formed {
+                // Fixed-duration outro (not a spring): its settle time is deterministic, so the wait
+                // below always outlasts it and the blob is fully gone before we swap back to the
+                // composer — otherwise the removal sometimes cut the shrink off (outro "only sometimes").
+                withAnimation(.easeIn(duration: 0.28)) { formedShown = false }
+                try? await Task.sleep(for: .milliseconds(300))
+                withAnimation(.easeOut(duration: 0.2)) { phase = .composing }
+                fieldFocused = true   // ready to write the next thought
+            }
         }
         await afterUserFilCreated()
     }

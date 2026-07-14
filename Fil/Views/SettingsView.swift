@@ -16,6 +16,7 @@ struct SettingsView: View {
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     @AppStorage("isDarkMode") private var isDarkMode = true
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
+    @AppStorage("smallCreationAnimation") private var smallCreationAnimation = false
 
     @State private var section: SettingsSection = .appearance
     @State private var showFromMason = false
@@ -137,6 +138,15 @@ struct SettingsView: View {
                 icon: "textformat.abc",
                 description: "render titles and voice recording transcripts in lowercase for a more casual voice.",
                 isOn: $prefersLowercase
+            )
+
+            sectionDivider
+
+            settingToggle(
+                "small form",
+                icon: "arrow.down.right.and.arrow.up.left",
+                description: "new thoughts form smaller in the recents strip instead of full screen.",
+                isOn: $smallCreationAnimation
             )
 
             sectionDivider
