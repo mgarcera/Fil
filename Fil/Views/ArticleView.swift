@@ -447,7 +447,7 @@ struct ArticleView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if descriptionFetchDone {
-                Text("can't get a description from this page. must be interesting.")
+                Text("-")
                     .font(Theme.dmSans(15, weight: .semibold))
                     .foregroundStyle(Theme.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
