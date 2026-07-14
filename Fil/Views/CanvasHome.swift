@@ -1187,7 +1187,28 @@ struct CanvasHome: View {
                 example.entries = [AttachmentEntry.video(path: filename)]
             }
         }
-        note.attachments = [filament, example]
+
+        // The "tips" filament — a small stack of getting-started notes.
+        let instructions = KeywordAttachment(keyword: WelcomeFil.tipsKeyword, note: note)
+        var tipEntries: [AttachmentEntry] = [
+            AttachmentEntry(kind: .textNote, text: WelcomeFil.voiceNote, noteTitle: WelcomeFil.voiceNoteTitle),
+        ]
+        // A screenshot of the capture menu sits beside the voice note (bundled webp → image entry).
+        if let imageURL = Bundle.main.url(
+            forResource: WelcomeFil.voiceTipImageResource,
+            withExtension: WelcomeFil.voiceTipImageExtension
+        ), let imageData = try? Data(contentsOf: imageURL) {
+            tipEntries.append(.image(imageData))
+        }
+        tipEntries.append(contentsOf: [
+            AttachmentEntry(kind: .textNote, text: WelcomeFil.linksNote, noteTitle: WelcomeFil.linksNoteTitle),
+            AttachmentEntry(kind: .textNote, text: WelcomeFil.searchNote, noteTitle: WelcomeFil.searchNoteTitle),
+            AttachmentEntry(kind: .textNote, text: WelcomeFil.landfilNote, noteTitle: WelcomeFil.landfilNoteTitle),
+            AttachmentEntry(kind: .textNote, text: WelcomeFil.signoffNote, noteTitle: WelcomeFil.signoffNoteTitle),
+        ])
+        instructions.entries = tipEntries
+
+        note.attachments = [filament, example, instructions]
 
         modelContext.insert(note)
         return note
