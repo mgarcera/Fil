@@ -287,7 +287,8 @@ struct CanvasHome: View {
             }
         case .linkedNote(let linkedNoteID):
             if let linkedNote = notes.first(where: { $0.uuid == linkedNoteID }) {
-                ArticleView(note: linkedNote, showsThreadedFilRows: false, ignoresTopSafeArea: false, filSheetPath: $filSheetPath)
+                // Share the sheet's detent so a pushed image fil gets the caption + full-detent expand.
+                ArticleView(note: linkedNote, showsThreadedFilRows: false, ignoresTopSafeArea: false, filSheetPath: $filSheetPath, selectedPresentationDetent: $filSheetDetent)
             } else {
                 MissingLinkedFilView()
             }
