@@ -1492,16 +1492,16 @@ struct CanvasHome: View {
             matched = matched.filter(hasOpenTodos)
         }
 
-        // Then the time window / cap over what remains.
+        // Then the time window / cap over what remains. `recent`/`forgotten` are count-based (top/bottom
+        // N); every other spec resolves to a calendar-aligned date interval.
         switch filter.time {
-        case .today:     matched = matched.filter { Calendar.current.isDateInToday($0.timestamp) }
-        case .yesterday: matched = matched.filter { Calendar.current.isDateInYesterday($0.timestamp) }
-        case .thisWeek:
-            let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? .distantPast
-            matched = matched.filter { $0.timestamp >= weekAgo }
-        case .recent:    matched = Array(matched.prefix(Self.timeWindowCap))
-        case .forgotten: matched = Array(matched.reversed().prefix(Self.timeWindowCap))   // oldest first
-        case .none:      break
+        case .none:            break
+        case .some(.recent):   matched = Array(matched.prefix(Self.timeWindowCap))
+        case .some(.forgotten): matched = Array(matched.reversed().prefix(Self.timeWindowCap))   // oldest first
+        case .some(let spec):
+            if let interval = spec.interval(now: Date()) {
+                matched = matched.filter { interval.contains($0.timestamp) }
+            }
         }
 
         results = matched
