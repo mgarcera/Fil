@@ -14,6 +14,7 @@ actor ClaudeSurfacingService {
     struct Surfacing: Sendable {
         let summary: String
         let relevantIDs: [UUID]   // best-match order, as chosen by the model
+        let suggestion: String    // when nothing matched: a nearby query the corpus can actually answer ("" if none)
     }
 
     enum SurfacingError: LocalizedError {
@@ -67,7 +68,32 @@ actor ClaudeSurfacingService {
             return fils.indices.contains(index) ? fils[index].id : nil
         }
         log.notice("surface(\"\(query, privacy: .public)\"): \(ids.count, privacy: .public) fils")
-        return Surfacing(summary: decoded.summary.withoutEmDashes, relevantIDs: ids)
+        return Surfacing(summary: decoded.summary.withoutEmDashes, relevantIDs: ids, suggestion: decoded.suggestion ?? "")
+    }
+
+    /// Summarize-only pass: the app already chose the fils (a keyword match the model couldn't place
+    /// semantically, e.g. an invented project name). Asks the proxy for just a warm reflection of them.
+    func summarize(query: String, fils: [FilClusterInput], transactionID: String) async throws -> String {
+        guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
+
+        let payload = RequestBody(
+            query: query,
+            fils: fils.map { RequestFil(text: $0.text, metadata: $0.metadata) },
+            summarize: true
+        )
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue(transactionID, forHTTPHeaderField: "X-Fil-Transaction-Id")
+        request.httpBody = try JSONEncoder().encode(payload)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw SurfacingError.empty }
+        guard let decoded = try? JSONDecoder().decode(ProxyResponse.self, from: data) else {
+            throw SurfacingError.badJSON
+        }
+        return decoded.summary.withoutEmDashes
     }
 
     /// Pull the proxy's `{ "error": "..." }` message out of a non-200 body, if present.
@@ -81,6 +107,7 @@ actor ClaudeSurfacingService {
     private struct RequestBody: Encodable {
         let query: String
         let fils: [RequestFil]
+        var summarize: Bool? = nil
     }
     private struct RequestFil: Encodable {
         let text: String
@@ -89,5 +116,6 @@ actor ClaudeSurfacingService {
     private struct ProxyResponse: Decodable {
         let summary: String
         let relevant: [Int]
+        let suggestion: String?
     }
 }

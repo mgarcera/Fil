@@ -6,6 +6,13 @@ import SwiftData
 enum FilLog {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil"
     static let data = Logger(subsystem: subsystem, category: "data")
+
+    /// Smart-search tracing: the cloud payload, the model's picks, the keyword fallback, and the
+    /// empty-state suggestion, logged to the "search" category. Flip to `true` to watch surfacing
+    /// decisions in Console while iterating; keep `false` in shipping builds. Guarding each call with
+    /// `if FilLog.searchTracing` keeps the string interpolation from running when it's off.
+    static let searchTracing = false
+    static let search = Logger(subsystem: subsystem, category: "search")
 }
 
 extension ModelContext {

@@ -37,14 +37,19 @@ Types are note, voice, link, photo.
 
 Given a query and the list, do two things:
 
-1. Select the notes that genuinely answer the query, best first. Interpret the query flexibly:
-- A specific word, name, or phrase (a project, person, or thing like "weeklite"): match only notes genuinely about that thing. Do not broaden it into a theme or sweep in recent or loosely related notes. If only one note fits, return only that one.
-- Topic, mood, or kind of thought: pick notes really about it. Be strict; exclude loosely or merely emotionally related ones, and prefer a few tight matches over many loose ones.
-- Temporal ("recently", "lately", "what have i forgotten", "what have i missed"): use the dates. Recent/lately = the newest notes; forgotten/missed = older notes from a while ago.
-- Type or to-dos ("photos", "links", "voice notes", "to-dos"): use the type and to-do flag.
-Return an empty list only if nothing genuinely fits.
+1. Return the notes that are genuinely about the query, best first, ordered by how well they fit. Be generous about what counts as "about it": a note fits if it is about the query, mentions it, or is a clear example of what the query asks for. For "app development links", that includes coding courses, developer tools, and framework or tutorial references, even if they don't say "app development" verbatim.
 
-2. Reflect back what those selected notes are about, in a warm but grounded way, like a friend who listens well. 2 to 3 sentences, second person, in their voice. Stay close to what's actually written.
+But stay anchored to the query's actual subject. Do NOT include a note just because it shares a broad area — don't return every tech or work note for a tech-sounding word. Include only notes a person would agree are really about this query.
+
+If the query is about a feeling, mood, or kind of experience (for example "times i felt alive", "when i was anxious", "proud moments", "what excites me"), select the notes that capture or express that feeling or experience, even if they never name it. Read the emotional tone and what happened, not just the words. It's fine to include several. This kind of query is about resonance, not keywords.
+
+Return an empty list only when nothing is genuinely about the query — a topic none of the notes actually cover, or a name or made-up word they never wrote about. Better to return nothing than a pile of loosely-related notes. (Do still include notes that are clearly about a real subject in the query, like coding/dev resources for "app development".)
+
+If the query mentions a kind (photos, links, voice, to-dos) or a time (today, recently, older), use each note's (date, type, to-dos) tag to focus.
+
+2. If you selected no notes, set "summary" to an empty string. Otherwise, reflect back what those selected notes are about, in a warm but grounded way, like a friend who listens well. 2 to 3 sentences, second person, in their voice. Stay close to what's actually written.
+
+3. "suggestion": only when you return an EMPTY relevant list. Ask whether any of the notes are CLOSELY RELATED to what they searched for, just phrased differently, so a nearby search would surface them. If so, set "suggestion" to that short query (2 to 4 words, lowercase, the person's voice — e.g. searching "alive" when there are notes about a joyful trip could suggest "the trip"). It must be genuinely related to their query, not merely the most common topic in the notes. If nothing in the notes is closely related to what they searched for, set "suggestion" to an empty string (do not reach for a loose or generic match). Never repeat or lightly reword their original query. When you DO return notes, set "suggestion" to an empty string.
 
 Voice rules:
 - Warm but restrained. Never sentimental, flowery, or therapeutic. Do not psychoanalyze, infer hidden motives, or reach for deeper meaning the notes don't state.
@@ -56,7 +61,22 @@ Voice rules:
 - Write in natural sentence case (the app handles lowercasing).
 
 Respond with ONLY a JSON object, no prose or code fences:
-{"summary": "...", "relevant": [numbers]}`;
+{"summary": "...", "relevant": [numbers], "suggestion": "..."}`;
+
+// Summarize-only mode: the app already chose the notes (a keyword match the model couldn't place
+// semantically, e.g. an invented project name), and just needs a reflection of them.
+const SUMMARIZE_PROMPT = `You help someone explore their own private notes (they call each one a "fil"). The notes below all came up for a search the person ran. Reflect back what they are about, in a warm but grounded way, like a friend who listens well. 2 to 3 sentences, second person, in their voice. Stay close to what's actually written.
+
+Voice rules:
+- Warm but restrained. Never sentimental, flowery, or therapeutic. Do not psychoanalyze, infer hidden motives, or reach for deeper meaning the notes don't state.
+- Describe what they've been noting about this, not who they are as a person.
+- Never mention the search, the query, the matching, or that these notes are relevant. Just describe what the notes say, and nothing beyond them.
+- Lead with the content of the thought, not the container. Don't narrate that these are notes or fils; reflect the thinking itself.
+- No clinical framing, no advice, no nudges.
+- Never use em dashes. Use commas, periods, or "and". Contractions welcome.
+- Write in natural sentence case (the app handles lowercasing).
+
+Respond with ONLY the reflection text, no preamble, no quotes, no JSON.`;
 
 export default {
   async fetch(request, env, ctx) {
@@ -105,6 +125,10 @@ export default {
     const fils = Array.isArray(body.fils) ? body.fils : null;
     if (!query || !fils) return json({ error: "Expected { query, fils: [...] }." }, 400);
 
+    // Summarize-only mode: the app supplies the notes it already chose (a keyword match) and just wants
+    // a reflection — no selection. Returns { summary } and never touches `relevant`.
+    const summarizeOnly = body.summarize === true;
+
     const numbered = fils
       .map((fil, i) => {
         const n = `${i + 1}.`;
@@ -117,7 +141,7 @@ export default {
     const anthropicBody = {
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
+      system: summarizeOnly ? SUMMARIZE_PROMPT : SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
@@ -151,18 +175,23 @@ export default {
 
     const data = await upstream.json();
     const text = (data.content || []).find((b) => b.type === "text")?.text || "";
-    const parsed = parseSurfacing(text);
-    if (!parsed) return json({ error: "Couldn't read the model's response." }, 502);
-
     const u = data.usage || {};
     const cost = costFromUsage(u);
-    console.log(
-      `surface "${query}": ${parsed.relevant.length} fils | in ${u.input_tokens ?? 0} out ${u.output_tokens ?? 0} cacheRead ${u.cache_read_input_tokens ?? 0} | $${cost.toFixed(5)}`,
-    );
     // Record usage after responding, so KV latency never delays the surfacing.
     ctx.waitUntil(recordUsage(env, originalId, day, cost));
 
-    return json({ summary: parsed.summary, relevant: parsed.relevant }, 200);
+    if (summarizeOnly) {
+      console.log(`summarize "${query}": ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
+      return json({ summary: text.trim(), relevant: [] }, 200);
+    }
+
+    const parsed = parseSurfacing(text);
+    if (!parsed) return json({ error: "Couldn't read the model's response." }, 502);
+    console.log(
+      `surface "${query}": ${parsed.relevant.length} fils | in ${u.input_tokens ?? 0} out ${u.output_tokens ?? 0} cacheRead ${u.cache_read_input_tokens ?? 0} | $${cost.toFixed(5)}`,
+    );
+
+    return json({ summary: parsed.summary, relevant: parsed.relevant, suggestion: parsed.suggestion }, 200);
   },
 };
 
@@ -296,7 +325,8 @@ function parseSurfacing(text) {
     const obj = JSON.parse(text.slice(start, end + 1));
     const summary = typeof obj.summary === "string" ? obj.summary : "";
     const relevant = Array.isArray(obj.relevant) ? obj.relevant.filter((n) => Number.isInteger(n)) : [];
-    return { summary, relevant };
+    const suggestion = typeof obj.suggestion === "string" ? obj.suggestion : "";
+    return { summary, relevant, suggestion };
   } catch {
     return null;
   }

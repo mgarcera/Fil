@@ -3,6 +3,7 @@ import SwiftData
 import PhotosUI
 import QuickLook
 import StoreKit
+import OSLog
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -99,6 +100,12 @@ struct CanvasHome: View {
     /// gating scale/opacity on this drives that entrance (and survives a home trip, so no re-pop).
     @State private var revealedResultIDs: Set<UUID> = []
     @State private var summary = ""
+    /// True when the last query resolved to a deterministic metadata/filter (type/time/to-dos), so the
+    /// results screen skips the summary and the free-tier "try Pro" invites (Pro wouldn't do better).
+    @State private var isFilterQuery = false
+    /// When a Pro query surfaces nothing, a nearby query the corpus can actually answer (from the model),
+    /// offered as a tappable chip in the empty state. Empty when there's no good alternative.
+    @State private var suggestedQuery = ""
     /// A surfaced fil pending landfil confirmation (drives the shared alert).
     @State private var pendingLandfilNote: Note?
     @State private var surfaceError: String?
@@ -675,24 +682,22 @@ struct CanvasHome: View {
                             }
                         }
                     }
-                    if !summary.isEmpty {
+                    if !summary.isEmpty && !results.isEmpty {
                         AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                             .font(Theme.dmSans(16, weight: .medium))
                             .foregroundStyle(Theme.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
-                    } else if !StoreManager.shared.isPro && !results.isEmpty {
+                    } else if !StoreManager.shared.isPro && !results.isEmpty && !isFilterQuery {
                         freeSurfaceInvite
                     }
                     if results.isEmpty {
                         // Free users get an upgrade invite (AI can find by meaning, not just words)
-                        // exactly when keyword search comes up empty; Pro users see the plain miss.
-                        if !StoreManager.shared.isPro {
+                        // exactly when keyword search comes up empty; Pro users — and any metadata
+                        // filter, where Pro wouldn't help — see the plain miss.
+                        if !StoreManager.shared.isPro && !isFilterQuery {
                             freeEmptyInvite
                         } else if surfaceError == nil {
-                            AnimatedGradientRevealText(text: "nothing came up for \(query)", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
-                                .font(Theme.dmSans(15, weight: .semibold))
-                                .foregroundStyle(Theme.secondaryText)
-                                .fixedSize(horizontal: false, vertical: true)
+                            emptyResultPrompt
                         }
                     } else {
                         scrapbook
@@ -735,6 +740,51 @@ struct CanvasHome: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
+    }
+
+    /// The Pro empty state as one flowing sentence with an inline tappable link. When the model found a
+    /// genuinely related nearby query, "try X instead" runs it; otherwise "write one about it" drops back
+    /// into the composer, seeded with what they searched for, so a dead end still leads somewhere.
+    private var emptyResultPrompt: some View {
+        var line: AttributedString
+
+        if !suggestedQuery.isEmpty {
+            line = AttributedString("nothing came up for it. want to try ")
+            line.foregroundColor = Theme.secondaryText
+            var link = AttributedString(suggestedQuery)
+            link.foregroundColor = Theme.filProIndigo
+            link.link = URL(string: "fil-action://suggest")
+            var tail = AttributedString(" instead?")
+            tail.foregroundColor = Theme.secondaryText
+            line.append(link); line.append(tail)
+        } else {
+            line = AttributedString("nothing came up for it. do you have a ")
+            line.foregroundColor = Theme.secondaryText
+            var link = AttributedString("thought?")
+            link.foregroundColor = Theme.filProIndigo
+            link.link = URL(string: "fil-action://compose")
+            line.append(link)
+        }
+
+        return Text(line)
+            .font(Theme.dmSans(15, weight: .semibold))
+            .tint(Theme.filProIndigo)
+            .fixedSize(horizontal: false, vertical: true)
+            .environment(\.openURL, OpenURLAction { url in
+                switch url.host {
+                case "suggest": query = suggestedQuery; Task { await runQuery() }
+                case "compose": composeAboutQuery()
+                default: break
+                }
+                return .handled
+            })
+    }
+
+    /// Leave the empty search and open the composer seeded with what they searched for — the "write one
+    /// about it" path, turning a missed search into a new thought.
+    private func composeAboutQuery() {
+        text = query
+        searchActive = false   // drives the transition back to the composer (see .onChange(of: searchActive))
     }
 
     /// "check out fil pro for a smart search" with the "fil pro" wordmark in the multicolor accent
@@ -1315,12 +1365,20 @@ struct CanvasHome: View {
         summary = ""
         surfaceError = nil
         results = []
+        isFilterQuery = false
+        suggestedQuery = ""
         isRetrieving = true
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .results }
 
-        // Capability split: Pro (and active trial) get cloud AI surfacing + summary; everyone else
-        // gets free on-device keyword search. See docs/monetization/blank-canvas-pivot-plan.md.
-        if StoreManager.shared.isPro {
+        // Metadata/filter queries (type, time, to-dos) are answered deterministically from the fils'
+        // real fields — reliable and free for everyone, no model call, no text-matching gaps. Only
+        // content/semantic queries fall through to keyword (free) or cloud (Pro) search.
+        if let filter = MetadataQuery.classify(q) {
+            isFilterQuery = true
+            runMetadataFilter(filter)
+        } else if StoreManager.shared.isPro {
+            // Capability split: Pro (and active trial) get cloud AI surfacing + summary; everyone else
+            // gets free on-device keyword search. See docs/monetization/blank-canvas-pivot-plan.md.
             await runCloudSurfacing(q)
         } else {
             runLocalSearch(q)
@@ -1357,17 +1415,60 @@ struct CanvasHome: View {
     /// semantic/temporal/thematic selection.
     private func runCloudSurfacing(_ q: String) async {
         // Send a shortlist, not the whole library, so cost + latency don't scale with library size.
-        let inputs = candidateNotes(for: q).map { note in
+        let candidates = candidateNotes(for: q)
+        let inputs = candidates.map { note in
             FilClusterInput(id: note.uuid, text: clusterText(note), keyword: displayTitle(note), metadata: filMetadata(note))
         }
 
+        // Search tracing (off by default; see FilLog.searchTracing): confirm the payload, incl. link page text.
+        if FilLog.searchTracing {
+            FilLog.search.notice("query=\"\(q, privacy: .public)\" candidates=\(candidates.count, privacy: .public) links=\(candidates.filter { $0.isLinkFil }.count, privacy: .public)")
+            for note in candidates where note.isLinkFil {
+                FilLog.search.notice("LINK payload: \(self.clusterText(note), privacy: .public)")
+            }
+        }
+
+        let txn = StoreManager.shared.proTransactionID ?? ""
         do {
-            let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, transactionID: StoreManager.shared.proTransactionID ?? "")
-            summary = outcome.summary
+            let outcome = try await ClaudeSurfacingService.shared.surface(query: q, fils: inputs, transactionID: txn)
             let surfaced = outcome.relevantIDs.compactMap { notesByID[$0] }
-            results = surfaced
+            if FilLog.searchTracing {
+                FilLog.search.notice("MODEL picked \(surfaced.count, privacy: .public): [\(surfaced.map { "\(self.filKind($0)):\(self.displayTitle($0))" }.joined(separator: " | "), privacy: .public)] summaryLen=\(outcome.summary.count, privacy: .public)")
+            }
+
+            if surfaced.isEmpty {
+                // The model couldn't place the query semantically (e.g. an invented project name).
+                // Fall back to the literal keyword floor, and if it found anything, ask the proxy for a
+                // reflection of just those — so keyword-first results still get a summary.
+                let keyword = keywordMatches(for: q, requireAll: true)
+                if FilLog.searchTracing {
+                    FilLog.search.notice("KEYWORD-FALLBACK \(keyword.count, privacy: .public): [\(keyword.map { "\(self.filKind($0)):\(self.displayTitle($0))" }.joined(separator: " | "), privacy: .public)]")
+                }
+                results = keyword
+                if keyword.isEmpty {
+                    summary = ""
+                    // Nothing matched at all — offer the model's nearby query the corpus can answer.
+                    suggestedQuery = outcome.suggestion
+                    if FilLog.searchTracing {
+                        FilLog.search.notice("SUGGESTION: \"\(outcome.suggestion, privacy: .public)\"")
+                    }
+                } else {
+                    let kwInputs = keyword.map { FilClusterInput(id: $0.uuid, text: clusterText($0), keyword: displayTitle($0), metadata: filMetadata($0)) }
+                    summary = (try? await ClaudeSurfacingService.shared.summarize(query: q, fils: kwInputs, transactionID: txn)) ?? ""
+                }
+            } else {
+                // The model made a semantic selection — use it + its summary, and union any all-term
+                // literal matches it missed (recall floor).
+                summary = outcome.summary
+                var merged = surfaced
+                var seen = Set(surfaced.map(\.uuid))
+                for note in keywordMatches(for: q, requireAll: true) where seen.insert(note.uuid).inserted {
+                    merged.append(note)
+                }
+                results = merged
+            }
             // Capture the checklist membership once, so it's stable while the user toggles to-dos.
-            todoFilIDs = Set(surfaced.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
+            todoFilIDs = Set(results.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
         } catch {
             // Graceful fallback: run keyword search, and word the note by whether it found anything.
             runLocalSearch(q)
@@ -1377,32 +1478,98 @@ struct CanvasHome: View {
         }
     }
 
+    /// Answer a metadata/filter query from the fils' real fields (type, timestamp, to-do flag) — the
+    /// deterministic path that makes "photos", "links", "today", "todos" reliable for every tier.
+    private func runMetadataFilter(_ filter: MetadataQuery.Filter) {
+        var matched = notes   // newest-first from the @Query sort
+
+        // Type + to-do filters FIRST, so a combined query like "recent photos" means "the newest
+        // photos", not "photos among the 30 newest fils" (which drops photos outside that window).
+        if !filter.types.isEmpty {
+            matched = matched.filter { note in filter.types.contains { matchesType(note, $0) } }
+        }
+        if filter.todosOnly {
+            matched = matched.filter(hasOpenTodos)
+        }
+
+        // Then the time window / cap over what remains.
+        switch filter.time {
+        case .today:     matched = matched.filter { Calendar.current.isDateInToday($0.timestamp) }
+        case .yesterday: matched = matched.filter { Calendar.current.isDateInYesterday($0.timestamp) }
+        case .thisWeek:
+            let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? .distantPast
+            matched = matched.filter { $0.timestamp >= weekAgo }
+        case .recent:    matched = Array(matched.prefix(Self.timeWindowCap))
+        case .forgotten: matched = Array(matched.reversed().prefix(Self.timeWindowCap))   // oldest first
+        case .none:      break
+        }
+
+        results = matched
+        todoFilIDs = Set(matched.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
+    }
+
+    /// How many fils a "recent" / "forgotten" query returns.
+    private static let timeWindowCap = 30
+
+    private func matchesType(_ note: Note, _ type: MetadataQuery.FilType) -> Bool {
+        switch type {
+        case .photo: return note.isImageFil
+        case .link:  return note.isLinkFil
+        case .voice: return !note.audioFilePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .video: return noteHasEntry(note, .video)
+        case .pdf:   return noteHasEntry(note, .pdf)
+        case .note:  return filKind(note) == "note"
+        }
+    }
+
+    private func noteHasEntry(_ note: Note, _ kind: AttachmentEntry.Kind) -> Bool {
+        note.attachments.contains { $0.entries.contains { $0.kind == kind } }
+    }
+
     /// Free path: case-insensitive match over each fil's full text (title, transcript, and
     /// filaments). No network, no summary, no counter — the free tier's way to find fils by words you
     /// remember. (Semantic / temporal / thematic queries and the summary are the Pro upgrade.)
     private func runLocalSearch(_ q: String) {
-        let terms = q.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
-        guard !terms.isEmpty else { return }
-
-        let scored = notes.compactMap { note -> (note: Note, hits: Int)? in
-            let haystack = searchableText(note)
-            let hits = terms.reduce(0) { $0 + (haystack.contains($1) ? 1 : 0) }
-            return hits > 0 ? (note, hits) : nil
-        }
-        // Most query terms matched first, then most recent.
-        let matched = scored
-            .sorted { ($0.hits, $0.note.timestamp) > ($1.hits, $1.note.timestamp) }
-            .map(\.note)
-
+        let matched = keywordMatches(for: q)
         results = matched
         todoFilIDs = Set(matched.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
+    }
+
+    /// Literal keyword matches across a fil's full text, best-first (most terms matched, then newest).
+    /// The free tier's whole search, and the Pro tier's recall floor so a word that's actually written
+    /// in a fil is never missed by the model's stricter semantic judgment.
+    /// - Parameter requireAll: when true, a fil must contain EVERY query term (a strong literal match)
+    ///   to count — used by the Pro recall floor so a multi-word query like "app development links"
+    ///   doesn't union in a fil that merely mentions one word ("links"). Free keyword search stays OR
+    ///   (any term), the familiar search-engine behavior.
+    private func keywordMatches(for q: String, requireAll: Bool = false) -> [Note] {
+        let terms = q.lowercased().split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !terms.isEmpty else { return [] }
+        return notes
+            .compactMap { note -> (note: Note, hits: Int)? in
+                let haystack = searchableText(note)
+                let hits = terms.reduce(0) { $0 + (Self.containsWord(haystack, $1) ? 1 : 0) }
+                let ok = requireAll ? (hits == terms.count) : (hits > 0)
+                return ok ? (note, hits) : nil
+            }
+            .sorted { ($0.hits, $0.note.timestamp) > ($1.hits, $1.note.timestamp) }
+            .map(\.note)
+    }
+
+    /// Whole-word containment: the term must appear bounded by non-alphanumerics, so "app" matches
+    /// "app" but not "appeared" / "application" / "app.notion.com" (the substring pollution the
+    /// keyword floor was pulling in). Haystack is already lowercased.
+    private static func containsWord(_ haystack: String, _ term: String) -> Bool {
+        guard !term.isEmpty else { return false }
+        let pattern = "\\b" + NSRegularExpression.escapedPattern(for: term) + "\\b"
+        return haystack.range(of: pattern, options: .regularExpression) != nil
     }
 
     /// A fil's full searchable text, lowercased: title, transcript, its own keyword, and every
     /// filament (attachment keyword + entry text / link captions / linked-note titles). Shared by
     /// free local search and the cloud pre-filter.
     private func searchableText(_ note: Note) -> String {
-        [note.title, note.transcript, note.keyword, todoText(note), filamentContent(note)]
+        [note.title, note.transcript, note.keyword, todoText(note), filamentContent(note), linkPageText(note)]
             .joined(separator: " ")
             .lowercased()
     }
@@ -1461,7 +1628,7 @@ struct CanvasHome: View {
         if !terms.isEmpty {
             let matches = notes.compactMap { note -> (note: Note, hits: Int)? in
                 let haystack = searchableText(note)
-                let hits = terms.reduce(0) { $0 + (haystack.contains($1) ? 1 : 0) }
+                let hits = terms.reduce(0) { $0 + (Self.containsWord(haystack, $1) ? 1 : 0) }
                 return hits > 0 ? (note, hits) : nil
             }
             .sorted { ($0.hits, $0.note.timestamp) > ($1.hits, $1.note.timestamp) }
@@ -1496,7 +1663,24 @@ struct CanvasHome: View {
         if !filaments.isEmpty {
             text += " — attached: \(String(filaments.prefix(200)))"
         }
+        // A link fil's captured page (title + description) — the actual content, not just the URL, so
+        // "app development links" can match by what the page is about.
+        let page = linkPageText(note).trimmingCharacters(in: .whitespacesAndNewlines)
+        if !page.isEmpty {
+            text += " — link: \(String(page.prefix(300)))"
+        }
         return text
+    }
+
+    /// A link fil's fetched page text (title + og:description), shared by the cloud payload and the
+    /// keyword haystack so link fils are findable by their content, not just their URL. Empty for
+    /// non-link fils.
+    private func linkPageText(_ note: Note) -> String {
+        guard note.isLinkFil else { return "" }
+        return [note.sourceTitle, note.sourceDescription]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     /// Compact "(when, type, to-dos)" tag so Claude can answer temporal / type / to-do queries,
