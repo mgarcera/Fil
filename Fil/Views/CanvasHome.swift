@@ -259,6 +259,9 @@ struct CanvasHome: View {
         }, onConfirm: { note in
             landfil(note)
         })
+        // A fil deleted anywhere (notably from its opened fil sheet) should leave the search results
+        // too — otherwise a landfilled to-do fil lingered in the checklist.
+        .onChange(of: notes.map(\.uuid)) { _, _ in pruneDeletedResults() }
         // The header search/back button toggles searchActive: enter the query screen or return to
         // the composer. (There's no tap-anywhere-to-go-back; the header button is the switcher.)
         .onChange(of: searchActive) { _, active in
@@ -836,7 +839,7 @@ struct CanvasHome: View {
                         HStack(spacing: 12) {
                             NoteBlobShape(seed: note.blobShapeSeed)
                                 .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                                .frame(width: 26, height: 26)
+                                .frame(width: 36, height: 36)
                             Text(displayTitle(note))
                                 .font(Theme.dmSans(18, weight: .bold))
                                 .foregroundStyle(Theme.primaryText)
@@ -850,7 +853,7 @@ struct CanvasHome: View {
 
                     // All of the fil's to-dos (completed ones struck through), reusing the model's
                     // stable row items so completing one strikes in place instead of vanishing.
-                    // Indented past the header blob (26) + spacing (12) so the circle sits under the title.
+                    // Indented past the header blob (36) + spacing (12) so the circle sits under the title.
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(note.todoRowItems, id: \.id) { item in
                             TodoRowContent(text: item.text, isCompleted: item.done) {
@@ -858,7 +861,7 @@ struct CanvasHome: View {
                             }
                         }
                     }
-                    .padding(.leading, 38)
+                    .padding(.leading, 48)
                 }
             }
         }
@@ -895,6 +898,15 @@ struct CanvasHome: View {
     }
 
     private func isLandfilling(_ note: Note) -> Bool { landfillingIDs.contains(note.uuid) }
+
+    /// Drop surfaced results whose fil no longer exists (deleted from its opened sheet, say). Compares
+    /// by object identity so we never read a property off a deleted SwiftData model.
+    private func pruneDeletedResults() {
+        let survivors = results.filter { result in notes.contains { $0 === result } }
+        guard survivors.count != results.count else { return }
+        withAnimation(.easeOut(duration: 0.2)) { results = survivors }
+        todoFilIDs = todoFilIDs.intersection(Set(survivors.map(\.uuid)))
+    }
 
     private func landfil(_ note: Note) {
         FilLandfil.cleanUpResources(for: note)
