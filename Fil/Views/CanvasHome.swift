@@ -654,7 +654,7 @@ struct CanvasHome: View {
                 if isRetrieving {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("searching…")
+                        AnimatedGradientRevealText(text: "searching…", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                             .font(Theme.dmSans(15))
                             .foregroundStyle(Theme.secondaryText)
                     }
@@ -663,8 +663,8 @@ struct CanvasHome: View {
                     if let surfaceError {
                         // Gentle, non-blocking note when smart search fails and we fall back to keyword.
                         VStack(alignment: .leading, spacing: 6) {
-                            Text(surfaceError)
-                                .font(Theme.dmSans(14))
+                            AnimatedGradientRevealText(text: surfaceError, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                                .font(Theme.dmSans(15))
                                 .foregroundStyle(Theme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                             // Offer feedback only when we actually fell back to keyword matches (path E).
@@ -689,9 +689,13 @@ struct CanvasHome: View {
                         if !StoreManager.shared.isPro {
                             freeEmptyInvite
                         } else if surfaceError == nil {
-                            Text("nothing came up for “\(query)”")
+                            AnimatedGradientRevealText(text: "nothing came up for", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                                 .font(Theme.dmSans(15))
                                 .foregroundStyle(Theme.secondaryText)
+                            AnimatedGradientRevealText(text: query, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                                .font(Theme.dmSans(15, weight: .medium))
+                                .foregroundStyle(Theme.accentGradient)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     } else {
                         scrapbook
@@ -711,7 +715,7 @@ struct CanvasHome: View {
     private var freeSurfaceInvite: some View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("found by keyword.")
+                AnimatedGradientRevealText(text: "found by keyword.", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                 filProInviteLine
@@ -725,9 +729,13 @@ struct CanvasHome: View {
     private var freeEmptyInvite: some View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("nothing came up for “\(query)”")
+                AnimatedGradientRevealText(text: "nothing came up for", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                     .font(Theme.dmSans(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
+                AnimatedGradientRevealText(text: query, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                    .font(Theme.dmSans(15, weight: .medium))
+                    .foregroundStyle(Theme.accentGradient)
+                    .fixedSize(horizontal: false, vertical: true)
                 filProInviteLine
             }
             .frame(maxWidth: .infinity, alignment: .leading)
