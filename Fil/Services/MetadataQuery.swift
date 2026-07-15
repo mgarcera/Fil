@@ -88,6 +88,35 @@ enum MetadataQuery {
             }
         }
 
+        /// A short human phrase for this window, used to tell the summarizer what stretch of time it's
+        /// reflecting on so it can look back appropriately ("this year", "last month", "3 days ago").
+        var label: String {
+            switch self {
+            case .recent:            return "recently"
+            case .forgotten:         return "a while ago"
+            case .today:             return "today"
+            case .yesterday:         return "yesterday"
+            case .tonight:           return "tonight"
+            case .morning:           return "this morning"
+            case .weekend:           return "the weekend"
+            case .thisWeek:          return "this week"
+            case .lastWeek:          return "last week"
+            case .thisMonth:         return "this month"
+            case .lastMonth:         return "last month"
+            case .thisYear:          return "this year"
+            case .lastYear:          return "last year"
+            case .daysAgo(let n):    return n == 1 ? "a day ago" : "\(n) days ago"
+            case .weeksAgo(let n):   return n == 1 ? "a week ago" : "\(n) weeks ago"
+            case .monthsAgo(let n):  return n == 1 ? "a month ago" : "\(n) months ago"
+            case .yearsAgo(let n):   return n == 1 ? "a year ago" : "\(n) years ago"
+            case .weekday(let w):    return Self.weekdayNames.indices.contains(w - 1) ? Self.weekdayNames[w - 1] : "that day"
+            case .monthOfYear(let m): return Self.monthNames.indices.contains(m - 1) ? Self.monthNames[m - 1] : "that month"
+            }
+        }
+
+        private static let weekdayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+        private static let monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"]
+
         /// The most recent day (at 00:00) matching `weekday`, at or before `now`.
         private static func mostRecent(weekday w: Int, from now: Date, cal: Calendar) -> Date {
             let todayW = cal.component(.weekday, from: now)

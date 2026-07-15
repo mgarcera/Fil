@@ -73,13 +73,16 @@ actor ClaudeSurfacingService {
 
     /// Summarize-only pass: the app already chose the fils (a keyword match the model couldn't place
     /// semantically, e.g. an invented project name). Asks the proxy for just a warm reflection of them.
-    func summarize(query: String, fils: [FilClusterInput], transactionID: String) async throws -> String {
+    /// - Parameter window: when the search was a time window (e.g. "this year"), its human label, so the
+    ///   proxy can frame the reflection as a look back over that stretch. nil for non-temporal summaries.
+    func summarize(query: String, fils: [FilClusterInput], transactionID: String, window: String? = nil) async throws -> String {
         guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
 
         let payload = RequestBody(
             query: query,
             fils: fils.map { RequestFil(text: $0.text, metadata: $0.metadata) },
-            summarize: true
+            summarize: true,
+            window: window
         )
 
         var request = URLRequest(url: endpoint)
@@ -108,6 +111,7 @@ actor ClaudeSurfacingService {
         let query: String
         let fils: [RequestFil]
         var summarize: Bool? = nil
+        var window: String? = nil
     }
     private struct RequestFil: Encodable {
         let text: String

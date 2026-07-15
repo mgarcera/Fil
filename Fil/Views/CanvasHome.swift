@@ -106,6 +106,9 @@ struct CanvasHome: View {
     /// When a Pro query surfaces nothing, a nearby query the corpus can actually answer (from the model),
     /// offered as a tappable chip in the empty state. Empty when there's no good alternative.
     @State private var suggestedQuery = ""
+    /// Bumped on every search so a late async result (e.g. the streamed metadata summary) from a
+    /// superseded query can tell it's stale and discard itself instead of overwriting newer results.
+    @State private var searchToken = 0
     /// A surfaced fil pending landfil confirmation (drives the shared alert).
     @State private var pendingLandfilNote: Note?
     @State private var surfaceError: String?
@@ -1367,6 +1370,8 @@ struct CanvasHome: View {
         results = []
         isFilterQuery = false
         suggestedQuery = ""
+        searchToken &+= 1
+        let token = searchToken
         isRetrieving = true
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .results }
 
@@ -1376,6 +1381,12 @@ struct CanvasHome: View {
         if let filter = MetadataQuery.classify(q) {
             isFilterQuery = true
             runMetadataFilter(filter)
+            // Pro: the filter is instant, but reflect on the text-bearing fils in the set and stream the
+            // summary in above the grid once it returns (a photo/pdf/video-only set has nothing to read,
+            // so this no-ops). Not awaited, so the grid reveals immediately.
+            if StoreManager.shared.isPro {
+                Task { await summarizeMetadataResults(query: q, filter: filter, token: token) }
+            }
         } else if StoreManager.shared.isPro {
             // Capability split: Pro (and active trial) get cloud AI surfacing + summary; everyone else
             // gets free on-device keyword search. See docs/monetization/blank-canvas-pivot-plan.md.
@@ -1506,6 +1517,86 @@ struct CanvasHome: View {
 
         results = matched
         todoFilIDs = Set(matched.filter { !$0.isImageFil && hasOpenTodos($0) }.map(\.uuid))
+    }
+
+    /// Pro extra on a metadata/filter result: once the grid is on screen, ask the proxy to reflect on
+    /// the fils that actually carry text (notes, voice, links) and stream that summary in above the
+    /// grid. A set with nothing readable (only photos/pdfs/videos, which need vision/extraction we don't
+    /// have yet) or a lone fil is skipped — no weak reflections, no wasted call. A newer search bumps
+    /// `searchToken`, so a late reply here discards itself instead of clobbering fresher results.
+    private func summarizeMetadataResults(query q: String, filter: MetadataQuery.Filter, token: Int) async {
+        let all = results.filter(isSummarizable)
+        guard all.count >= 2 else { return }
+
+        // For a window bigger than the cap, sample across its span (front-weighted to earlier buckets)
+        // so a "this year" reflection covers the whole arc, not just the freshest fils.
+        let window = filter.time?.interval(now: Date())
+        let fils = summarySample(all, window: window, cap: Self.timeWindowCap)
+        if FilLog.searchTracing {
+            FilLog.search.notice("META-SUMMARY query=\"\(q, privacy: .public)\" window=\"\(filter.time?.label ?? "-", privacy: .public)\" sampled=\(fils.count, privacy: .public)/\(all.count, privacy: .public) shown=\(self.results.count, privacy: .public)")
+        }
+        let inputs = fils.map { FilClusterInput(id: $0.uuid, text: clusterText($0), keyword: displayTitle($0), metadata: filMetadata($0)) }
+        let txn = StoreManager.shared.proTransactionID ?? ""
+        guard let text = try? await ClaudeSurfacingService.shared.summarize(query: q, fils: inputs, transactionID: txn, window: filter.time?.label),
+              !text.isEmpty, token == searchToken else { return }
+        withAnimation(.easeOut(duration: 0.3)) { summary = text }
+    }
+
+    /// Choose up to `cap` fils to summarize. When the set fits, take it whole. When a dated `window`
+    /// overflows, slice the window into time-buckets and allocate the budget front-weighted (earlier
+    /// buckets get more, every non-empty bucket at least one), picking evenly-spaced fils within each —
+    /// so the summary spans the whole window instead of collapsing onto the most recent fils. With no
+    /// window (recent/forgotten, already position-capped), just take the first `cap`. Returns fils
+    /// chronologically (oldest first).
+    private func summarySample(_ fils: [Note], window: DateInterval?, cap: Int) -> [Note] {
+        guard fils.count > cap else { return fils.sorted { $0.timestamp < $1.timestamp } }
+        let sorted = fils.sorted { $0.timestamp < $1.timestamp }
+        guard let window, window.duration > 0 else { return Array(sorted.suffix(cap)) }
+
+        // Up to 12 buckets (≈months for a year, ≈weeks for a month), one per day for short spans.
+        let days = window.duration / 86_400
+        let bucketCount = min(12, max(2, Int(days.rounded())))
+        let width = window.duration / Double(bucketCount)
+        var buckets = Array(repeating: [Note](), count: bucketCount)
+        for note in sorted {
+            let offset = note.timestamp.timeIntervalSince(window.start)
+            let idx = min(bucketCount - 1, max(0, Int(offset / width)))
+            buckets[idx].append(note)
+        }
+
+        // Non-empty buckets, oldest first, with a linear-decay weight (oldest = M ... newest = 1).
+        let nonEmpty = buckets.indices.filter { !buckets[$0].isEmpty }
+        let m = nonEmpty.count
+        let weights = (0..<m).map { m - $0 }
+        let totalWeight = max(1, weights.reduce(0, +))
+
+        var picked: [Note] = []
+        for (rank, b) in nonEmpty.enumerated() {
+            let slots = max(1, Int((Double(cap) * Double(weights[rank]) / Double(totalWeight)).rounded()))
+            picked += evenlySpaced(buckets[b], slots)
+        }
+        // Rounding + the min-1 floor can overshoot; trim from the end (newest, lowest priority).
+        if picked.count > cap { picked = Array(picked.prefix(cap)) }
+        return picked
+    }
+
+    /// `n` items from `arr`, evenly spaced by index (endpoints included); the whole array if `n` covers
+    /// it, the middle element if `n == 1`.
+    private func evenlySpaced(_ arr: [Note], _ n: Int) -> [Note] {
+        guard n > 0, !arr.isEmpty else { return [] }
+        guard n < arr.count else { return arr }
+        guard n > 1 else { return [arr[arr.count / 2]] }
+        return (0..<n).map { arr[Int((Double($0) * Double(arr.count - 1) / Double(n - 1)).rounded())] }
+    }
+
+    /// A fil carries enough text to reflect on: typed notes, voice (transcript), and links (captured
+    /// page text). Photos have no readable text, and pdfs/videos need extraction we haven't built, so
+    /// they're excluded from summaries.
+    private func isSummarizable(_ note: Note) -> Bool {
+        switch filKind(note) {
+        case "note", "voice", "link": return true
+        default:                       return false
+        }
     }
 
     /// How many fils a "recent" / "forgotten" query returns.

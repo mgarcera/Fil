@@ -78,6 +78,13 @@ Voice rules:
 
 Respond with ONLY the reflection text, no preamble, no quotes, no JSON.`;
 
+// When the search was a time window ("this year", "last month", "3 days ago"), the person is looking
+// back over that stretch — so the reflection should be situated in it and use retrospective voice.
+function summarizeSystem(window) {
+  if (!window) return SUMMARIZE_PROMPT;
+  return SUMMARIZE_PROMPT + `\n\nThese notes are all from ${window}, a stretch of time the person is looking back on. Situate the reflection in that time and look back on it, for example "this year you kept coming back to..." or "that week was mostly about...". Use past or retrospective voice, never the present-tense "right now".`;
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method !== "POST") return json({ error: "Use POST." }, 405);
@@ -128,6 +135,7 @@ export default {
     // Summarize-only mode: the app supplies the notes it already chose (a keyword match) and just wants
     // a reflection — no selection. Returns { summary } and never touches `relevant`.
     const summarizeOnly = body.summarize === true;
+    const window = typeof body.window === "string" ? body.window.trim() : "";
 
     const numbered = fils
       .map((fil, i) => {
@@ -141,7 +149,7 @@ export default {
     const anthropicBody = {
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      system: summarizeOnly ? SUMMARIZE_PROMPT : SYSTEM_PROMPT,
+      system: summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
