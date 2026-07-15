@@ -1464,7 +1464,9 @@ struct CanvasHome: View {
                         FilLog.search.notice("SUGGESTION: \"\(outcome.suggestion, privacy: .public)\"")
                     }
                 } else {
-                    let kwInputs = keyword.map { FilClusterInput(id: $0.uuid, text: clusterText($0), keyword: displayTitle($0), metadata: filMetadata($0)) }
+                    // Cap the summarize payload: `keyword` (best-first) can be hundreds for a common
+                    // word, and every one would be billed tokens. The grid still shows them all.
+                    let kwInputs = keyword.prefix(Self.timeWindowCap).map { FilClusterInput(id: $0.uuid, text: clusterText($0), keyword: displayTitle($0), metadata: filMetadata($0)) }
                     summary = (try? await ClaudeSurfacingService.shared.summarize(query: q, fils: kwInputs, transactionID: txn)) ?? ""
                 }
             } else {
