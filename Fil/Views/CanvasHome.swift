@@ -265,7 +265,7 @@ struct CanvasHome: View {
             }
         }
         .landfilConfirmation(item: $pendingLandfilNote, message: { _ in
-            "this fil will be deleted. this cannot be undone."
+            "This thought will be deleted. This cannot be undone."
         }, onConfirm: { note in
             landfil(note)
         })
@@ -664,7 +664,7 @@ struct CanvasHome: View {
                 if isRetrieving {
                     HStack(spacing: 10) {
                         ProgressView()
-                        AnimatedGradientRevealText(text: "searching…", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                        AnimatedGradientRevealText(text: "Searching…", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                             .font(Theme.dmSans(15, weight: .semibold))
                             .foregroundStyle(Theme.secondaryText)
                     }
@@ -679,7 +679,7 @@ struct CanvasHome: View {
                                 .fixedSize(horizontal: false, vertical: true)
                             // Offer feedback only when we actually fell back to keyword matches (path E).
                             if !results.isEmpty {
-                                Button("open feedback form") { showFeedback = true }
+                                Button("Open feedback form") { showFeedback = true }
                                     .font(Theme.dmSans(14, weight: .medium))
                                     .tint(Theme.filProIndigo)
                             }
@@ -720,7 +720,7 @@ struct CanvasHome: View {
     private var freeSurfaceInvite: some View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
-                AnimatedGradientRevealText(text: "found by keyword.", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                AnimatedGradientRevealText(text: "Found by keyword.", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                     .font(Theme.dmSans(15, weight: .semibold))
                     .foregroundStyle(Theme.primaryText)
                 filProInviteLine
@@ -734,7 +734,7 @@ struct CanvasHome: View {
     private var freeEmptyInvite: some View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
-                AnimatedGradientRevealText(text: "nothing came up for \(query)", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                AnimatedGradientRevealText(text: "Nothing came up for \(query)", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                     .font(Theme.dmSans(15, weight: .semibold))
                     .foregroundStyle(Theme.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
@@ -752,7 +752,7 @@ struct CanvasHome: View {
         var line: AttributedString
 
         if !suggestedQuery.isEmpty {
-            line = AttributedString("nothing came up for it. want to try ")
+            line = AttributedString("Nothing came up for it. Want to try ")
             line.foregroundColor = Theme.secondaryText
             var link = AttributedString(suggestedQuery)
             link.foregroundColor = Theme.filProIndigo
@@ -761,7 +761,7 @@ struct CanvasHome: View {
             tail.foregroundColor = Theme.secondaryText
             line.append(link); line.append(tail)
         } else {
-            line = AttributedString("nothing came up for it. do you have a ")
+            line = AttributedString("Nothing came up for it. Do you have a ")
             line.foregroundColor = Theme.secondaryText
             var link = AttributedString("thought?")
             link.foregroundColor = Theme.filProIndigo
@@ -794,8 +794,8 @@ struct CanvasHome: View {
     /// gradient. The full sentence lays out (and wraps) normally in secondary text; the gradient is
     /// masked to show through only the "fil pro" glyphs via an aligned overlay.
     private var filProInviteLine: some View {
-        let full = "check out fil pro for a smarter search."
-        let word = "fil pro"
+        let full = "Check out Fil Pro for a smarter search."
+        let word = "Fil Pro"
 
         // Base sentence: gray, with the wordmark punched out (clear) so the gradient overlay shows.
         var base = AttributedString(full)
@@ -930,13 +930,13 @@ struct CanvasHome: View {
             togglePin(note)
         } label: {
             let pinned = PinnedFilStore.shared.isPinned(note)
-            Label(pinned ? "unpin from lock screen" : "pin to lock screen",
+            Label(pinned ? "Unpin from lock screen" : "Pin to lock screen",
                   systemImage: pinned ? "pin.slash" : "pin")
         }
         Button(role: .destructive) {
             pendingLandfilNote = note
         } label: {
-            Label("landfil", systemImage: "trash")
+            Label("Landfil", systemImage: "trash")
         }
     }
 
@@ -1104,7 +1104,7 @@ struct CanvasHome: View {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         let gradient = Theme.randomGradientPair()
         let title = transcript.isEmpty
-            ? "voice fil"
+            ? "Voice thought"
             : await ArticleGenerationService.shared.generateTitle(from: transcript)
         let note = Note(
             title: title,
@@ -1351,7 +1351,7 @@ struct CanvasHome: View {
     private var welcomeCongratsOverlay: some View {
         ZStack {
             Theme.background.opacity(0.55).ignoresSafeArea()
-            Text("that's a thought.\nit's yours.")
+            Text("That's a thought.\nIt's yours.")
                 .font(Theme.dmSans(24, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
                 .multilineTextAlignment(.center)

@@ -120,45 +120,45 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            settingToggle("dark mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
+            settingToggle("Dark mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
 
             sectionDivider
 
             settingToggle(
-                "left-handed",
+                "Left-handed",
                 icon: "hand.point.left.fill",
-                description: "buttons on the left.",
+                description: "Buttons on the left.",
                 isOn: $controlsOnLeft
             )
 
             sectionDivider
 
             settingToggle(
-                "use lowercase",
+                "Use lowercase",
                 icon: "textformat.abc",
-                description: "render titles and voice recording transcripts in lowercase for a more casual voice.",
+                description: "Render titles and voice recording transcripts in lowercase for a more casual voice.",
                 isOn: $prefersLowercase
             )
 
             sectionDivider
 
             settingToggle(
-                "small form",
+                "Small form",
                 icon: "arrow.down.right.and.arrow.up.left",
-                description: "new thoughts form smaller in the recents strip instead of full screen.",
+                description: "New thoughts form smaller in the recents strip instead of full screen.",
                 isOn: $smallCreationAnimation
             )
 
             sectionDivider
 
-            settingToggle("sound effects", icon: "music.note", isOn: $soundEnabled)
+            settingToggle("Sound effects", icon: "music.note", isOn: $soundEnabled)
 
             if !screensaverOptions.isEmpty {
                 sectionDivider
 
                 VStack(alignment: .leading, spacing: 16) {
-                    settingLabel("screensavers", icon: "zzz")
-                    // Indent rows so their icons line up under the word "screensavers"
+                    settingLabel("Screensavers", icon: "zzz")
+                    // Indent rows so their icons line up under the word "Screensavers"
                     // (header icon frame width 22 + HStack spacing 12).
                     ForEach(screensaverOptions) { screensaverRow($0) }
                         .padding(.leading, 34)
@@ -168,11 +168,11 @@ struct SettingsView: View {
             sectionDivider
 
             settingToggle(
-                "auto screensaver",
+                "Auto screensaver",
                 icon: "power",
                 description: autoScreensaverUnlocked
-                    ? "after a minute of idling, play the last opened screensaver. this keeps your screen awake, so watch your battery."
-                    : "unlocks once you have a few more thoughts.",
+                    ? "After a minute of idling, play the last opened screensaver. This keeps your screen awake, so watch your battery."
+                    : "Unlocks once you have a few more thoughts.",
                 isOn: $autoScreensaverEnabled
             )
             .disabled(!autoScreensaverUnlocked)
@@ -235,7 +235,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.white.opacity(0.6))
                         }
                     }
-                    Text(option.isUnlocked ? option.description : "unlocks at \(option.requirement)")
+                    Text(option.isUnlocked ? option.description : "Unlocks at \(option.requirement)")
                         .font(Theme.dmSans(13))
                         .foregroundStyle(.white.opacity(0.7))
                         .fixedSize(horizontal: false, vertical: true)
@@ -255,20 +255,20 @@ struct SettingsView: View {
 
             Divider().overlay(Color.white.opacity(0.14))
 
-            aboutRow("website") { openURL(FilLinks.website) }
-            aboutRow("support") { openURL(FilLinks.support) }
-            aboutRow("privacy policy") { openURL(FilLinks.privacyPolicy) }
-            aboutRow("terms of service") { openURL(FilLinks.termsOfService) }
+            aboutRow("Website") { openURL(FilLinks.website) }
+            aboutRow("Support") { openURL(FilLinks.support) }
+            aboutRow("Privacy policy") { openURL(FilLinks.privacyPolicy) }
+            aboutRow("Terms of service") { openURL(FilLinks.termsOfService) }
             
             Divider().overlay(Color.white.opacity(0.14))
             
             
-            aboutRow("open feedback form") { showFeedback = true }
-            aboutRow("rate fil on the app store") { openURL(FilLinks.writeReview) }
+            aboutRow("Open feedback form") { showFeedback = true }
+            aboutRow("Rate Fil on the App Store") { openURL(FilLinks.writeReview) }
 
             Divider().overlay(Color.white.opacity(0.14))
 
-            Text("version \(appVersion)")
+            Text("Version \(appVersion)")
                 .font(Theme.dmSans(12))
                 .foregroundStyle(.white.opacity(0.5))
         }

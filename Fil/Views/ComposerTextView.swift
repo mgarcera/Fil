@@ -77,17 +77,17 @@ struct ComposerTextView: UIViewRepresentable {
         /// capture actions, then the remaining system items. Our custom paste replaces the system's
         /// one — which we strip below — so it isn't duplicated when it leads.
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
-            let record = UIAction(title: "record voice", image: UIImage(systemName: "mic.fill")) { [weak self] _ in
+            let record = UIAction(title: "Record voice", image: UIImage(systemName: "mic.fill")) { [weak self] _ in
                 self?.parent.onRecordVoice()
             }
-            let photo = UIAction(title: "add photo", image: UIImage(systemName: "photo")) { [weak self] _ in
+            let photo = UIAction(title: "Add photo", image: UIImage(systemName: "photo")) { [weak self] _ in
                 self?.parent.onAddPhoto()
             }
 
             var leading: [UIMenuElement] = []
             let pasteboard = UIPasteboard.general
             if pasteboard.hasStrings || pasteboard.hasURLs {
-                leading.append(UIAction(title: "paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in
+                leading.append(UIAction(title: "Paste", image: UIImage(systemName: "doc.on.clipboard")) { _ in
                     textView.paste(nil)
                 })
             }

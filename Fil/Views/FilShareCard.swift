@@ -64,7 +64,7 @@ struct FilShareCard: View {
 
             VStack {
                 Spacer()
-                Text("fil · let thoughts be")
+                Text("Fil · Let thoughts be")
                     .font(.system(size: 26, weight: .medium, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.5))
                     .padding(.bottom, 60)

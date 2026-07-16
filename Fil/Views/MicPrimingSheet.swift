@@ -15,11 +15,11 @@ struct MicPrimingSheet: View {
                 .foregroundStyle(Theme.primaryText)
                 .padding(.top, 8)
 
-            Text("talk to fil")
+            Text("Talk to Fil")
                 .font(Theme.dmSans(22, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
 
-            Text("fil turns what you say into a titled note — right on your device. to record, it needs your microphone and speech recognition. you can always just type instead.")
+            Text("Fil turns what you say into a titled note — right on your device. To record, it needs your microphone and speech recognition. You can always just type instead.")
                 .font(Theme.dmSans(15))
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
@@ -28,7 +28,7 @@ struct MicPrimingSheet: View {
 
             VStack(spacing: 10) {
                 Button(action: onEnable) {
-                    Text("enable")
+                    Text("Enable")
                         .font(Theme.dmSans(16, weight: .semibold))
                         .foregroundStyle(Theme.background)
                         .frame(maxWidth: .infinity)
@@ -38,7 +38,7 @@ struct MicPrimingSheet: View {
                 .buttonStyle(.plain)
 
                 Button(action: onNotNow) {
-                    Text("not now")
+                    Text("Not now")
                         .font(Theme.dmSans(15, weight: .medium))
                         .foregroundStyle(Theme.secondaryText)
                         .frame(maxWidth: .infinity)

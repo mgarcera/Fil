@@ -25,7 +25,7 @@ struct FeedbackSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("how's it going?")
+                    Text("How's it going?")
                         .font(Theme.dmSans(15))
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -47,7 +47,7 @@ struct FeedbackSheet: View {
 
                     ZStack(alignment: .topLeading) {
                         if message.isEmpty {
-                            Text("your thoughts")
+                            Text("Your thoughts")
                                 .font(Theme.dmSans(16))
                                 .foregroundStyle(Theme.tertiaryText)
                                 .padding(.top, 8)
@@ -64,7 +64,7 @@ struct FeedbackSheet: View {
                     .padding(12)
                     .background(Theme.cardBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-                    TextField("your email (optional, for a reply)", text: $email)
+                    TextField("Your email (optional, for a reply)", text: $email)
                         .font(Theme.dmSans(15))
                         .foregroundStyle(Theme.primaryText)
                         .textInputAutocapitalization(.never)
@@ -76,7 +76,7 @@ struct FeedbackSheet: View {
                     Button {
                         Task { await send() }
                     } label: {
-                        Text(isSending ? "sending…" : "send")
+                        Text(isSending ? "Sending…" : "Send")
                             .font(Theme.dmSans(16, weight: .semibold))
                             .foregroundStyle(Theme.background)
                             .frame(maxWidth: .infinity)
@@ -90,24 +90,24 @@ struct FeedbackSheet: View {
                 .padding(20)
             }
             .scrollIndicators(.hidden)
-            .navigationTitle("feedback")
+            .navigationTitle("Feedback")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("close") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
             }
         }
         .presentationDetents([.large])
         .presentationBackground(Theme.background)
         .onAppear { messageFocused = true }
-        .alert("thank you!", isPresented: alertBinding(.sent)) {
-            Button("ok") { dismiss() }
+        .alert("Thank you!", isPresented: alertBinding(.sent)) {
+            Button("OK") { dismiss() }
         } message: {
-            Text("your feedback has been sent!")
+            Text("Your feedback has been sent!")
         }
-        .alert("couldn't send", isPresented: alertBinding(.failed)) {
-            Button("ok") {}
+        .alert("Couldn't send", isPresented: alertBinding(.failed)) {
+            Button("OK") {}
         } message: {
-            Text("something went wrong. please try again, or email mason@rootcause.ltd.")
+            Text("Something went wrong. Please try again, or email mason@rootcause.ltd.")
         }
     }
 

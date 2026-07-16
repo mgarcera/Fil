@@ -13,14 +13,14 @@ extension View {
         onConfirm: @escaping (Item) -> Void
     ) -> some View {
         alert(
-            "move to landfil?",
+            "Move to landfil?",
             isPresented: Binding(
                 get: { item.wrappedValue != nil },
                 set: { if !$0 { item.wrappedValue = nil } }
             ),
             presenting: item.wrappedValue
         ) { presented in
-            Button("landfil", role: .destructive) { onConfirm(presented) }
+            Button("Landfil", role: .destructive) { onConfirm(presented) }
             Button("Cancel", role: .cancel) {}
         } message: { presented in
             Text(message(presented))

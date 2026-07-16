@@ -206,7 +206,7 @@ struct ArticleView: View {
                     } label: {
                         Image(systemName: "xmark")
                     }
-                    .accessibilityLabel("Close fil")
+                    .accessibilityLabel("Close thought")
                 }
             }
 
@@ -216,43 +216,43 @@ struct ArticleView: View {
                         Button {
                             togglePinnedFil()
                         } label: {
-                            Label(isCurrentFilPinned ? "unpin from lock screen" : "pin to lock screen",
+                            Label(isCurrentFilPinned ? "Unpin from lock screen" : "Pin to lock screen",
                                   systemImage: isCurrentFilPinned ? "pin.slash" : "pin")
                         }
 
-                        ShareLink(item: filShareCard, preview: SharePreview("a fil from fil")) {
-                            Label("share", systemImage: "square.and.arrow.up")
+                        ShareLink(item: filShareCard, preview: SharePreview("A thought from Fil")) {
+                            Label("Share", systemImage: "square.and.arrow.up")
                         }
 
                         Button(role: .destructive) {
                             showLandfilConfirmation = true
                         } label: {
-                            Label("landfil", systemImage: "trash")
+                            Label("Landfil", systemImage: "trash")
                         }
 
-                        Section("created") {
+                        Section("Created") {
                             Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityLabel("more")
+                    .accessibilityLabel("More")
 
                     Button {
                         toggleEditing()
                     } label: {
                         Image(systemName: isEditingTranscript ? "checkmark" : "pencil")
                     }
-                    .accessibilityLabel(isEditingTranscript ? "Finish editing" : "Edit fil")
+                    .accessibilityLabel(isEditingTranscript ? "Finish editing" : "Edit thought")
                 }
             }
         }
         .quickLookPreview($imagePreviewURL, in: imagePreviewURLs)
-        .alert("move to landfil?", isPresented: $showLandfilConfirmation) {
-            Button("landfil", role: .destructive) { landfilFil() }
+        .alert("Move to landfil?", isPresented: $showLandfilConfirmation) {
+            Button("Landfil", role: .destructive) { landfilFil() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("this fil will be deleted. this cannot be undone.")
+            Text("This thought will be deleted. This cannot be undone.")
         }
         .sheet(isPresented: Binding(
             get: { linkBrowserURL != nil },
@@ -283,7 +283,7 @@ struct ArticleView: View {
                 continue
             }
             let keyword = backlink.parentKeyword.trimmingCharacters(in: .whitespacesAndNewlines)
-            return (parent, keyword.isEmpty ? "threaded fil" : keyword)
+            return (parent, keyword.isEmpty ? "threaded thought" : keyword)
         }
         return nil
     }
@@ -464,7 +464,7 @@ struct ArticleView: View {
             HStack(spacing: 6) {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 12, weight: .semibold))
-                Text("open")
+                Text("Open")
                     .font(Theme.dmSans(15, weight: .semibold))
             }
             .foregroundStyle(Theme.primaryText)
@@ -503,7 +503,7 @@ struct ArticleView: View {
             return title
         }
 
-        return note.sourceDomain ?? "link"
+        return note.sourceDomain ?? "Link"
     }
 
     @ViewBuilder
@@ -565,7 +565,7 @@ struct ArticleView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             if let threadContextSubtitle {
-                Text("from \(threadContextSubtitle)")
+                Text("From \(threadContextSubtitle)")
                     .font(Theme.dmMono(12))
                     .foregroundStyle(Theme.tertiaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -648,7 +648,7 @@ struct ArticleView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Open linked fil")
+        .accessibilityLabel("Open linked thought")
     }
 
     @ViewBuilder
@@ -686,7 +686,7 @@ struct ArticleView: View {
         let title = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let transcript = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         return FilShareCardData(
-            title: title.isEmpty ? "fil" : title,
+            title: title.isEmpty ? "Thought" : title,
             excerpt: String(transcript.prefix(160)),
             startHex: note.gradientStartHex,
             endHex: note.gradientEndHex,
@@ -714,7 +714,7 @@ struct ArticleView: View {
             pinnedFil = pinnedFilStore.pinnedFil
         }
 
-        showPinToast(willPin ? "pinned to live activity" : "unpinned from live activity")
+        showPinToast(willPin ? "Pinned to live activity" : "Unpinned from live activity")
     }
 
     private func showPinToast(_ message: String) {
@@ -745,7 +745,7 @@ struct ArticleView: View {
                         Button(role: .destructive) {
                             pendingLandfilTodo = ArticleTodoLandfil(index: item.index, text: item.text)
                         } label: {
-                            Label("landfil", systemImage: "trash")
+                            Label("Landfil", systemImage: "trash")
                         }
                     }
                 }
@@ -753,7 +753,7 @@ struct ArticleView: View {
             .padding(.top, 2)
             .padding(.leading, 20)
             .landfilConfirmation(item: $pendingLandfilTodo) { pending in
-                "“\(pending.text)” will be deleted. this cannot be undone."
+                "“\(pending.text)” will be deleted. This cannot be undone."
             } onConfirm: { pending in
                 removeTodo(at: pending.index)
             }
@@ -770,7 +770,7 @@ struct ArticleView: View {
                 HStack(alignment: .center, spacing: 12) {
                     TodoStatusCircle(isCompleted: false)
 
-                    TextField("to do", text: $newTodoText)
+                    TextField("To do", text: $newTodoText)
                         .font(Theme.dmSans(16))
                         .foregroundStyle(Theme.secondaryText)
                         .focused($isTodoFieldFocused)
@@ -790,7 +790,7 @@ struct ArticleView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
                             .font(.system(size: 13, weight: .semibold))
-                        Text("to do")
+                        Text("To do")
                             .font(Theme.dmSans(16))
                     }
                     .foregroundStyle(Theme.tertiaryText)

@@ -182,18 +182,18 @@ struct KeywordPopup: View {
                 .presentationBackground(Theme.background)
             }
         }
-        .alert("move to landfil?", isPresented: Binding(
+        .alert("Move to landfil?", isPresented: Binding(
             get: { pendingLandfilEntryID != nil },
             set: { if !$0 { pendingLandfilEntryID = nil } }
         )) {
-            Button("landfil", role: .destructive) {
+            Button("Landfil", role: .destructive) {
                 confirmLandfilEntry()
             }
             Button("Cancel", role: .cancel) {
                 pendingLandfilEntryID = nil
             }
         } message: {
-            Text("this cannot be undone.")
+            Text("This cannot be undone.")
         }
         .photosPicker(isPresented: $photoPickerPresented, selection: $selectedPhoto, matching: .images)
         .photosPicker(isPresented: $videoPickerPresented, selection: $selectedVideo, matching: .videos)
@@ -287,11 +287,11 @@ struct KeywordPopup: View {
                 .padding(20)
             }
             .scrollIndicators(.hidden)
-            .navigationTitle("link a thought")
+            .navigationTitle("Link a thought")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("cancel") { showFilLinkPicker = false }
+                    Button("Cancel") { showFilLinkPicker = false }
                 }
             }
         }
@@ -492,7 +492,7 @@ struct KeywordPopup: View {
                     Button {
                         showFilLinkPicker = true
                     } label: {
-                        Label("link a thought", systemImage: "link.circle")
+                        Label("Link a thought", systemImage: "link.circle")
                     }
                 }
             }
@@ -503,12 +503,12 @@ struct KeywordPopup: View {
                     noteEditorDetent = .large
                     editingNoteID = entry.id
                 } label: {
-                    Label("write note", systemImage: "note.text")
+                    Label("Write note", systemImage: "note.text")
                 }
                 Button {
                     startMemoRecording()
                 } label: {
-                    Label("record", systemImage: "mic.fill")
+                    Label("Record", systemImage: "mic.fill")
                 }
                 Button {
                     beginAddingLink()
@@ -520,25 +520,25 @@ struct KeywordPopup: View {
                 Button {
                     photoPickerPresented = true
                 } label: {
-                    Label("add photo", systemImage: "photo")
+                    Label("Add photo", systemImage: "photo")
                 }
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {
                         showCamera = true
                     } label: {
-                        Label("take a photo", systemImage: "camera")
+                        Label("Take a photo", systemImage: "camera")
                     }
                 }
                 Button {
                     videoPickerPresented = true
                 } label: {
-                    Label("add video", systemImage: "video")
+                    Label("Add video", systemImage: "video")
                 }
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {
                         showVideoCamera = true
                     } label: {
-                        Label("take a video", systemImage: "video.badge.plus")
+                        Label("Take a video", systemImage: "video.badge.plus")
                     }
                 }
             }
@@ -546,7 +546,7 @@ struct KeywordPopup: View {
                 Button {
                     showPDFImporter = true
                 } label: {
-                    Label("upload PDF", systemImage: "doc.fill")
+                    Label("Upload PDF", systemImage: "doc.fill")
                 }
             }
         } label: {
@@ -560,7 +560,7 @@ struct KeywordPopup: View {
         Button(role: .destructive) {
             pendingLandfilEntryID = id
         } label: {
-            Label("landfil", systemImage: "trash")
+            Label("Landfil", systemImage: "trash")
         }
     }
 
@@ -901,7 +901,7 @@ struct MissingLinkedFilView: View {
             Theme.background
                 .ignoresSafeArea()
 
-            Text("fil not found")
+            Text("Thought not found")
                 .font(Theme.dmMono(12))
                 .foregroundStyle(Theme.tertiaryText)
         }

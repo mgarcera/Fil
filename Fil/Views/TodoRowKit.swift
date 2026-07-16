@@ -75,7 +75,7 @@ struct TodoRowContent: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(text)
-        .accessibilityValue(isCompleted ? "done" : "open")
-        .accessibilityHint(isCompleted ? "mark open" : "mark done")
+        .accessibilityValue(isCompleted ? "Done" : "Open")
+        .accessibilityHint(isCompleted ? "Mark open" : "Mark done")
     }
 }

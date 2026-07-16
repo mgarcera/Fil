@@ -90,8 +90,8 @@ struct ContentView: View {
             // sighted tap-to-exit isn't discoverable to them). Hidden entirely when idle.
             .accessibilityElement(children: .ignore)
             .accessibilityHidden(activeScreensaverMode == nil && !showKoiPond)
-            .accessibilityLabel("screensaver")
-            .accessibilityHint("double tap to dismiss")
+            .accessibilityLabel("Screensaver")
+            .accessibilityHint("Double tap to dismiss")
             .accessibilityAction {
                 withAnimation(.easeInOut(duration: 0.4)) {
                     activeScreensaverMode = nil
@@ -380,17 +380,17 @@ struct ContentView: View {
     /// Screensaver launchers for Settings → Appearance. Each dismisses settings, then launches.
     private var screensaverOptions: [ScreensaverOption] {
         func option(_ title: String, _ image: String, _ description: String, unlockAt: Int, launch: @escaping () -> Void) -> ScreensaverOption {
-            ScreensaverOption(title: title, systemImage: image, description: description, isUnlocked: notes.count >= unlockAt, requirement: "\(unlockAt) fils") {
+            ScreensaverOption(title: title, systemImage: image, description: description, isUnlocked: notes.count >= unlockAt, requirement: "\(unlockAt) thoughts") {
                 showFilSetup = false
                 launch()
             }
         }
         return [
-            option("filosophy", "camera.filters", "a lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
-            option("filharmonic", "wave.3.left", "watch your thoughts ripple. (the more the better)", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
-            option("filanthropy", "wind", "watch your thoughts drift and swirl.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
-            option("chlorofil", "rainbow", "your thoughts in streaks of light. (uses your latest thoughts, so they'll always change color)", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
-            option("fillet", "fish.fill", "your thoughts...as fish food.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
+            option("Filosophy", "camera.filters", "A lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
+            option("Filharmonic", "wave.3.left", "Watch your thoughts ripple. (the more the better)", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
+            option("Filanthropy", "wind", "Watch your thoughts drift and swirl.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
+            option("Chlorofil", "rainbow", "Your thoughts in streaks of light. (uses your latest thoughts, so they'll always change color)", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
+            option("Fillet", "fish.fill", "Your thoughts...as fish food.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
         ]
     }
 

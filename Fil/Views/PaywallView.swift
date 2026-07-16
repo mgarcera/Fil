@@ -58,11 +58,11 @@ struct PaywallView: View {
     /// invites, it never pressures.
     private var marketingHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
-            AnimatedGradientRevealText(text: "a smarter search.")
+            AnimatedGradientRevealText(text: "A smarter search.")
                 .font(Theme.dmSans(26, weight: .bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             blobRow
-            Text("find exactly what you were thinking.")
+            Text("Find exactly what you were thinking.")
                 .font(Theme.dmSans(15, weight: .bold))
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.leading)
@@ -71,7 +71,7 @@ struct PaywallView: View {
             // Keeps the paywall lean; the full free-vs-Pro capability list lives on the web.
             Link(destination: Self.smartSearchURL) {
                 HStack(spacing: 4) {
-                    Text("see everything smart search finds")
+                    Text("See everything smart search finds")
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 11, weight: .semibold))
                 }
@@ -80,15 +80,15 @@ struct PaywallView: View {
             .tint(Theme.filProIndigo)
             .frame(maxWidth: .infinity, alignment: .leading)
             // Plain-language data disclosure, shown at the moment of opting in.
-            Text("to answer your search, smart search sends relevant text to our ai provider (anthropic). it's never used to train models and is deleted within 30 days. free keyword search stays on your device.")
+            Text("To answer your search, smart search sends relevant text to our AI provider (Anthropic). It's never used to train models and is deleted within 30 days. Free keyword search stays on your device.")
                 .font(Theme.dmSans(15))
                 .foregroundStyle(Theme.tertiaryText)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 14) {
-                Link("terms", destination: Self.termsURL)
-                Link("privacy policy", destination: Self.privacyURL)
+                Link("Terms", destination: Self.termsURL)
+                Link("Privacy policy", destination: Self.privacyURL)
             }
             .font(Theme.dmSans(12))
             .tint(Theme.secondaryText)

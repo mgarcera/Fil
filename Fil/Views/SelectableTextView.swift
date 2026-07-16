@@ -119,7 +119,7 @@ struct SelectableTextView: UIViewRepresentable {
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
             guard range.length > 0 else { return UIMenu(children: suggestedActions) }
 
-            let attachAction = UIAction(title: "filament", image: UIImage(systemName: "paperclip")) { [weak self] _ in
+            let attachAction = UIAction(title: "Filament", image: UIImage(systemName: "paperclip")) { [weak self] _ in
                 guard let self else { return }
                 let nsText = textView.text as NSString
                 let selectedText = nsText.substring(with: range)
@@ -135,7 +135,7 @@ struct SelectableTextView: UIViewRepresentable {
                 textView.selectedTextRange = nil
             }
 
-            let todoAction = UIAction(title: "add to do", image: UIImage(systemName: "checkmark.circle")) { [weak self] _ in
+            let todoAction = UIAction(title: "Add to do", image: UIImage(systemName: "checkmark.circle")) { [weak self] _ in
                 guard let self else { return }
                 let selectedText = (textView.text as NSString).substring(with: range)
                 guard !selectedText.isEmpty else { return }
