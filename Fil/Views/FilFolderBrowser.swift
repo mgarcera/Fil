@@ -528,12 +528,7 @@ struct FolderInteriorView: View {
         }
         .padding(14)
         .frame(width: 150, height: 150, alignment: .topLeading)
-        .background {
-            ZStack {
-                Theme.cardBackground
-                CardBottomGlow(startHex: note.gradientStartHex, endHex: note.gradientEndHex)
-            }
-        }
+        .background(Theme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
     }
@@ -638,42 +633,6 @@ private struct FolderMark: View {
             }
         }
         .frame(width: size, height: size)
-    }
-}
-
-/// A soft gradient glow pooled at the bottom of a card — mirrors the home-screen pinned-fil widget
-/// (FilLiveActivityBottomGlow), replicated here since that lives in the widget target. The glow
-/// circles sit just below the bottom edge so only their soft upper falloff shows.
-private struct CardBottomGlow: View {
-    let startHex: String
-    let endHex: String
-
-    var body: some View {
-        GeometryReader { proxy in
-            let w = proxy.size.width
-            let h = proxy.size.height
-            ZStack {
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0.5),
-                        .init(color: Color(hex: startHex).opacity(0.16), location: 1.0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                Circle()
-                    .fill(Color(hex: startHex).opacity(0.32))
-                    .frame(width: 120, height: 120)
-                    .blur(radius: 40)
-                    .position(x: w * 0.28, y: h + 24)
-                Circle()
-                    .fill(Color(hex: endHex).opacity(0.32))
-                    .frame(width: 130, height: 130)
-                    .blur(radius: 42)
-                    .position(x: w * 0.78, y: h + 26)
-            }
-        }
-        .allowsHitTesting(false)
     }
 }
 

@@ -43,7 +43,6 @@ struct KeywordPopup: View {
     let note: Note
     let keyword: String
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var selectedVideo: PhotosPickerItem?
@@ -86,26 +85,6 @@ struct KeywordPopup: View {
         ZStack {
             Theme.background
                 .ignoresSafeArea()
-
-            // Same backdrop as the parent fil (article view): the colored gradient wash plus the
-            // top-edge glow, in the parent note's colors — rasterized to one static image so a
-            // 0.6 → full detent drag stretches a single cheap layer instead of re-laying-out the
-            // blurred circles/strokes each frame.
-            StaticBlurBackdrop(colorScheme: colorScheme, contentID: note.uuid) {
-                ZStack {
-                    FilrSheetBackground(
-                        startColor: Color(hex: note.gradientStartHex),
-                        endColor: Color(hex: note.gradientEndHex),
-                        isLightMode: colorScheme == .light
-                    )
-
-                    FilrTopEdgeGlow(
-                        startColor: Color(hex: note.gradientStartHex),
-                        endColor: Color(hex: note.gradientEndHex)
-                    )
-                }
-            }
-            .ignoresSafeArea()
 
             ScrollView {
                 Color.clear

@@ -23,7 +23,6 @@ struct ArticleView: View {
     @Binding private var filSheetPath: [FilSheetRoute]
     @Binding private var selectedPresentationDetent: PresentationDetent
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
@@ -108,29 +107,6 @@ struct ArticleView: View {
         ZStack {
             Theme.background
                 .ignoresSafeArea()
-
-            // The blurred backdrop (~18 circles) and top-edge glow (3 blurred strokes) each
-            // take part in layout on every frame of the detent resize — the lag we isolated.
-            // Rasterizing them to a single static image once, then stretching that one image
-            // as the sheet grows, collapses them to a single cheap layer. The heavy blur
-            // hides the stretch, so the look is preserved.
-            StaticBlurBackdrop(colorScheme: colorScheme, contentID: note.uuid) {
-                ZStack {
-                    if note.imageData == nil {
-                        CalibrateSheetBackground(
-                            startColor: Color(hex: note.gradientStartHex),
-                            endColor: Color(hex: note.gradientEndHex),
-                            isLightMode: colorScheme == .light
-                        )
-                    }
-
-                    FilrTopEdgeGlow(
-                        startColor: Color(hex: note.gradientStartHex),
-                        endColor: Color(hex: note.gradientEndHex)
-                    )
-                }
-            }
-            .ignoresSafeArea()
 
             if note.isLinkFil {
                 linkFilContentView
@@ -903,39 +879,6 @@ struct ArticleView: View {
     }
 }
 
-private struct CalibrateStageBackdrop: View {
-    let startColor: Color
-    let endColor: Color
-    let isGenerating: Bool
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .fill(startColor.opacity(isGenerating ? 0.24 : 0.16))
-                .frame(width: isGenerating ? 180 : 150, height: isGenerating ? 180 : 150)
-                .blur(radius: isGenerating ? 44 : 34)
-                .offset(x: -54, y: -58)
-                .animation(.easeInOut(duration: 1.2), value: isGenerating)
-
-            Circle()
-                .fill(endColor.opacity(isGenerating ? 0.22 : 0.14))
-                .frame(width: isGenerating ? 190 : 160, height: isGenerating ? 190 : 160)
-                .blur(radius: isGenerating ? 46 : 36)
-                .offset(x: 126, y: -12)
-                .animation(.easeInOut(duration: 1.1), value: isGenerating)
-
-            Circle()
-                .fill(startColor.mix(with: endColor, by: 0.5).opacity(isGenerating ? 0.2 : 0.12))
-                .frame(width: isGenerating ? 220 : 180, height: isGenerating ? 220 : 180)
-                .blur(radius: isGenerating ? 48 : 38)
-                .offset(x: 40, y: 114)
-                .animation(.easeInOut(duration: 1.3), value: isGenerating)
-        }
-        .frame(height: 240)
-        .allowsHitTesting(false)
-    }
-}
-
 private struct ArticleBacklinkBlobShape: Shape {
     let seed: Double
 
@@ -1027,72 +970,3 @@ private struct ArticleTodoLandfil: Identifiable {
     let text: String
 }
 
-private struct CalibrateSheetBackground: View {
-    let startColor: Color
-    let endColor: Color
-    let isLightMode: Bool
-
-    private func adjustedOpacity(_ value: Double) -> Double {
-        isLightMode ? min(value * 1.35, 1.0) : value
-    }
-
-    var body: some View {
-        ZStack {
-            Theme.background
-
-            CalibrateStageBackdrop(
-                startColor: startColor,
-                endColor: endColor,
-                isGenerating: false
-            )
-            .scaleEffect(1.5)
-            .offset(y: 250)
-            .opacity(adjustedOpacity(0.95))
-
-            CalibrateStageBackdrop(
-                startColor: startColor,
-                endColor: endColor,
-                isGenerating: false
-            )
-            .scaleEffect(1.15)
-            .offset(x: 70, y: 160)
-            .opacity(adjustedOpacity(0.55))
-
-            CalibrateStageBackdrop(
-                startColor: startColor,
-                endColor: endColor,
-                isGenerating: false
-            )
-            .scaleEffect(1.05)
-            .offset(x: -90, y: 210)
-            .opacity(adjustedOpacity(0.4))
-
-            CalibrateStageBackdrop(
-                startColor: startColor,
-                endColor: endColor,
-                isGenerating: false
-            )
-            .scaleEffect(0.9)
-            .offset(x: 150, y: 120)
-            .opacity(adjustedOpacity(0.42))
-
-            CalibrateStageBackdrop(
-                startColor: startColor.mix(with: endColor, by: 0.55),
-                endColor: endColor.mix(with: startColor, by: 0.2),
-                isGenerating: false
-            )
-            .scaleEffect(0.75)
-            .offset(x: 120, y: 90)
-            .opacity(adjustedOpacity(0.34))
-
-            CalibrateStageBackdrop(
-                startColor: startColor,
-                endColor: endColor,
-                isGenerating: false
-            )
-            .scaleEffect(0.95)
-            .offset(x: -140, y: 240)
-            .opacity(adjustedOpacity(0.4))
-        }
-    }
-}
