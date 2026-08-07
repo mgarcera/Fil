@@ -14,5 +14,6 @@ struct FilPinnedWidgetBundle: WidgetBundle {
         FilPinnedWidget()
         FilPinnedWidgetControl()
         FilPinnedWidgetLiveActivity()
+        FilBasketLiveActivity()
     }
 }

@@ -16,7 +16,6 @@ struct SettingsView: View {
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     @AppStorage("isDarkMode") private var isDarkMode = true
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
-    @AppStorage("smallCreationAnimation") private var smallCreationAnimation = false
 
     @State private var section: SettingsSection = .appearance
     @State private var showFromMason = false
@@ -77,7 +76,7 @@ struct SettingsView: View {
                     } label: {
                         let isSelected = section == tab
                         Text(tab.title)
-                            .font(Theme.dmSans(15, weight: .semibold))
+                            .font(Theme.instrumentSerif(19))
                             .foregroundStyle(isSelected ? Color.black : .white)
                             .padding(.horizontal, 18)
                             .frame(height: 44)
@@ -142,15 +141,6 @@ struct SettingsView: View {
 
             sectionDivider
 
-            settingToggle(
-                "Small form",
-                icon: "arrow.down.right.and.arrow.up.left",
-                description: "New thoughts form smaller in the recents strip instead of full screen.",
-                isOn: $smallCreationAnimation
-            )
-
-            sectionDivider
-
             settingToggle("Sound effects", icon: "music.note", isOn: $soundEnabled)
 
             if !screensaverOptions.isEmpty {
@@ -210,7 +200,7 @@ struct SettingsView: View {
                 .foregroundStyle(.white.opacity(0.85))
                 .frame(width: 22)
             Text(title)
-                .font(Theme.dmSans(16, weight: .medium))
+                .font(Theme.instrumentSerif(20))
                 .foregroundStyle(.white)
         }
     }
@@ -227,7 +217,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(option.title)
-                            .font(Theme.dmSans(16, weight: .medium))
+                            .font(Theme.instrumentSerif(20))
                             .foregroundStyle(.white)
                         if !option.isUnlocked {
                             Image(systemName: "lock.fill")
@@ -280,7 +270,7 @@ struct SettingsView: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Text(title)
-                    .font(Theme.dmSans(16, weight: .medium))
+                    .font(Theme.instrumentSerif(20))
                     .foregroundStyle(.white)
                 Spacer()
                 Image(systemName: "arrow.up.right")

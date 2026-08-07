@@ -117,6 +117,29 @@ struct NoteCardView: View {
     }
 }
 
+/// The search grid's title treatment: centered on one line, and left-aligned + wrapping when it
+/// doesn't fit the blob width (ViewThatFits picks, no manual line counting). Shared by the search
+/// results grid and the folder browser's photo cells.
+struct BlobTitle: View {
+    let title: String
+    var width: CGFloat = 150
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            Text(title)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+            Text(title)
+                .multilineTextAlignment(.leading)
+                .frame(width: width, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(Theme.dmSans(15, weight: .medium))
+        .foregroundStyle(Theme.primaryText)
+        .frame(width: width)
+    }
+}
+
 private struct NoteBlobBackground: View {
     let startColor: Color
     let endColor: Color

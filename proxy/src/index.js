@@ -17,6 +17,8 @@ const MODEL = "claude-haiku-4-5";
 const ANTHROPIC_ENDPOINT = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_TOKENS = 800;
+// Organizing a whole library into folders can emit many group→note lists, so allow more output.
+const ORGANIZE_MAX_TOKENS = 2000;
 
 const BUNDLE_ID = "com.masongarcera.Fil";
 const PRODUCT_IDS = ["com.masongarcera.Fil.pro.monthly", "com.masongarcera.Fil.pro.annual"];
@@ -85,6 +87,38 @@ function summarizeSystem(window) {
   return SUMMARIZE_PROMPT + `\n\nThese notes are all from ${window}, a stretch of time the person is looking back on. Situate the reflection in that time and look back on it, for example "this year you kept coming back to..." or "that week was mostly about...". Use past or retrospective voice, never the present-tense "right now".`;
 }
 
+// Shared "user's voice" rules — the same restrained, grounded reflection voice the search summaries
+// use. Reused for folder captions so every generated line sounds like Fil.
+const VOICE_RULES = `Voice rules:
+- Warm but restrained. Never sentimental, flowery, or therapeutic. Do not psychoanalyze, infer hidden motives, or reach for deeper meaning the notes don't state.
+- Describe what the notes are about, not who the person is.
+- Lead with the content of the thought, not the container. Don't narrate that these are notes or fils; reflect the thinking itself.
+- No clinical framing, no advice, no nudges.
+- Never use em dashes. Use commas, periods, or "and". Contractions welcome.
+- Write in natural sentence case (the app handles lowercasing).`;
+
+// Organize mode: group the whole library into a small set of TOPICAL folders (by subject, not mood).
+const ORGANIZE_PROMPT = `You organize someone's private notes (they call each one a "fil") into a small set of folders by SUBJECT — what each note is about — the way a person files their own things: "Work", "Gift Ideas", "Recipes", "Apartment", "Reading".
+
+Each note is listed as:
+  N. (when it was made, its type, whether it has open to-dos) title: snippet
+
+For each folder, provide:
+- "name": one or two natural words in Title Case (e.g. "Work", "Gift Ideas", "Recipes"). No underscores, no punctuation, no numbering.
+- "description": a single grounded sentence capturing what this folder holds, second person, in the person's voice. One sentence only, kept short.
+- "fils": the numbers of the notes in this folder.
+
+Rules:
+- Create 3 to 8 folders. Prefer fewer, clearer folders over many tiny ones.
+- Put every note in exactly one folder. Never leave a note out; if one truly fits nowhere, use a folder named "Misc".
+- Group by topic/subject. Two notes that share a mood but are about different things belong in different folders.
+- Base the folders on what's actually written; don't invent themes the notes don't support.
+
+${VOICE_RULES}
+
+Respond with ONLY a JSON object, no prose or code fences:
+{"groups": [{"name": "Folder Name", "description": "...", "fils": [note numbers]}]}`;
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method !== "POST") return json({ error: "Use POST." }, 405);
@@ -130,7 +164,8 @@ export default {
 
     const query = typeof body.query === "string" ? body.query.trim() : "";
     const fils = Array.isArray(body.fils) ? body.fils : null;
-    if (!query || !fils) return json({ error: "Expected { query, fils: [...] }." }, 400);
+    const organize = body.organize === true;
+    if (!fils || (!organize && !query)) return json({ error: "Expected { query, fils: [...] }." }, 400);
 
     // Summarize-only mode: the app supplies the notes it already chose (a keyword match) and just wants
     // a reflection — no selection. Returns { summary } and never touches `relevant`.
@@ -148,15 +183,17 @@ export default {
 
     const anthropicBody = {
       model: MODEL,
-      max_tokens: MAX_TOKENS,
-      system: summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT,
+      max_tokens: organize ? ORGANIZE_MAX_TOKENS : MAX_TOKENS,
+      system: organize ? ORGANIZE_PROMPT : (summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT),
       messages: [
         {
           role: "user",
-          content: [
-            { type: "text", text: `Notes:\n${numbered}`, cache_control: { type: "ephemeral" } },
-            { type: "text", text: `Query: ${query}` },
-          ],
+          content: organize
+            ? [{ type: "text", text: `Notes:\n${numbered}` }]
+            : [
+                { type: "text", text: `Notes:\n${numbered}`, cache_control: { type: "ephemeral" } },
+                { type: "text", text: `Query: ${query}` },
+              ],
         },
       ],
     };
@@ -187,6 +224,13 @@ export default {
     const cost = costFromUsage(u);
     // Record usage after responding, so KV latency never delays the surfacing.
     ctx.waitUntil(recordUsage(env, originalId, day, cost));
+
+    if (organize) {
+      const groups = parseGroups(text);
+      if (!groups) return json({ error: "Couldn't read the model's response." }, 502);
+      console.log(`organize: ${fils.length} fils -> ${groups.length} folders | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
+      return json({ groups }, 200);
+    }
 
     if (summarizeOnly) {
       console.log(`summarize "${query}": ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
@@ -338,6 +382,34 @@ function parseSurfacing(text) {
   } catch {
     return null;
   }
+}
+
+/** Parse the organize-mode response: {"groups":[{name, fils:[numbers]}]}. */
+function parseGroups(text) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return null;
+  try {
+    const obj = JSON.parse(text.slice(start, end + 1));
+    if (!Array.isArray(obj.groups)) return null;
+    return obj.groups
+      .map((g) => ({
+        name: typeof g.name === "string" ? g.name.trim() : "",
+        description: firstSentence(g.description),
+        fils: Array.isArray(g.fils) ? g.fils.filter((n) => Number.isInteger(n)) : [],
+      }))
+      .filter((g) => g.name && g.fils.length);
+  } catch {
+    return null;
+  }
+}
+
+/** Clamp a caption to a single sentence, as a safety net over the prompt. */
+function firstSentence(s) {
+  if (typeof s !== "string") return "";
+  const t = s.trim();
+  const match = t.match(/^.*?[.!?](\s|$)/);
+  return (match ? match[0] : t).trim();
 }
 
 function json(obj, status) {

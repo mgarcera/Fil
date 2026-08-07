@@ -17,6 +17,13 @@ actor ClaudeSurfacingService {
         let suggestion: String    // when nothing matched: a nearby query the corpus can actually answer ("" if none)
     }
 
+    /// One folder the model proposed when organizing the library (Pro "smart organize").
+    struct OrganizedFolder: Sendable {
+        let name: String
+        let summary: String
+        let filIDs: [UUID]
+    }
+
     enum SurfacingError: LocalizedError {
         case notSubscribed, http(Int, String), empty, badJSON
 
@@ -99,6 +106,53 @@ actor ClaudeSurfacingService {
         return decoded.summary.withoutEmDashes
     }
 
+    /// Pro "smart organize": send the fils and get back topical folder groupings from Claude.
+    func organize(fils: [FilClusterInput], transactionID: String) async throws -> [OrganizedFolder] {
+        guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
+
+        let payload = RequestBody(
+            query: "",
+            fils: fils.map { RequestFil(text: $0.text, metadata: $0.metadata) },
+            organize: true
+        )
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue(transactionID, forHTTPHeaderField: "X-Fil-Transaction-Id")
+        request.httpBody = try JSONEncoder().encode(payload)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw SurfacingError.empty }
+        guard http.statusCode == 200 else {
+            let body = errorMessage(from: data) ?? String(data: data, encoding: .utf8) ?? ""
+            log.notice("organize http \(http.statusCode, privacy: .public)")
+            throw SurfacingError.http(http.statusCode, String(body.prefix(200)))
+        }
+
+        guard let decoded = try? JSONDecoder().decode(OrganizeResponse.self, from: data) else {
+            throw SurfacingError.badJSON
+        }
+
+        var dropped = 0
+        let folders = decoded.groups.map { group -> OrganizedFolder in
+            var ids: [UUID] = []
+            for number in group.fils {
+                let index = number - 1
+                if fils.indices.contains(index) {
+                    ids.append(fils[index].id)
+                } else {
+                    dropped += 1
+                }
+            }
+            return OrganizedFolder(name: group.name, summary: group.description ?? "", filIDs: ids)
+        }
+        if dropped > 0 {
+            log.notice("organize: dropped \(dropped, privacy: .public) out-of-range note number(s)")
+        }
+        return folders
+    }
+
     /// Pull the proxy's `{ "error": "..." }` message out of a non-200 body, if present.
     private func errorMessage(from data: Data) -> String? {
         struct ErrorBody: Decodable { let error: String }
@@ -112,6 +166,7 @@ actor ClaudeSurfacingService {
         let fils: [RequestFil]
         var summarize: Bool? = nil
         var window: String? = nil
+        var organize: Bool? = nil
     }
     private struct RequestFil: Encodable {
         let text: String
@@ -121,5 +176,14 @@ actor ClaudeSurfacingService {
         let summary: String
         let relevant: [Int]
         let suggestion: String?
+    }
+
+    private struct OrganizeResponse: Decodable {
+        let groups: [OrganizeGroup]
+    }
+    private struct OrganizeGroup: Decodable {
+        let name: String
+        let description: String?
+        let fils: [Int]
     }
 }

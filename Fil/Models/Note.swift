@@ -32,6 +32,8 @@ final class Note {
     var originalTitle: String?
     var originalTranscript: String?
     var threadedBacklinks: [ThreadedFilBacklink]
+    /// The folder this fil is filed into; nil = unfiled (the inbox). One folder per fil.
+    var folder: Folder?
     var sourceURLString: String?
     var sourceTitle: String?
     /// A link page's og:description / meta description, fetched in the background — shown in the link

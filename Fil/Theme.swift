@@ -55,6 +55,11 @@ enum Theme {
         .system(.body, design: .monospaced).weight(weight).scaled(by: size / bodyReferenceSize)
     }
 
+    /// Instrument Serif — a display serif bundled and registered at launch; Dynamic-Type aware.
+    static func instrumentSerif(_ size: CGFloat) -> Font {
+        .custom("InstrumentSerif-Regular", size: size, relativeTo: .body)
+    }
+
     private static let filGradientPalettes: [[String]] = [
         [
             "#F24D59",  // coral red

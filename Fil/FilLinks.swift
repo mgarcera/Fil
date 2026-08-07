@@ -14,8 +14,8 @@ enum FilLinks {
     /// Contact / feedback address (also the App Store Connect support contact).
     static let contactEmail = URL(string: "mailto:mason@rootcause.ltd")!
 
-    // TODO(launch): set the numeric App Store ID once the app record exists in App Store Connect.
-    static let appStoreID = "0000000000"
+    /// Fil's App Store record ID (App Store Connect → App Information → Apple ID).
+    static let appStoreID = "6790072250"
 
     /// Deep link that opens Fil's App Store page straight to the "Write a Review" sheet.
     static var writeReview: URL {

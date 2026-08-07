@@ -478,12 +478,27 @@ struct ContentView: View {
         selectedNote = note
     }
 
-    /// Drains content shared into Fil from the Share Extension (via the App Group inbox)
-    /// and turns each item straight into a fil — no intermediate draft state.
+    /// Drains content shared into Fil from the Share Extension (via the App Group inbox).
+    /// Text drops (including links) land in the staging basket for the user to promote later;
+    /// image drops still become fils directly for now — the basket is text-only this iteration.
     private func ingestSharedDrafts() {
         let drafts = SharedDraftInbox.drain()
         guard !drafts.isEmpty else { return }
-        Task { await createFils(from: drafts) }
+
+        var directToFil: [SharedDraftInbox.InboundDraft] = []
+        for draft in drafts {
+            let caption = draft.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if draft.images.isEmpty && !caption.isEmpty {
+                FilBasketStore.shared.add(text: caption)
+            } else {
+                directToFil.append(draft)
+            }
+        }
+
+        Task { await FilBasketLiveActivityController.refresh() }
+        if !directToFil.isEmpty {
+            Task { await createFils(from: directToFil) }
+        }
     }
 
     @MainActor

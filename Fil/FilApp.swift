@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import CoreText
 
 @main
 struct FilApp: App {
@@ -7,6 +8,7 @@ struct FilApp: App {
     private let modelContainer: ModelContainer
 
     init() {
+        Self.registerBundledFonts()
         modelContainer = Self.makeModelContainer()
         Self.protectStoreFiles()
     }
@@ -47,9 +49,19 @@ struct RootView: View {
 }
 
 private extension FilApp {
+    /// Register bundled custom fonts (e.g. Instrument Serif) so `Font.custom` can find them,
+    /// without needing a UIAppFonts Info.plist entry.
+    static func registerBundledFonts() {
+        for name in ["InstrumentSerif-Regular"] {
+            guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
+            CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+        }
+    }
+
     static func makeModelContainer() -> ModelContainer {
         let schema = Schema([
             Note.self,
+            Folder.self,
             NoteImage.self,
             KeywordAttachment.self,
             UserProfile.self
