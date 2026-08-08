@@ -160,15 +160,14 @@ struct CanvasHome: View {
                 .opacity((phase == .composing || isSearching) ? (colorScheme == .dark ? 0.15 : 0.05) : 0)
                 .ignoresSafeArea()
 
-            switch phase {
-            case .composing: composer
-            case .querying:  Color.clear   // blank canvas; the query lives in the composer, chips ride above it
-            case .results:   resultsList
-            // The creation blobs are rendered below as boolean-gated views, not switch cases: a
-            // switch animates a case's insertion but drops its removal transition, so the note blob
-            // would pop in with no outro. Gating on `phase` animates both directions.
-            case .recording, .creating, .formed: Color.clear
-            }
+            // The folders browser stays MOUNTED and just fades on `phase` — destroying/recreating it
+            // (as a switch case did) flashed the List's default black background for a frame when it
+            // remounted on exiting search. Results overlay it when a search runs.
+            composer
+                .opacity(phase == .composing ? 1 : 0)
+                .allowsHitTesting(phase == .composing)
+
+            if phase == .results { resultsList }
 
             // Recording and creating share ONE gooey blob so it never tears down between them; it
             // then morphs into the settled note blob, which pops out the same way it popped in.
