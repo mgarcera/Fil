@@ -85,14 +85,15 @@ struct FoldersHomeSection: View {
                         .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
                         // Native swipe actions (back by request) + a drop target for a dragged card.
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
-                                .tint(.blue)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            // Live Activity is the fast full-swipe action (like Select on fil cards).
                             let pinned = PinnedFolderStore.shared.isPinned(folder.id)
                             Button { togglePin(folder) } label: {
                                 Label(pinned ? "Remove" : "Live Activity", systemImage: pinned ? "pin.slash" : "pin")
                             }
                             .tint(.indigo)
+                            Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
+                                .tint(.blue)
                             Button(role: .destructive) { pendingLandfilFolder = folder } label: {
                                 Label("Landfil", systemImage: "trash")
                             }
@@ -554,7 +555,7 @@ struct FolderInteriorView: View {
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button { toggleSelect(note) } label: {
                     Label(isSelected(note) ? "Deselect" : "Select",
-                          systemImage: isSelected(note) ? "checkmark.circle.fill" : "circle")
+                          systemImage: isSelected(note) ? "checkmark.circle.fill" : "checkmark")
                 }
                 .tint(.green)
                 Button { moveTargetNote = note } label: { Label("Move", systemImage: "folder") }.tint(.indigo)
