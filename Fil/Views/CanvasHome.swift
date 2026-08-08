@@ -188,18 +188,40 @@ struct CanvasHome: View {
         // Shown while composing (incl. inside a folder interior, where the composer is contextual).
         .overlay(alignment: .bottom) {
             if phase == .composing {
-                VStack(spacing: 12) {
-                    HomeBasket(
-                        onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
-                        showBin: !folderInteriorOpen
-                    )
-                    composerBar
+                VStack(spacing: 10) {
+                    // A floating glass search button above the dock, aligned over the composer's
+                    // trailing icon column; fades out while composing/focused.
+                    if !composerFocused {
+                        Button {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true }
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(Theme.primaryText)
+                                .frame(width: 56, height: 56)
+                                .glassEffect(.regular.interactive(), in: .circle)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("search your thoughts")
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .padding(.trailing, 14)   // line up with the composer's trailing icon
+                        .transition(.scale.combined(with: .opacity))
+                    }
+
+                    VStack(spacing: 12) {
+                        HomeBasket(
+                            onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
+                            showBin: !folderInteriorOpen
+                        )
+                        composerBar
+                    }
+                    .padding(14)
+                    .glassEffect(.regular, in: .rect(cornerRadius: 30))
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
                 }
-                .padding(14)
-                .glassEffect(.regular, in: .rect(cornerRadius: 30))
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
+                .animation(.spring(response: 0.4, dampingFraction: 0.85), value: composerFocused)
             }
         }
         // While recording, a stop button sits below the pulsing gooey blob.
@@ -410,7 +432,7 @@ struct CanvasHome: View {
             selectedPhotos: $photoItems,
             stagedImageData: pendingPhotos.map(\.data),
             isProcessing: false,
-            contextLabel: contextFolder.map { "add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
+            contextLabel: contextFolder.map { "Add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
             focus: $composerFocused,
             showsFolderActions: contextFolder == nil,   // only on the folders root, not inside a folder
             onSend: { Task { await createFil() } },
