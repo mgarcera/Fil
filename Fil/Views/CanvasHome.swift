@@ -151,11 +151,13 @@ struct CanvasHome: View {
 
     var body: some View {
         ZStack {
-            // One stable background: plain, with a gray wash faded in during search (matching the
-            // folder browser). A single layer avoids swapping view types, which would hard-cut/flicker.
+            // One stable background: plain, with the folder-browser gray wash present whenever the
+            // folders/search surface is up. Keeping it on during composing (hidden behind the folder
+            // browser's own gray) means the browser's fade-out on entering search reveals the same
+            // gray underneath — no crossfade dip through the darker base. Off during creation states.
             Theme.background.ignoresSafeArea()
             Theme.primaryText
-                .opacity(isSearching ? (colorScheme == .dark ? 0.15 : 0.05) : 0)
+                .opacity((phase == .composing || isSearching) ? (colorScheme == .dark ? 0.15 : 0.05) : 0)
                 .ignoresSafeArea()
 
             switch phase {
