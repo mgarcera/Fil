@@ -146,6 +146,11 @@ struct FoldersHomeSection: View {
         }
         .tint(Theme.primaryText)
         .sheet(item: $pagerSelection) { sel in BrowserFilPager(notes: sel.notes, startID: sel.startID) }
+        // Close the pager if any fil it's paging gets landfil'd (from within its own modal or a swipe).
+        .onChange(of: allNotes.map(\.uuid)) { _, ids in
+            let live = Set(ids)
+            if let pager = pagerSelection, !pager.noteIDs.allSatisfy({ live.contains($0) }) { pagerSelection = nil }
+        }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
                 .presentationDetents([.large])
@@ -427,6 +432,7 @@ struct FolderInteriorView: View {
 
     @State private var moveTargetNote: Note?
     @State private var pendingLandfilNote: Note?
+    @State private var headerHeight: CGFloat = 0   // measured, so list content clears the overlaid header
 
 
     // Typed containers. To-dos are claimed first (any fil with a to-do lives there and nowhere else);
@@ -447,45 +453,28 @@ struct FolderInteriorView: View {
     private func cased(_ text: String) -> String { prefersLowercase ? text.lowercased() : text }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 14) {
-                FolderMark(seed: seed, start: start, end: end, glyph: glyph, size: 44)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text(cased(title)).font(Theme.instrumentSerif(26)).foregroundStyle(Theme.primaryText)
-                        Text("\(notes.count)")
-                            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
-                            .padding(.horizontal, 7).padding(.vertical, 2)
-                            .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
-                    }
-                    if !summary.isEmpty {
-                        Text(cased(summary))
-                            .font(Theme.fredoka(13, weight: .regular))
-                            .foregroundStyle(Theme.secondaryText)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 14)
-
-            // Sections are reorderable Lists: long-press-drag a card to reorder within its type
-            // (like folders). Swipe leading to select, trailing for rename / move / landfil.
-            List {
-                todoSection
-                filSection("Photos", "photo", photoNotes)
-                filSection("Notes", "note.text", plainNotes)
-                filSection("Links", "link", linkNotes)
-                filSection("Voice", "waveform", voiceNotes)
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .scrollIndicators(.hidden)
-            .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
+        // Sections are reorderable Lists: long-press-drag a card to reorder within its type
+        // (like folders). Swipe leading to select, trailing for rename / move / landfil.
+        List {
+            todoSection
+            filSection("Photos", "photo", photoNotes)
+            filSection("Notes", "note.text", plainNotes)
+            filSection("Links", "link", linkNotes)
+            filSection("Voice", "waveform", voiceNotes)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .scrollIndicators(.hidden)
+        .contentMargins(.top, headerHeight, for: .scrollContent)     // clear the overlaid folder header
+        .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
         .background(Theme.background.ignoresSafeArea())
+        // The folder identity header floats over the list as a translucent material bar; cards scroll
+        // under it (the native section-header treatment). Its height is measured so content clears it.
+        .overlay(alignment: .top) {
+            folderHeader
+                .background(.ultraThinMaterial)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+        }
         .navigationBarTitleDisplayMode(.inline)
         // Creating a fil here happens through the contextual composer bar ("add to {folder}"), not a
         // per-folder ＋.
@@ -509,6 +498,33 @@ struct FolderInteriorView: View {
             context.delete(note)
             try? context.save()
         })
+    }
+
+    /// The folder identity header (blob + title + count badge + caption), overlaid on the list.
+    private var folderHeader: some View {
+        HStack(spacing: 14) {
+            FolderMark(seed: seed, start: start, end: end, glyph: glyph, size: 44)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(cased(title)).font(Theme.instrumentSerif(26)).foregroundStyle(Theme.primaryText)
+                    Text("\(notes.count)")
+                        .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
+                        .padding(.horizontal, 7).padding(.vertical, 2)
+                        .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
+                }
+                if !summary.isEmpty {
+                    Text(cased(summary))
+                        .font(Theme.fredoka(13, weight: .regular))
+                        .foregroundStyle(Theme.secondaryText)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
+        .padding(.bottom, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Containers
@@ -835,6 +851,15 @@ struct FilPagerSelection: Identifiable {
     let id = UUID()
     let notes: [Note]
     let startID: UUID
+    /// The fils' ids captured up front — safe to compare against live fils even after a deletion
+    /// (reading a deleted SwiftData model's properties is not).
+    let noteIDs: [UUID]
+
+    init(notes: [Note], startID: UUID) {
+        self.notes = notes
+        self.startID = startID
+        self.noteIDs = notes.map(\.uuid)
+    }
 }
 
 /// A horizontally-paged fil reader: swipe left/right to move between the fils in the container you

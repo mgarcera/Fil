@@ -235,7 +235,8 @@ struct CanvasHome: View {
         .onChange(of: notes.map(\.uuid)) { _, ids in
             let live = Set(ids)
             if let note = selectedNote, !notes.contains(where: { $0 === note }) { selectedNote = nil }
-            if let pager = basketPager, !live.contains(pager.startID) { basketPager = nil }
+            // Close the pager if ANY fil it's paging got landfil'd, not just the one it opened on.
+            if let pager = basketPager, !pager.noteIDs.allSatisfy({ live.contains($0) }) { basketPager = nil }
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
