@@ -23,6 +23,7 @@ private struct PendingPhoto: Identifiable {
 struct CanvasHome: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.openURL) private var openURL
+    @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
@@ -150,12 +151,12 @@ struct CanvasHome: View {
 
     var body: some View {
         ZStack {
-            // In search the page wears the folder-browser gray; otherwise the plain background.
-            if isSearching {
-                FolderBrowserBackground()
-            } else {
-                Theme.background.ignoresSafeArea()
-            }
+            // One stable background: plain, with a gray wash faded in during search (matching the
+            // folder browser). A single layer avoids swapping view types, which would hard-cut/flicker.
+            Theme.background.ignoresSafeArea()
+            Theme.primaryText
+                .opacity(isSearching ? (colorScheme == .dark ? 0.15 : 0.05) : 0)
+                .ignoresSafeArea()
 
             switch phase {
             case .composing: composer
