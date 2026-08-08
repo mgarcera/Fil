@@ -8,8 +8,11 @@ import UIKit
 /// Free: manual filing — create folders, rename/move fils, landfil. Pro: "smart organize" via Claude.
 /// Tapping a folder pushes its typed-container interior; ＋ / ✨ ride in a compact header row.
 struct FoldersHomeSection: View {
-    /// Reports whether a folder interior is pushed, so the home can hide its floating header there.
-    var onInteriorOpenChange: (Bool) -> Void = { _ in }
+    /// Bottom scroll inset so content clears the floating composer dock (measured by CanvasHome).
+    var bottomInset: CGFloat = 120
+    /// Reports the currently-open folder (nil at the root), so the home can hide its floating header
+    /// and make the composer contextual ("add to {folder}").
+    var onContextFolderChange: (Folder?) -> Void = { _ in }
 
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
     @Query private var allNotes: [Note]
@@ -105,9 +108,13 @@ struct FoldersHomeSection: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
+            .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
             .background(Theme.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
-            .onChange(of: path) { _, newPath in onInteriorOpenChange(!newPath.isEmpty) }
+            .onChange(of: path) { _, newPath in
+                if case let .folder(folder) = newPath.last { onContextFolderChange(folder) }
+                else { onContextFolderChange(nil) }
+            }
             .onAppear { normalizeFolderOrder() }
             .navigationDestination(for: Route.self) { route in
                 switch route {
@@ -161,6 +168,7 @@ struct FoldersHomeSection: View {
     private func interior(title: String, summary: String, seed: Double, start: String, end: String, glyph: String?, notes: [Note], folder: Folder?) -> some View {
         FolderInteriorView(
             title: title, summary: summary, seed: seed, start: start, end: end, glyph: glyph, notes: notes, folders: folders, folder: folder,
+            bottomInset: bottomInset,
             onOpen: { note, items in pagerSelection = FilPagerSelection(notes: items, startID: note.uuid) },
             onMove: { note, folder in move(note, to: folder) },
             onNewFolder: { note in pendingMoveNote = note; showNewFolder = true }
@@ -174,7 +182,8 @@ struct FoldersHomeSection: View {
         guard let payload = items.first, payload.hasPrefix("card:"),
               let id = UUID(uuidString: String(payload.dropFirst(5))),
               let note = allNotes.first(where: { $0.uuid == id }) else { return false }
-        move(note, to: folder)   // file the dragged Bin card into this folder
+        move(note, to: folder)                  // file the dragged card into this folder
+        FilSelectionStore.shared.remove(id)     // if it came from the selection, it's filed now
         pullHaptic()
         return true
     }
@@ -341,6 +350,8 @@ struct FolderInteriorView: View {
     let folders: [Folder]
     /// The folder this interior represents (nil for the Bin) — new fils are filed straight into it.
     var folder: Folder?
+    /// Bottom scroll inset so content clears the floating composer dock.
+    var bottomInset: CGFloat = 120
     /// Opens a fil; the second argument is the ordered container it belongs to, for left/right paging.
     var onOpen: (Note, [Note]) -> Void
     var onMove: (Note, Folder?) -> Void
@@ -354,9 +365,6 @@ struct FolderInteriorView: View {
     @State private var moveTargetNote: Note?
     @State private var pendingLandfilNote: Note?
 
-    @State private var showNewFil = false
-    @State private var newFilTitle = ""
-    @State private var newFilBody = ""
 
     // Typed containers. To-dos are claimed first (any fil with a to-do lives there and nowhere else);
     // the rest split by kind. Each bucket is sorted most-recent.
@@ -406,20 +414,12 @@ struct FolderInteriorView: View {
                 .padding(.bottom, 28)
             }
             .scrollIndicators(.hidden)
+            .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
         }
         .background(Theme.background.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { showNewFil = true } label: { Image(systemName: "plus") }
-            }
-        }
-        .alert("New fil", isPresented: $showNewFil) {
-            TextField("title", text: $newFilTitle)
-            TextField("note (optional)", text: $newFilBody)
-            Button("Create") { createFil() }
-            Button("Cancel", role: .cancel) { newFilTitle = ""; newFilBody = "" }
-        }
+        // Creating a fil here happens through the contextual composer bar ("add to {folder}"), not a
+        // per-folder ＋.
         .alert("Rename fil", isPresented: .init(
             get: { pendingRenameNote != nil },
             set: { if !$0 { pendingRenameNote = nil } }
@@ -462,27 +462,6 @@ struct FolderInteriorView: View {
             try? context.save()
         }
         pendingRenameNote = nil
-    }
-
-    /// Create a plain text fil filed straight into this folder (nil folder = the Bin).
-    private func createFil() {
-        let title = newFilTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let body = newFilBody.trimmingCharacters(in: .whitespacesAndNewlines)
-        newFilTitle = ""; newFilBody = ""
-        guard !title.isEmpty || !body.isEmpty else { return }
-
-        let finalTitle = title.isEmpty ? String(body.prefix(40)) : title
-        let pair = Theme.randomGradientPair()
-        let note = Note(
-            title: finalTitle,
-            transcript: body,
-            keyword: finalTitle,
-            gradientStartHex: pair.start,
-            gradientEndHex: pair.end
-        )
-        note.folder = folder
-        context.insert(note)
-        try? context.save()
     }
 
     // MARK: - Containers

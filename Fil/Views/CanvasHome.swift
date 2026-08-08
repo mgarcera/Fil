@@ -69,6 +69,10 @@ struct CanvasHome: View {
     var screensaverActive: Bool = false
     /// Set true while a folder interior is open, so ContentView hides its floating header there.
     @Binding var folderInteriorOpen: Bool
+    /// The folder the composer is currently scoped to (nil at the root) — makes the bar contextual.
+    @State private var contextFolder: Folder?
+    /// Live height of the bottom dock (composer + baskets), so scroll content insets track it.
+    @State private var dockHeight: CGFloat = 0
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -165,13 +169,23 @@ struct CanvasHome: View {
             }
 
         }
-        // The always-on composer bar floats at the bottom (rides above the keyboard) on the folders
-        // home — not inside a folder interior, and not while searching/creating.
+        // The home dock: one liquid-glass container holding the selection + Bin baskets ABOVE the
+        // composer input — one surface, no overlap. Floats at the bottom, rides above the keyboard.
+        // Shown while composing (incl. inside a folder interior, where the composer is contextual).
         .overlay(alignment: .bottom) {
-            if phase == .composing && !folderInteriorOpen {
-                composerBar
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 8)
+            if phase == .composing {
+                VStack(spacing: 12) {
+                    HomeBasket(
+                        onOpen: { id in if let note = notes.first(where: { $0.uuid == id }) { selectedNote = note } },
+                        showBin: !folderInteriorOpen
+                    )
+                    composerBar
+                }
+                .padding(14)
+                .glassEffect(.regular, in: .rect(cornerRadius: 30))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
         }
         // While recording, a stop button sits below the pulsing gooey blob.
@@ -348,8 +362,12 @@ struct CanvasHome: View {
     /// "New" compose card inline above the folders (which slide down beneath it) — not an overlay.
     private var composer: some View {
         FoldersHomeSection(
-            onInteriorOpenChange: { open in
-                withAnimation(.easeInOut(duration: 0.2)) { folderInteriorOpen = open }
+            bottomInset: dockHeight + 16,   // clear the measured dock (composer + baskets)
+            onContextFolderChange: { folder in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    contextFolder = folder
+                    folderInteriorOpen = (folder != nil)
+                }
             }
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -364,6 +382,7 @@ struct CanvasHome: View {
             selectedPhotos: $photoItems,
             stagedImageData: pendingPhotos.map(\.data),
             isProcessing: false,
+            contextLabel: contextFolder.map { "add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
             focus: $composerFocused,
             onSend: { Task { await createFil() } },
             onRecordVoice: startVoiceCapture,
@@ -883,19 +902,13 @@ struct CanvasHome: View {
 
         text = ""
 
-        // Gooey creating blob plops in (full-screen, or mini in the recents strip), holds while the fil forms.
-        beginCreation()
-
+        // Inline creation (no full-screen animation): the fil just pops into the Bin/folder, so the
+        // composer's context (and the folder you're in) stays put.
         let gradient = Theme.randomGradientPair()
         let note: Note
         if let url = LinkFil.normalizedURL(from: thought) {
-            // A bare URL becomes a link fil (favicon + real title fetched in the background), no AI
-            // title. Let the gooey blob breathe a beat, since there's no title generation to fill it.
             note = LinkFil.make(url: url, gradient: gradient, in: modelContext)
-            try? await Task.sleep(for: .milliseconds(700))
         } else {
-            // Text fils have no generated title anymore — the card shows the thought itself. Let the
-            // gooey blob breathe a beat since there's no title generation to fill the moment.
             note = Note(
                 title: "",
                 transcript: thought,
@@ -904,15 +917,13 @@ struct CanvasHome: View {
                 gradientEndHex: gradient.end
             )
             modelContext.insert(note)
-            try? await Task.sleep(for: .milliseconds(700))
         }
         for todo in composedTodos { note.addTodo(todo) }
+        note.folder = contextFolder   // file into the folder the composer is scoped to (nil = Bin)
         modelContext.saveOrLog()
-
-        SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        await settleCreatedFil(note)
+        await afterUserFilCreated()
     }
 
     // MARK: - Voice capture
@@ -962,6 +973,7 @@ struct CanvasHome: View {
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
+        note.folder = contextFolder
         modelContext.insert(note)
         modelContext.saveOrLog()
 
@@ -980,12 +992,8 @@ struct CanvasHome: View {
         let caption = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         text = ""
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos = [] }
-        beginCreation()
 
-        // Photo fils always carry a caption (the send FAB requires text), so its title generation
-        // fills the creating dwell.
         let title = await ArticleGenerationService.shared.generateTitle(from: caption)
-
         let gradient = Theme.randomGradientPair()
         let note = Note(
             title: title,
@@ -996,13 +1004,12 @@ struct CanvasHome: View {
         )
         note.imageFilImages = images.enumerated().map { index, data in NoteImage(data: data, order: index, note: note) }
         for todo in todos { note.addTodo(todo) }
+        note.folder = contextFolder
         modelContext.insert(note)
         modelContext.saveOrLog()
-
-        SoundscapeManager.shared.stopMeshDuringProcessSound()
         SoundscapeManager.shared.playArticleMadeSound()
 
-        await settleCreatedFil(note)
+        await afterUserFilCreated()
     }
 
     // MARK: - Creation tail + first-run payoff

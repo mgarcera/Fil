@@ -16,6 +16,8 @@ struct ComposerBar: View {
     @Binding var selectedPhotos: [PhotosPickerItem]
     let stagedImageData: [Data]
     let isProcessing: Bool
+    /// When set (inside a folder), the placeholder reads "add to {folder}" and the fil files there.
+    var contextLabel: String? = nil
     var focus: FocusState<Bool>.Binding
     let onSend: () -> Void
     let onRecordVoice: () -> Void
@@ -47,18 +49,18 @@ struct ComposerBar: View {
             HStack(alignment: .center, spacing: 10) {
                 PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 8, matching: .images) {
                     Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(Theme.primaryText)
-                        .frame(width: 32, height: 32).contentShape(Circle())
+                        .frame(width: 56, height: 56).contentShape(Circle())
                 }
                 .disabled(isProcessing)
                 .accessibilityLabel("add photos")
 
                 Button(action: addTodoPill) {
                     Image(systemName: "checklist")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(Theme.primaryText)
-                        .frame(width: 32, height: 32).contentShape(Circle())
+                        .frame(width: 56, height: 56).contentShape(Circle())
                 }
                 .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
 
@@ -67,11 +69,8 @@ struct ComposerBar: View {
                 trailingButton
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .frame(minHeight: 52)
-        .glassEffect(.regular, in: .rect(cornerRadius: 26))
-        .contentShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        // No glass here — the shared home dock wraps composer + baskets in one liquid-glass container.
+        .contentShape(Rectangle())
         .onTapGesture { focus.wrappedValue = true }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: todos)
         .onChange(of: focusedTodoID) { oldValue, _ in removeRowIfEmpty(oldValue) }
@@ -125,7 +124,16 @@ struct ComposerBar: View {
 
     private var inputArea: some View {
         ZStack(alignment: .leading) {
-            if trimmedText.isEmpty, dissolvingText == nil { rotatingPlaceholder }
+            if trimmedText.isEmpty, dissolvingText == nil {
+                if let contextLabel {
+                    AnimatedGradientRevealText(text: contextLabel, maxDuration: 1.2, settledOpacity: 0.4)
+                        .font(Theme.dmSans(15)).foregroundStyle(Theme.primaryText)
+                        .allowsHitTesting(false)
+                        .id(contextLabel)   // re-reveal when the folder context changes
+                } else {
+                    rotatingPlaceholder
+                }
+            }
 
             TextField("", text: $text, axis: .vertical)
                 .font(Theme.dmSans(15)).foregroundStyle(Theme.primaryText)
@@ -176,14 +184,14 @@ struct ComposerBar: View {
     }
 
     private func filledCircle(symbol: String) -> some View {
-        Image(systemName: symbol).font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.background)
-            .frame(width: 36, height: 36).background(Theme.primaryText, in: Circle())
+        Image(systemName: symbol).font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.background)
+            .frame(width: 56, height: 56).background(Theme.primaryText, in: Circle())
     }
 
     private func beamedCircle(symbol: String, weight: Font.Weight) -> some View {
-        Image(systemName: symbol).font(.system(size: 14, weight: weight)).foregroundStyle(Theme.background)
-            .frame(width: 36, height: 36)
-            .borderBeam(border: Theme.primaryText, beam: Theme.accentGradientColors, beamBlur: 6, cornerRadius: 18, isEnabled: true)
+        Image(systemName: symbol).font(.system(size: 20, weight: weight)).foregroundStyle(Theme.background)
+            .frame(width: 56, height: 56)
+            .borderBeam(border: Theme.primaryText, beam: Theme.accentGradientColors, beamBlur: 6, cornerRadius: 28, isEnabled: true)
             .background(Theme.primaryText, in: Circle())
     }
 
