@@ -16,7 +16,7 @@ struct PinnedFolderWidgetSnapshot: Codable {
     var id: UUID
     var name: String
     var count: Int
-    var peek: [String]
+    var blobs: [FilActivityBlob]
     var gradientStartHex: String
     var gradientEndHex: String
     var updatedAt: Date
@@ -25,7 +25,7 @@ struct PinnedFolderWidgetSnapshot: Codable {
         id: UUID(),
         name: "House move",
         count: 5,
-        peek: ["Call the framer back", "gift idea: cyanotype kit", "measure the hallway"],
+        blobs: FilActivityBlob.samples,
         gradientStartHex: "#33BF99",
         gradientEndHex: "#408CD9",
         updatedAt: Date()
@@ -91,7 +91,7 @@ struct FilPinnedWidgetEntryView: View {
 
     private func pinnedContent(_ snapshot: PinnedFolderWidgetSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            FilBlobMark(
+            FolderMark(
                 size: family == .systemSmall ? 30 : 34,
                 startHex: snapshot.gradientStartHex,
                 endHex: snapshot.gradientEndHex

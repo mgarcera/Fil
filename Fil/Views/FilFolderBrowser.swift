@@ -290,12 +290,12 @@ struct FoldersHomeSection: View {
             UserDefaults.filAppGroup.set(LockScreenActivity.off.rawValue, forKey: LockScreenActivity.storageKey)
         } else {
             let newest = folder.notes.sorted { $0.timestamp > $1.timestamp }
-            let peek = newest.prefix(4).map { $0.islandTitle(lowercase: prefersLowercase) }
+            let blobs = newest.prefix(8).map { $0.activityBlob }
             PinnedFolderStore.shared.pin(
                 id: folder.id,
                 name: cased(folder.name),
                 count: folder.notes.count,
-                peek: Array(peek),
+                blobs: Array(blobs),
                 gradientStartHex: folder.gradientStartHex,
                 gradientEndHex: folder.gradientEndHex
             )

@@ -8,7 +8,7 @@ struct PinnedFolderLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var name: String
         var count: Int
-        var peek: [String]
+        var blobs: [FilActivityBlob]
         var gradientStartHex: String
         var gradientEndHex: String
         var updatedAt: Date
@@ -27,7 +27,7 @@ struct FilPinnedWidgetLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    FilBlobMark(size: 24, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
+                    FolderMark(size: 24, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text("\(context.state.count)")
@@ -35,17 +35,20 @@ struct FilPinnedWidgetLiveActivity: Widget {
                         .foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    PinnedFolderExpandedContent(state: context.state)
+                    FilActivityBlobRow(blobs: context.state.blobs)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 6)
+                        .padding(.bottom, 12)
                 }
             } compactLeading: {
-                FilBlobMark(size: 16, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
+                FolderMark(size: 18, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
             } compactTrailing: {
                 Text("\(context.state.count)")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(1)
             } minimal: {
-                FilBlobMark(size: 14, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
+                FolderMark(size: 16, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
             }
             .widgetURL(URL(string: "fil://folder?id=\(context.attributes.folderID.uuidString)"))
             .keylineTint(Color(red: 0.2, green: 0.75, blue: 0.6))
@@ -58,22 +61,13 @@ private struct PinnedFolderLockScreenView: View {
     let state: PinnedFolderLiveActivityAttributes.ContentState
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            FilBlobMark(size: 26, startHex: state.gradientStartHex, endHex: state.gradientEndHex)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(headline)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text(headline)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white)
-
-                ForEach(Array(state.peek.prefix(3).enumerated()), id: \.offset) { _, title in
-                    Text(title)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .lineLimit(1)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            FilActivityBlobRow(blobs: state.blobs)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -85,30 +79,7 @@ private struct PinnedFolderLockScreenView: View {
 
     private var headline: String {
         let n = state.count
-        return "\(state.name) · \(n) \(n == 1 ? "fil" : "fils")"
-    }
-}
-
-private struct PinnedFolderExpandedContent: View {
-    let state: PinnedFolderLiveActivityAttributes.ContentState
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(state.peek.prefix(3).enumerated()), id: \.offset) { _, title in
-                Text(title)
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
-        .padding(.top, 6)
-        .padding(.bottom, 14)
-        .background(alignment: .bottom) {
-            FilLiveActivityBottomGlow(startHex: state.gradientStartHex, endHex: state.gradientEndHex)
-        }
+        return "\(state.name) • \(n) \(n == 1 ? "item" : "items")"
     }
 }
 
@@ -131,6 +102,160 @@ struct FilBlobMark: View {
             .fill(
                 LinearGradient(
                     colors: [Color(hex: startHex), Color(hex: endHex)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Fil blobs (Lock Screen peek)
+
+/// Widget-side mirror of the app's `FilActivityBlob`. Codable keys must match (startHex/endHex/seed).
+struct FilActivityBlob: Codable, Hashable {
+    var startHex: String
+    var endHex: String
+    var seed: Double
+
+    static let samples: [FilActivityBlob] = [
+        .init(startHex: "#33BF99", endHex: "#408CD9", seed: 0.12),
+        .init(startHex: "#6659CC", endHex: "#E8196A", seed: 0.55),
+        .init(startHex: "#F59E0B", endHex: "#F97316", seed: 0.78),
+        .init(startHex: "#0EA5E9", endHex: "#22C55E", seed: 0.31),
+        .init(startHex: "#E8196A", endHex: "#6659CC", seed: 0.91)
+    ]
+}
+
+/// One fil drawn as its real gradient blob (same shape algorithm as the app's `NoteBlobShape`).
+struct FilActivityBlobView: View {
+    let blob: FilActivityBlob
+    let size: CGFloat
+
+    var body: some View {
+        LiveActivityBlobShape(seed: blob.seed)
+            .fill(
+                LinearGradient(
+                    colors: [Color(hex: blob.startHex), Color(hex: blob.endHex)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// A left-aligned row of fil blobs — the peek shown under a Bin / pinned-folder headline.
+struct FilActivityBlobRow: View {
+    let blobs: [FilActivityBlob]
+    var size: CGFloat = 28
+    var spacing: CGFloat = 8
+
+    var body: some View {
+        HStack(spacing: spacing) {
+            ForEach(Array(blobs.enumerated()), id: \.offset) { _, blob in
+                FilActivityBlobView(blob: blob, size: size)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Bespoke marks (folder + bin)
+
+/// The folder silhouette (tab + body), matching the app's `FolderShape`, filled with the folder's
+/// own gradient. Used as the pinned-folder island glyph.
+struct FolderShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+        let radius = w * 0.28
+        let tabHeight = h * 0.22
+        let tabWidth = w * 0.5
+        let bodyTop = rect.minY + tabHeight
+
+        let tab = CGRect(x: rect.minX, y: rect.minY, width: tabWidth, height: tabHeight + radius * 2)
+        path.addRoundedRect(in: tab, cornerSize: CGSize(width: radius, height: radius))
+
+        let body = CGRect(x: rect.minX, y: bodyTop, width: w, height: rect.maxY - bodyTop)
+        path.addRoundedRect(in: body, cornerSize: CGSize(width: radius, height: radius))
+
+        return path
+    }
+}
+
+struct FolderMark: View {
+    let size: CGFloat
+    let startHex: String
+    let endHex: String
+
+    var body: some View {
+        FolderShape()
+            .fill(
+                LinearGradient(
+                    colors: [Color(hex: startHex), Color(hex: endHex)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// A bespoke Bin silhouette — a rounded lip over a gently tapering tub — built in the same spirit as
+/// `FolderShape`. Used as the Bin island glyph.
+struct BinShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+        let r = w * 0.16
+
+        // Lip across the top.
+        let lipHeight = h * 0.2
+        let lip = CGRect(x: rect.minX, y: rect.minY, width: w, height: lipHeight + r)
+        path.addRoundedRect(in: lip, cornerSize: CGSize(width: r, height: r))
+
+        // Tub below the lip, tapering slightly inward toward the base with rounded bottom corners.
+        let tubTop = rect.minY + lipHeight + h * 0.08
+        let topInset = w * 0.12
+        let bottomInset = w * 0.22
+        var tub = Path()
+        tub.move(to: CGPoint(x: rect.minX + topInset, y: tubTop))
+        tub.addLine(to: CGPoint(x: rect.maxX - topInset, y: tubTop))
+        tub.addLine(to: CGPoint(x: rect.maxX - bottomInset, y: rect.maxY - r))
+        tub.addQuadCurve(
+            to: CGPoint(x: rect.maxX - bottomInset - r, y: rect.maxY),
+            control: CGPoint(x: rect.maxX - bottomInset, y: rect.maxY)
+        )
+        tub.addLine(to: CGPoint(x: rect.minX + bottomInset + r, y: rect.maxY))
+        tub.addQuadCurve(
+            to: CGPoint(x: rect.minX + bottomInset, y: rect.maxY - r),
+            control: CGPoint(x: rect.minX + bottomInset, y: rect.maxY)
+        )
+        tub.closeSubpath()
+        path.addPath(tub)
+
+        return path
+    }
+}
+
+/// Fixed Bin gradient (teal → blue), echoing the capture accent.
+let binStartHex = "#33BF99"
+let binEndHex = "#408CD9"
+
+struct BinMark: View {
+    let size: CGFloat
+
+    var body: some View {
+        BinShape()
+            .fill(
+                LinearGradient(
+                    colors: [Color(hex: binStartHex), Color(hex: binEndHex)],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
@@ -272,7 +397,7 @@ extension PinnedFolderLiveActivityAttributes.ContentState {
         PinnedFolderLiveActivityAttributes.ContentState(
             name: "House move",
             count: 5,
-            peek: ["Call the framer back", "gift idea: cyanotype kit", "measure the hallway"],
+            blobs: FilActivityBlob.samples,
             gradientStartHex: "#33BF99",
             gradientEndHex: "#408CD9",
             updatedAt: .now

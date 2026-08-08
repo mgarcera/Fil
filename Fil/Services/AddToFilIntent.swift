@@ -38,13 +38,13 @@ struct AddToFilIntent: LiveActivityIntent {
         FilBasketStore.shared.add(text: trimmed)
 
         // Reflect it on the island now, but only if the user keeps the Bin activity on. The count is
-        // the last app-synced Bin snapshot plus what's pending in the buffer; next app-active corrects it.
+        // the last app-synced Bin snapshot plus what's pending in the buffer; blobs stay empty until
+        // the next app-active sync rebuilds them from the real fils.
         if LockScreenActivity.current == .bin {
             let pending = FilBasketStore.shared.count
-            let titles = FilBasketStore.shared.recentTitles() + BinActivitySnapshot.titles
             await FilBasketLiveActivityController.apply(
                 count: BinActivitySnapshot.count + pending,
-                recentTitles: Array(titles.prefix(3))
+                blobs: []
             )
         }
 

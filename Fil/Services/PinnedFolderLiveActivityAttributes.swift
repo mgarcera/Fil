@@ -10,7 +10,7 @@ struct PinnedFolderLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var name: String
         var count: Int
-        var peek: [String]
+        var blobs: [FilActivityBlob]
         var gradientStartHex: String
         var gradientEndHex: String
         var updatedAt: Date
@@ -24,7 +24,7 @@ extension PinnedFolderLiveActivityAttributes.ContentState {
         self.init(
             name: snapshot.name,
             count: snapshot.count,
-            peek: snapshot.peek,
+            blobs: snapshot.blobs,
             gradientStartHex: snapshot.gradientStartHex,
             gradientEndHex: snapshot.gradientEndHex,
             updatedAt: snapshot.updatedAt

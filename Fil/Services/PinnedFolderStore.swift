@@ -8,7 +8,7 @@ struct PinnedFolderSnapshot: Codable, Equatable, Identifiable {
     var id: UUID
     var name: String
     var count: Int
-    var peek: [String]
+    var blobs: [FilActivityBlob]
     var gradientStartHex: String
     var gradientEndHex: String
     var updatedAt: Date
@@ -17,7 +17,7 @@ struct PinnedFolderSnapshot: Codable, Equatable, Identifiable {
         id: UUID,
         name: String,
         count: Int,
-        peek: [String],
+        blobs: [FilActivityBlob],
         gradientStartHex: String = "#408CD9",
         gradientEndHex: String = "#6659CC",
         updatedAt: Date = .now
@@ -25,7 +25,7 @@ struct PinnedFolderSnapshot: Codable, Equatable, Identifiable {
         self.id = id
         self.name = name
         self.count = count
-        self.peek = peek
+        self.blobs = blobs
         self.gradientStartHex = gradientStartHex
         self.gradientEndHex = gradientEndHex
         self.updatedAt = updatedAt
@@ -52,14 +52,14 @@ final class PinnedFolderStore {
     func isPinned(_ folderID: UUID) -> Bool { pinnedFolder?.id == folderID }
 
     /// Builds a fresh snapshot from the folder's current contents and persists it. Callers pass the
-    /// peek titles (they own the `prefersLowercase` + newest-first ordering).
+    /// blob peek (they own the newest-first ordering + cap).
     @discardableResult
-    func pin(id: UUID, name: String, count: Int, peek: [String], gradientStartHex: String, gradientEndHex: String) -> PinnedFolderSnapshot {
+    func pin(id: UUID, name: String, count: Int, blobs: [FilActivityBlob], gradientStartHex: String, gradientEndHex: String) -> PinnedFolderSnapshot {
         let snapshot = PinnedFolderSnapshot(
             id: id,
             name: name,
             count: count,
-            peek: peek,
+            blobs: blobs,
             gradientStartHex: gradientStartHex,
             gradientEndHex: gradientEndHex
         )

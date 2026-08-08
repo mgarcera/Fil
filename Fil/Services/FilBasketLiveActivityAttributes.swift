@@ -9,7 +9,7 @@ import ActivityKit
 struct FilBasketLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
         var count: Int
-        var recentTitles: [String]
+        var blobs: [FilActivityBlob]
         var updatedAt: Date
     }
 }

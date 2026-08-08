@@ -31,20 +31,25 @@ enum LockScreenActivity: String, CaseIterable, Identifiable {
     }
 }
 
-/// A tiny App Group mirror of the Bin so an out-of-process capture (the Action Button intent or the
-/// Share Extension) can render an optimistic count on the island without reaching into SwiftData.
+/// One fil rendered as a gradient blob on a Lock Screen surface. Carries only the gradient + shape
+/// seed — never any fil text — so the widget can draw the real blob without the body leaving the app.
+struct FilActivityBlob: Codable, Hashable {
+    var startHex: String
+    var endHex: String
+    var seed: Double
+}
+
+/// A tiny App Group mirror of the Bin count so an out-of-process capture (the Action Button intent or
+/// the Share Extension) can render an optimistic count on the island without reaching into SwiftData.
 /// The app rewrites it from the true unfiled-fil set on every `LockScreenActivityCoordinator.sync`.
 enum BinActivitySnapshot {
     private static let countKey = "binActivity.count"
-    private static let titlesKey = "binActivity.titles"
 
-    static func write(count: Int, titles: [String]) {
+    static func write(count: Int) {
         UserDefaults.filAppGroup.set(count, forKey: countKey)
-        UserDefaults.filAppGroup.set(titles, forKey: titlesKey)
     }
 
     static var count: Int { UserDefaults.filAppGroup.integer(forKey: countKey) }
-    static var titles: [String] { UserDefaults.filAppGroup.stringArray(forKey: titlesKey) ?? [] }
 }
 
 extension UserDefaults {

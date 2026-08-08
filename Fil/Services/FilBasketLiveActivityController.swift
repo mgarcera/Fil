@@ -10,14 +10,14 @@ import ActivityKit
 /// optimistic snapshot. Ends the activity when the count hits zero.
 enum FilBasketLiveActivityController {
     /// Start or update the Bin activity. A zero count ends it (nothing to show).
-    static func apply(count: Int, recentTitles: [String]) async {
+    static func apply(count: Int, blobs: [FilActivityBlob]) async {
         #if canImport(ActivityKit)
         guard count > 0 else { await end(); return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
 
         let state = FilBasketLiveActivityAttributes.ContentState(
             count: count,
-            recentTitles: recentTitles,
+            blobs: blobs,
             updatedAt: .now
         )
         let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)

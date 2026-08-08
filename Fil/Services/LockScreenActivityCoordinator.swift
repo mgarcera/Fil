@@ -10,18 +10,18 @@ enum LockScreenActivityCoordinator {
     static func sync(modelContext: ModelContext) async {
         switch LockScreenActivity.current {
         case .off:
-            BinActivitySnapshot.write(count: 0, titles: [])
+            BinActivitySnapshot.write(count: 0)
             await FilBasketLiveActivityController.end()
             await PinnedFolderLiveActivityController.unpin()
 
         case .bin:
             let bin = binState(modelContext: modelContext)
-            BinActivitySnapshot.write(count: bin.count, titles: bin.titles)
+            BinActivitySnapshot.write(count: bin.count)
             await PinnedFolderLiveActivityController.unpin()   // never let the two coexist
-            await FilBasketLiveActivityController.apply(count: bin.count, recentTitles: bin.titles)
+            await FilBasketLiveActivityController.apply(count: bin.count, blobs: bin.blobs)
 
         case .pinnedFolder:
-            BinActivitySnapshot.write(count: 0, titles: [])
+            BinActivitySnapshot.write(count: 0)
             await FilBasketLiveActivityController.end()
             if let snapshot = refreshedFolderSnapshot(modelContext: modelContext) {
                 await PinnedFolderLiveActivityController.pin(snapshot)
@@ -31,16 +31,18 @@ enum LockScreenActivityCoordinator {
         }
     }
 
-    /// The true Bin: unfiled fils (`folder == nil`), newest first, with a 3-item peek.
-    private static func binState(modelContext: ModelContext) -> (count: Int, titles: [String]) {
+    /// How many fil blobs a Lock Screen surface carries (keeps the activity payload small).
+    private static let blobPeekCap = 8
+
+    /// The true Bin: unfiled fils (`folder == nil`), newest first, with a capped blob peek.
+    private static func binState(modelContext: ModelContext) -> (count: Int, blobs: [FilActivityBlob]) {
         let descriptor = FetchDescriptor<Note>(
             predicate: #Predicate { $0.folder == nil },
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
         let notes = (try? modelContext.fetch(descriptor)) ?? []
-        let lowercase = UserDefaults.standard.bool(forKey: "prefersLowercase")
-        let titles = notes.prefix(3).map { $0.islandTitle(lowercase: lowercase) }
-        return (notes.count, titles)
+        let blobs = notes.prefix(blobPeekCap).map { $0.activityBlob }
+        return (notes.count, Array(blobs))
     }
 
     /// Rebuilds the pinned folder's snapshot from its live contents (count + peek can drift as fils
@@ -55,13 +57,13 @@ enum LockScreenActivityCoordinator {
         }
         let lowercase = UserDefaults.standard.bool(forKey: "prefersLowercase")
         let newest = folder.notes.sorted { $0.timestamp > $1.timestamp }
-        let peek = newest.prefix(4).map { $0.islandTitle(lowercase: lowercase) }
+        let blobs = newest.prefix(blobPeekCap).map { $0.activityBlob }
         let name = lowercase ? folder.name.lowercased() : folder.name
         return PinnedFolderStore.shared.pin(
             id: folder.id,
             name: name,
             count: folder.notes.count,
-            peek: Array(peek),
+            blobs: Array(blobs),
             gradientStartHex: folder.gradientStartHex,
             gradientEndHex: folder.gradientEndHex
         )
