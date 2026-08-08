@@ -100,7 +100,7 @@ struct ComposerBar: View {
         HStack(spacing: 10) {
             Image(systemName: "circle").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.secondaryText)
             TextField("to-do", text: todo.text)
-                .font(Theme.fredoka(13, weight: .light)).foregroundStyle(Theme.secondaryText)
+                .font(Theme.fredoka(15, weight: .light)).foregroundStyle(Theme.secondaryText)
                 .focused($focusedTodoID, equals: todo.wrappedValue.id)
                 .submitLabel(.next)
                 .onSubmit { handleTodoReturn(for: todo.wrappedValue.id) }

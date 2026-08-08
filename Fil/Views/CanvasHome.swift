@@ -230,6 +230,13 @@ struct CanvasHome: View {
         .sheet(item: $basketPager) { sel in
             BrowserFilPager(notes: sel.notes, startID: sel.startID)
         }
+        // If an open fil gets landfil'd (from within its own modal or elsewhere), close the modal —
+        // a nested pager/sheet can otherwise linger showing a deleted fil.
+        .onChange(of: notes.map(\.uuid)) { _, ids in
+            let live = Set(ids)
+            if let note = selectedNote, !notes.contains(where: { $0 === note }) { selectedNote = nil }
+            if let pager = basketPager, !live.contains(pager.startID) { basketPager = nil }
+        }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
                 .presentationDetents([.large])

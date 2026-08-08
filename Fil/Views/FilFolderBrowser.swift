@@ -94,10 +94,11 @@ struct FoldersHomeSection: View {
                             .tint(.indigo)
                             Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
                                 .tint(.blue)
-                            Button(role: .destructive) { pendingLandfilFolder = folder } label: {
+                            // Plain (not destructive) so the row doesn't animate out before confirming.
+                            Button { pendingLandfilFolder = folder } label: {
                                 Label("Landfil", systemImage: "trash")
                             }
-                            .tint(.red)   // the NavigationStack .tint would otherwise override the destructive red
+                            .tint(.red)
                         }
                         .dropDestination(for: String.self) { items, _ in
                             handleDrop(items, on: folder)
@@ -450,15 +451,19 @@ struct FolderInteriorView: View {
             HStack(spacing: 14) {
                 FolderMark(seed: seed, start: start, end: end, glyph: glyph, size: 44)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(cased(title)).font(Theme.instrumentSerif(26)).foregroundStyle(Theme.primaryText)
+                    HStack(spacing: 8) {
+                        Text(cased(title)).font(Theme.instrumentSerif(26)).foregroundStyle(Theme.primaryText)
+                        Text("\(notes.count)")
+                            .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
+                            .padding(.horizontal, 7).padding(.vertical, 2)
+                            .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
+                    }
                     if !summary.isEmpty {
                         Text(cased(summary))
                             .font(Theme.fredoka(13, weight: .regular))
                             .foregroundStyle(Theme.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(notes.count == 1 ? "1 item" : "\(notes.count) items")
-                        .font(.system(size: 12)).foregroundStyle(Theme.tertiaryText)
                 }
                 Spacer()
             }
@@ -559,7 +564,9 @@ struct FolderInteriorView: View {
                 }
                 .tint(.green)
                 Button { moveTargetNote = note } label: { Label("Move", systemImage: "folder") }.tint(.indigo)
-                Button(role: .destructive) { pendingLandfilNote = note } label: { Label("Landfil", systemImage: "trash") }
+                // Not role:.destructive — that plays the row-removal animation on swipe, before the
+                // user confirms. Plain red button so the card only animates out on the real delete.
+                Button { pendingLandfilNote = note } label: { Label("Landfil", systemImage: "trash") }
                     .tint(.red)
             }
             .listRowSeparator(.hidden)
@@ -568,10 +575,11 @@ struct FolderInteriorView: View {
     }
 
     private func sectionHeader(_ label: String, _ icon: String, _ count: Int) -> some View {
+        // No listRowBackground override, so it wears the plain-List section-header material — matching
+        // the home's "Folders" header (which pins with the same translucent background).
         containerHeader(label, icon, count)
             .textCase(nil)
             .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 2, trailing: 0))
-            .listRowBackground(Color.clear)
     }
 
     /// Persist a drag-reorder: rewrite the section's `sortIndex` to its new order (0…n).
