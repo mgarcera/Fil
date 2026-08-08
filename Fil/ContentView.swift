@@ -19,10 +19,8 @@ struct ContentView: View {
     @State private var selectedNote: Note?
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showFilSetup = false
-    @State private var searchActive = false          // header button ↔ canvas: search screen vs composer
-    @State private var showingResults = false         // canvas → header: results on screen (show refresh)
-    @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
-    @State private var folderInteriorOpen = false      // canvas → header: hide the floating header inside a folder
+    @State private var searchActive = false          // composer search/X ↔ canvas: search vs compose
+    @State private var folderInteriorOpen = false      // canvas → hide chrome inside a folder interior
     @State private var homeDeepLink: HomeDeepLink?      // Lock Screen widget tap → open the Bin / a folder
 
     /// First-party, on-device activation instrumentation (no third-party SDK). Epoch seconds.
@@ -50,7 +48,7 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen, deepLink: $homeDeepLink, onSettings: { SoundscapeManager.shared.playSettingsSound(); showFilSetup = true })
+            CanvasHome(searchActive: $searchActive, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen, deepLink: $homeDeepLink, onSettings: { SoundscapeManager.shared.playSettingsSound(); showFilSetup = true })
 
             // Home controls (settings, search/close, new-search refresh) all live as floating buttons
             // over the composer now — no top header.

@@ -15,7 +15,6 @@ struct SettingsView: View {
     @AppStorage("soundEnabled") private var soundEnabled = true
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     @AppStorage("isDarkMode") private var isDarkMode = true
-    @AppStorage("controlsOnLeft") private var controlsOnLeft = false
     @AppStorage(LockScreenActivity.storageKey, store: .filAppGroup) private var lockScreenActivityRaw = LockScreenActivity.off.rawValue
 
     @State private var section: SettingsSection = .appearance
@@ -121,15 +120,6 @@ struct SettingsView: View {
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             settingToggle("Dark mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
-
-            sectionDivider
-
-            settingToggle(
-                "Left-handed",
-                icon: "hand.point.left.fill",
-                description: "Buttons on the left.",
-                isOn: $controlsOnLeft
-            )
 
             sectionDivider
 

@@ -57,13 +57,9 @@ struct CanvasHome: View {
     ]
     private static let queryPromptInterval: TimeInterval = 3.5
 
-    /// The header (owned by ContentView) drives `searchActive`: true enters the query screen, false
-    /// returns to the composer.
+    /// Drives search: true enters the query screen (composer becomes the query input), false returns
+    /// to the composer. Set by the composer's search / X buttons.
     @Binding var searchActive: Bool
-    /// True while surfaced results are on screen, so the header can show a "new search" refresh.
-    @Binding var showingResults: Bool
-    /// Set true by the header's refresh button to start a fresh search; CanvasHome consumes it.
-    @Binding var newSearchRequested: Bool
     /// True while a screensaver is on screen — it overrides the keyboard (resigns composer/query
     /// focus), and focus is restored to the current mode when it dismisses.
     var screensaverActive: Bool = false
@@ -355,11 +351,6 @@ struct CanvasHome: View {
                 // Tap-to-focus: return to the resting home (folders visible); don't raise the keyboard.
             }
         }
-        // Header sync only. Composer focus is set at genuine entry points (launch, after creating a
-        // fil, returning from search) — like the query field — not re-forced on every phase change.
-        .onChange(of: phase) { _, newPhase in
-            showingResults = (newPhase == .results)
-        }
         // A screensaver overrides the keyboard: drop focus while it's up, restore it on dismiss.
         .onChange(of: screensaverActive) { _, active in
             if active {
@@ -381,13 +372,6 @@ struct CanvasHome: View {
         }
         // Tap-to-focus: the compose bar rests unfocused at launch (folders are browsable); the
         // keyboard rises only when the user taps the bar.
-        // The header's refresh button asks for a fresh search.
-        .onChange(of: newSearchRequested) { _, requested in
-            if requested {
-                beginSurface()
-                newSearchRequested = false
-            }
-        }
     }
 
     /// Start a fresh search: clear any prior results and the remembered search, and open an empty
