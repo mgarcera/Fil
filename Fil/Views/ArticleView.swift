@@ -152,6 +152,19 @@ struct ArticleView: View {
             }
 
         }
+        // A thin gradient hairline lit across the very top edge of the sheet (the fil's colors),
+        // clipped by the sheet's rounded corners so it reads as a straight lit line, not a border.
+        .overlay(alignment: .top) {
+            LinearGradient(
+                colors: [Color(hex: note.gradientStartHex), Color(hex: note.gradientEndHex)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(height: 2)
+            .blendMode(.plusLighter)
+            .allowsHitTesting(false)
+            .ignoresSafeArea()
+        }
         .ignoresSafeArea(edges: ignoresTopSafeArea ? .top : [])
         // Hide the nav bar only for a *root* link fil (it has its own open + swipe-to-dismiss). A
         // link fil pushed inside the filament stack keeps its bar, so there's a back button.
