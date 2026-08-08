@@ -764,7 +764,8 @@ struct FilPagerSelection: Identifiable {
 /// A horizontally-paged fil reader: swipe left/right to move between the fils in the container you
 /// opened from. Because a container is one type, the sheet detents stay consistent across pages.
 /// Each page owns its own navigation stack so threaded pushes don't leak between fils.
-private struct BrowserFilPager: View {
+/// Shared: also used by the home's Bin/selection baskets, not just folder interiors.
+struct BrowserFilPager: View {
     let notes: [Note]
     @State private var selection: UUID
     @State private var detent: PresentationDetent

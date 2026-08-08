@@ -9,7 +9,8 @@ private struct BulkLandfilRequest: Identifiable { let id = UUID() }
 /// Selection: tap a blob to deselect; folder-menu moves all, trash landfils all (confirmed), ✕ clears.
 /// Bin: drag a blob onto a folder to file it, or tap to open.
 struct HomeBasket: View {
-    var onOpen: (UUID) -> Void = { _ in }
+    /// Opens the tapped fil in a swipeable pager over its section's fils (tapped, container).
+    var onOpen: (Note, [Note]) -> Void = { _, _ in }
     /// The Bin section shows only on the folders home (hidden inside a folder interior).
     var showBin: Bool = true
 
@@ -58,7 +59,7 @@ struct HomeBasket: View {
             .foregroundStyle(Theme.primaryText)
 
             blobRow(selected) { note in
-                onOpen(note.uuid)                                // tap opens (like the Bin)
+                onOpen(note, selected)                           // tap opens a pager over the selection
             } decorate: { view, note in
                 view.draggable("card:\(note.uuid.uuidString)")   // drag onto a folder to file it
             }
@@ -79,7 +80,7 @@ struct HomeBasket: View {
                 Spacer()
             }
             blobRow(unfiled) { note in
-                onOpen(note.uuid)                    // tap opens
+                onOpen(note, unfiled)                // tap opens a pager over the Bin
             } decorate: { view, note in
                 view.draggable("card:\(note.uuid.uuidString)")   // drag onto a folder to file
             }

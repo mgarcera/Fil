@@ -112,6 +112,8 @@ struct CanvasHome: View {
     @State private var surfaceError: String?
     @State private var isRetrieving = false
     @State private var selectedNote: Note?
+    /// A paged reading session for the Bin / selection baskets (swipe between the tapped set of fils).
+    @State private var basketPager: FilPagerSelection?
     @State private var showPaywall = false
     @State private var showFeedback = false
     // Voice capture: the mic glyph starts recording; the gooey blob pulses while recording, then
@@ -185,7 +187,7 @@ struct CanvasHome: View {
             if phase == .composing {
                 VStack(spacing: 12) {
                     HomeBasket(
-                        onOpen: { id in if let note = notes.first(where: { $0.uuid == id }) { selectedNote = note } },
+                        onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
                         showBin: !folderInteriorOpen
                     )
                     composerBar
@@ -224,6 +226,9 @@ struct CanvasHome: View {
             // Link fils stay at the medium detent (no expand-to-full); other fils can go large.
             .presentationDetents(note.isLinkFil ? [.fraction(0.6)] : [.fraction(0.6), .large], selection: $filSheetDetent)
             .presentationBackground(Theme.background)
+        }
+        .sheet(item: $basketPager) { sel in
+            BrowserFilPager(notes: sel.notes, startID: sel.startID)
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
