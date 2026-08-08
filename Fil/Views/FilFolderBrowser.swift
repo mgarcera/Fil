@@ -647,6 +647,9 @@ struct FolderInteriorView: View {
             VStack(spacing: 10) {
                 ForEach(todoNotes, id: \.uuid) { note in
                     todoCard(note)
+                        .contentShape(Rectangle())
+                        // Tapping empty space opens the fil; the checkbox Buttons capture their own taps.
+                        .onTapGesture { onOpen(note, todoNotes) }
                         .contextMenu { filActions(note) }
                         .swipeToSelect(note.uuid)
                 }
