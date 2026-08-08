@@ -4,12 +4,16 @@ import SwiftData
 import UIKit
 #endif
 
-/// The folder browser's page background: `Theme.background` nudged a few percent toward the primary
-/// color, so it reads as the same soft gray as the blurred header (and still adapts to light/dark).
-private var folderBrowserBackground: some View {
-    Theme.background
-        .overlay(Theme.primaryText.opacity(0.05))
-        .ignoresSafeArea()
+/// The folder browser's page background: `Theme.background` nudged toward the primary color so it
+/// reads as the same soft gray as the blurred header. The blur lifts much more over black than over
+/// white, so dark mode needs a bigger nudge to match.
+private struct FolderBrowserBackground: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        Theme.background
+            .overlay(Theme.primaryText.opacity(scheme == .dark ? 0.15 : 0.05))
+            .ignoresSafeArea()
+    }
 }
 
 /// A Lock Screen / widget tap destination the home should route to on launch.
@@ -135,7 +139,7 @@ struct FoldersHomeSection: View {
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
             .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
-            .background(folderBrowserBackground)
+            .background(FolderBrowserBackground())
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: path) { _, newPath in
                 if case let .folder(folder) = newPath.last { onContextFolderChange(folder) }
@@ -475,7 +479,7 @@ struct FolderInteriorView: View {
         .scrollIndicators(.hidden)
         .contentMargins(.top, headerHeight, for: .scrollContent)     // clear the overlaid folder header
         .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
-        .background(folderBrowserBackground)
+        .background(FolderBrowserBackground())
         // The folder identity header floats over the list as a translucent material bar; cards scroll
         // under it (the native section-header treatment). Its height is measured so content clears it.
         .overlay(alignment: .top) {
