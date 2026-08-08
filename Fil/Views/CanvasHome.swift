@@ -191,60 +191,55 @@ struct CanvasHome: View {
         // Shown while composing (incl. inside a folder interior, where the composer is contextual).
         .overlay(alignment: .bottom) {
             if phase == .composing || isSearching {
-                VStack(spacing: 10) {
-                    // Floating glass buttons above the dock. Resting home: settings + new-folder,
-                    // right-aligned over the composer's trailing icon (fade in/out). Search results:
-                    // a centered refresh (new-search) FAB.
-                    if !composerFocused {
-                        if phase == .composing {
-                            VStack(spacing: 10) {
-                                Button(action: onSettings) {
-                                    Image("FilLogo")
-                                        .resizable().scaledToFit()
-                                        .frame(width: 24, height: 24)
-                                        .frame(width: 56, height: 56)
-                                        .glassEffect(.regular.interactive(), in: .circle)
-                                        .contentShape(Circle())
-                                }
-                                .buttonStyle(.plain).accessibilityLabel("Settings")
-
-                                Button { newFolderRequest = true } label: {
-                                    Image(systemName: "folder.badge.plus")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(Theme.primaryText)
-                                        .frame(width: 56, height: 56)
-                                        .glassEffect(.regular.interactive(), in: .circle)
-                                        .contentShape(Circle())
-                                }
-                                .buttonStyle(.plain).accessibilityLabel("new folder")
+                VStack(spacing: 12) {
+                    // Above the composer: recent-search chips in search (when the query's empty),
+                    // else the Bin / selection baskets.
+                    if isSearching {
+                        if query.isEmpty && !recentSearches.isEmpty { recentChipsRow }
+                    } else {
+                        HomeBasket(
+                            onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
+                            showBin: !folderInteriorOpen
+                        )
+                    }
+                    composerBar
+                }
+                .padding(14)
+                .glassEffect(.regular, in: .rect(cornerRadius: 30))
+                // Settings + new-folder float ABOVE the dock as an overlay (out of the layout flow), so
+                // they scale in/out in place — no reflow/translation. Positioned above via alignmentGuide.
+                .overlay(alignment: .topTrailing) {
+                    if phase == .composing && !composerFocused {
+                        VStack(spacing: 10) {
+                            Button(action: onSettings) {
+                                Image("FilLogo")
+                                    .resizable().scaledToFit()
+                                    .frame(width: 24, height: 24)
+                                    .frame(width: 56, height: 56)
+                                    .glassEffect(.regular.interactive(), in: .circle)
+                                    .contentShape(Circle())
                             }
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .padding(.trailing, 14)   // line up with the composer's trailing icon
-                            .transition(.scale.combined(with: .opacity))   // minimize/maximize, not fade
-                        }
-                    }
+                            .buttonStyle(.plain).accessibilityLabel("Settings")
 
-                    VStack(spacing: 12) {
-                        // Above the composer: recent-search chips in search (when the query's empty),
-                        // else the Bin / selection baskets.
-                        if isSearching {
-                            if query.isEmpty && !recentSearches.isEmpty { recentChipsRow }
-                        } else {
-                            HomeBasket(
-                                onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
-                                showBin: !folderInteriorOpen
-                            )
+                            Button { newFolderRequest = true } label: {
+                                Image(systemName: "folder.badge.plus")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(Theme.primaryText)
+                                    .frame(width: 56, height: 56)
+                                    .glassEffect(.regular.interactive(), in: .circle)
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain).accessibilityLabel("new folder")
                         }
-                        composerBar
+                        .padding(.trailing, 14)   // line up with the composer's trailing icon
+                        .alignmentGuide(.top) { $0[.bottom] + 10 }   // sit 10pt above the dock's top edge
+                        .transition(.scale.combined(with: .opacity))   // pure minimize/maximize in place
                     }
-                    .padding(14)
-                    .glassEffect(.regular, in: .rect(cornerRadius: 30))
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
                 // Quick snappy minimize/maximize for the FABs as focus toggles.
                 .animation(.snappy(duration: 0.2), value: composerFocused)
-                // Measure the WHOLE dock (floating buttons + composer) so scroll content clears it all.
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
         }
@@ -419,7 +414,8 @@ struct CanvasHome: View {
     /// "New" compose card inline above the folders (which slide down beneath it) — not an overlay.
     private var composer: some View {
         FoldersHomeSection(
-            bottomInset: dockHeight + 16,   // clear the measured dock (composer + baskets)
+            // Clear the measured dock (composer + baskets) plus the floating FABs above it when shown.
+            bottomInset: dockHeight + 16 + (composerFocused ? 0 : 130),
             onContextFolderChange: { folder in
                 withAnimation(.easeInOut(duration: 0.2)) {
                     contextFolder = folder
