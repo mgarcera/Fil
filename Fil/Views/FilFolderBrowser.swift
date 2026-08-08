@@ -568,7 +568,7 @@ struct FolderInteriorView: View {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
                 Text(cased(cardContent(note)))
-                    .font(Theme.fredoka(15, weight: .regular))
+                    .font(Theme.fredoka(15, weight: .light))
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)

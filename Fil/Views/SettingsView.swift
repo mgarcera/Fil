@@ -77,7 +77,7 @@ struct SettingsView: View {
                     } label: {
                         let isSelected = section == tab
                         Text(tab.title)
-                            .font(Theme.fredoka(19, weight: .semibold))
+                            .font(Theme.fredoka(19, weight: .medium))
                             .foregroundStyle(isSelected ? Color.black : .white)
                             .padding(.horizontal, 18)
                             .frame(height: 44)
@@ -198,7 +198,7 @@ struct SettingsView: View {
             withAnimation(.snappy) { lockScreenActivityRaw = option.rawValue }
         } label: {
             Text(option.title)
-                .font(Theme.fredoka(18, weight: .semibold))
+                .font(Theme.fredoka(18, weight: .medium))
                 .foregroundStyle(isSelected ? Color.black : .white)
                 .padding(.horizontal, 16)
                 .frame(height: 40)
@@ -240,7 +240,7 @@ struct SettingsView: View {
                 .foregroundStyle(.white.opacity(0.85))
                 .frame(width: 22)
             Text(title)
-                .font(Theme.fredoka(20, weight: .semibold))
+                .font(Theme.fredoka(20, weight: .medium))
                 .foregroundStyle(.white)
         }
     }
@@ -257,7 +257,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(option.title)
-                            .font(Theme.fredoka(20, weight: .semibold))
+                            .font(Theme.fredoka(20, weight: .medium))
                             .foregroundStyle(.white)
                         if !option.isUnlocked {
                             Image(systemName: "lock.fill")
@@ -310,7 +310,7 @@ struct SettingsView: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Text(title)
-                    .font(Theme.fredoka(20, weight: .semibold))
+                    .font(Theme.fredoka(20, weight: .medium))
                     .foregroundStyle(.white)
                 Spacer()
                 Image(systemName: "arrow.up.right")
