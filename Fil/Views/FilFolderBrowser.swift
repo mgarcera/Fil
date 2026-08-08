@@ -88,17 +88,15 @@ struct FoldersHomeSection: View {
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
                                 .tint(.blue)
+                            let pinned = PinnedFolderStore.shared.isPinned(folder.id)
+                            Button { togglePin(folder) } label: {
+                                Label(pinned ? "Remove" : "Live Activity", systemImage: pinned ? "pin.slash" : "pin")
+                            }
+                            .tint(.indigo)
                             Button(role: .destructive) { pendingLandfilFolder = folder } label: {
                                 Label("Landfil", systemImage: "trash")
                             }
                             .tint(.red)   // the NavigationStack .tint would otherwise override the destructive red
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            let pinned = PinnedFolderStore.shared.isPinned(folder.id)
-                            Button { togglePin(folder) } label: {
-                                Label(pinned ? "Unpin" : "Pin", systemImage: pinned ? "pin.slash" : "pin")
-                            }
-                            .tint(pinned ? .gray : .indigo)
                         }
                         .dropDestination(for: String.self) { items, _ in
                             handleDrop(items, on: folder)
@@ -425,8 +423,6 @@ struct FolderInteriorView: View {
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     private let selection = FilSelectionStore.shared
 
-    @State private var pendingRenameNote: Note?
-    @State private var renameText = ""
     @State private var moveTargetNote: Note?
     @State private var pendingLandfilNote: Note?
 
@@ -487,14 +483,6 @@ struct FolderInteriorView: View {
         .navigationBarTitleDisplayMode(.inline)
         // Creating a fil here happens through the contextual composer bar ("add to {folder}"), not a
         // per-folder ＋.
-        .alert("Rename fil", isPresented: .init(
-            get: { pendingRenameNote != nil },
-            set: { if !$0 { pendingRenameNote = nil } }
-        )) {
-            TextField("title", text: $renameText)
-            Button("Save") { commitRename() }
-            Button("Cancel", role: .cancel) { pendingRenameNote = nil }
-        }
         .confirmationDialog("Move to a folder", isPresented: .init(
             get: { moveTargetNote != nil },
             set: { if !$0 { moveTargetNote = nil } }
@@ -515,20 +503,6 @@ struct FolderInteriorView: View {
             context.delete(note)
             try? context.save()
         })
-    }
-
-    private func startRename(_ note: Note) {
-        renameText = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        pendingRenameNote = note
-    }
-
-    private func commitRename() {
-        let title = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let note = pendingRenameNote, !title.isEmpty {
-            note.title = title
-            try? context.save()
-        }
-        pendingRenameNote = nil
     }
 
     // MARK: - Containers
@@ -576,15 +550,13 @@ struct FolderInteriorView: View {
             .opacity(isSelected(note) ? 0.6 : 1)
             .contentShape(Rectangle())
             .onTapGesture { onOpen(note, container) }
-            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            // Swipe left: Select (full swipe selects), then Move / Landfil.
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button { toggleSelect(note) } label: {
                     Label(isSelected(note) ? "Deselect" : "Select",
                           systemImage: isSelected(note) ? "checkmark.circle.fill" : "circle")
                 }
                 .tint(.green)
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                Button { startRename(note) } label: { Label("Rename", systemImage: "pencil") }.tint(.blue)
                 Button { moveTargetNote = note } label: { Label("Move", systemImage: "folder") }.tint(.indigo)
                 Button(role: .destructive) { pendingLandfilNote = note } label: { Label("Landfil", systemImage: "trash") }
                     .tint(.red)
