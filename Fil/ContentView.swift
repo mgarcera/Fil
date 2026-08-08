@@ -41,6 +41,9 @@ struct ContentView: View {
     @State private var showKoiPond = false
     @AppStorage("lastScreensaverMode") private var lastScreensaverModeRaw = FilScreensaverView.Mode.liquid.rawValue
     @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
+    /// The Lock Screen activity choice (Off / Bin / Folder). Stored in the App Group so out-of-process
+    /// captures honor it; observed here to re-sync the running activity when the user flips it.
+    @AppStorage(LockScreenActivity.storageKey, store: .filAppGroup) private var lockScreenActivityRaw = LockScreenActivity.off.rawValue
 
     var body: some View {
         ZStack {
@@ -137,9 +140,18 @@ struct ContentView: View {
         }
         .onOpenURL(perform: handleIncomingURL)
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
+            switch newPhase {
+            case .active:
                 ingestSharedDrafts()
+            case .background:
+                // Refresh the Lock Screen activity from the current Bin just before we're hidden.
+                Task { await LockScreenActivityCoordinator.sync(modelContext: modelContext) }
+            default:
+                break
             }
+        }
+        .onChange(of: lockScreenActivityRaw) { _, _ in
+            Task { await LockScreenActivityCoordinator.sync(modelContext: modelContext) }
         }
         .background(autoScreensaverDetector)
         .onAppear { applyScreenAwake() }
@@ -451,6 +463,24 @@ struct ContentView: View {
             return
         }
 
+        // Live Activity taps. Recognized here so they aren't misread as draft text below.
+        if url.scheme?.lowercased() == "fil" {
+            let host = (url.host() ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).lowercased()
+            switch host {
+            case "basket":
+                // Land on the home so the Bin dock is in view. (A richer reveal — focusing the
+                // composer / expanding the dock — lands with the Phase-1 UI pass.)
+                searchActive = false
+                SoundscapeManager.shared.playOpenFilClick()
+                return
+            case "folder":
+                // Phase 2 navigates into the pinned folder; recognized now so it's not draft text.
+                return
+            default:
+                break
+            }
+        }
+
         guard let text = TemporaryFilDraftIntake.text(from: url) else { return }
 
         temporaryDraftStore.hold(text)
@@ -485,12 +515,12 @@ struct ContentView: View {
         selectedNote = note
     }
 
-    /// Drains content shared into Fil from the Share Extension (via the App Group inbox).
-    /// Text drops (including links) land in the staging basket for the user to promote later;
-    /// image drops still become fils directly for now — the basket is text-only this iteration.
+    /// Runs on launch / app-active: promotes every out-of-app capture into a real unfiled fil (the
+    /// Bin), then re-syncs the Lock Screen activity from the true Bin. Share-extension image drops
+    /// still become fils directly; its text/link drops stage in the buffer alongside Action-Button
+    /// captures and are drained together.
     private func ingestSharedDrafts() {
         let drafts = SharedDraftInbox.drain()
-        guard !drafts.isEmpty else { return }
 
         var directToFil: [SharedDraftInbox.InboundDraft] = []
         for draft in drafts {
@@ -502,9 +532,35 @@ struct ContentView: View {
             }
         }
 
-        Task { await FilBasketLiveActivityController.refresh() }
-        if !directToFil.isEmpty {
-            Task { await createFils(from: directToFil) }
+        Task {
+            if !directToFil.isEmpty { await createFils(from: directToFil) }
+            drainCaptureBuffer()
+            await LockScreenActivityCoordinator.sync(modelContext: modelContext)
+        }
+    }
+
+    /// Empties the out-of-app capture buffer into real unfiled fils. Links become link fils; anything
+    /// else becomes a plain text fil (no generated title — matches the home's inline capture).
+    private func drainCaptureBuffer() {
+        let staged = FilBasketStore.shared.drain()
+        guard !staged.isEmpty else { return }
+
+        for item in staged {
+            let text = item.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { continue }
+            let gradient = freshGradientPair()
+            if let linkURL = normalizedLinkURL(from: text) {
+                LinkFil.make(url: linkURL, gradient: gradient, uuid: UUID(), in: modelContext)
+            } else {
+                let note = Note(
+                    title: "",
+                    transcript: text,
+                    keyword: "",
+                    gradientStartHex: gradient.start,
+                    gradientEndHex: gradient.end
+                )
+                modelContext.insert(note)
+            }
         }
     }
 

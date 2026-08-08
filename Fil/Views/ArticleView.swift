@@ -164,13 +164,6 @@ struct ArticleView: View {
         }
         .onDisappear { player.stop() }
         .toolbar {
-            if showsCloseButton && !note.isLinkFil {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { dismiss() } label: { closeBlob }
-                        .accessibilityLabel("Close thought")
-                }
-            }
-
             if !note.isLinkFil {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     // Info: the fil's metadata (all that's left of the old ⋯ menu).
@@ -240,19 +233,6 @@ struct ArticleView: View {
             return (parent, keyword.isEmpty ? "threaded thought" : keyword)
         }
         return nil
-    }
-
-    /// The fil's own blob, used as the close control (tap to dismiss) in place of an ✕.
-    private var closeBlob: some View {
-        Group {
-            if note.isImageFil || !note.audioFilePath.isEmpty {
-                NoteCardView(note: note, cardHeight: 28)
-            } else {
-                NoteBlobShape(seed: note.blobShapeSeed)
-                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-            }
-        }
-        .frame(width: 28, height: 28)
     }
 
     private var heroImage: some View {

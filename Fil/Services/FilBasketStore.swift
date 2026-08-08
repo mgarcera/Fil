@@ -21,10 +21,10 @@ struct FilBasketItem: Codable, Equatable, Identifiable {
     }
 }
 
-/// The durable staging basket. Unlike `SharedDraftInbox` (a transient cross-process
-/// landing pad that drains on read), the basket persists: captures accumulate here and
-/// stay visible until the user promotes them into fils. Stored as JSON in the shared App
-/// Group container so the app and (later) the extensions can all reach it.
+/// The out-of-app capture buffer. Captures made while Fil is suspended — the Action Button intent,
+/// the Share Extension — land here (they have no SwiftData `modelContext`), and the app drains them
+/// into real unfiled fils on the next launch (see `ContentView.drainCaptureBuffer`). Stored as JSON
+/// in the shared App Group container so every process can reach it.
 final class FilBasketStore {
     static let shared = FilBasketStore()
 
@@ -63,6 +63,16 @@ final class FilBasketStore {
     func clear() {
         items.removeAll()
         save()
+    }
+
+    /// Returns everything staged and empties the buffer — the app calls this on launch to promote
+    /// out-of-app captures into real unfiled fils.
+    func drain() -> [FilBasketItem] {
+        let drained = items
+        guard !drained.isEmpty else { return [] }
+        items.removeAll()
+        save()
+        return drained
     }
 
     private func save() {
