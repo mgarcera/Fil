@@ -34,6 +34,9 @@ final class Note {
     var threadedBacklinks: [ThreadedFilBacklink]
     /// The folder this fil is filed into; nil = unfiled (the inbox). One folder per fil.
     var folder: Folder?
+    /// Manual position within its folder's type section (drag-to-reorder). Ties break by timestamp,
+    /// so un-reordered folders keep the newest-first default. Scoped per folder (one folder per fil).
+    var sortIndex: Int = 0
     var sourceURLString: String?
     var sourceTitle: String?
     /// A link page's og:description / meta description, fetched in the background — shown in the link

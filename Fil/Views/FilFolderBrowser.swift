@@ -275,7 +275,7 @@ struct FoldersHomeSection: View {
 
         let folder = makeFolder(named: name)
         folder.summary = caption
-        if let note = pendingMoveNote { note.folder = folder }
+        if let note = pendingMoveNote { note.folder = folder; note.sortIndex = 0 }
         pendingMoveNote = nil
         try? context.save()
     }
@@ -296,6 +296,7 @@ struct FoldersHomeSection: View {
 
     private func move(_ note: Note, to folder: Folder?) {
         note.folder = folder
+        note.sortIndex = 0   // order is per-folder; reset so it joins the destination at the top
         try? context.save()
     }
 
@@ -390,7 +391,7 @@ struct FoldersHomeSection: View {
                 folder = made
             }
             folder.summary = group.summary
-            for id in group.filIDs { byID[id]?.folder = folder }
+            for id in group.filIDs { byID[id]?.folder = folder; byID[id]?.sortIndex = 0 }
         }
         // A re-organize can empty out old folders — remove any leftovers so none linger empty.
         for folder in existing where folder.notes.isEmpty {
@@ -422,6 +423,7 @@ struct FolderInteriorView: View {
 
     @Environment(\.modelContext) private var context
     @AppStorage("prefersLowercase") private var prefersLowercase = false
+    private let selection = FilSelectionStore.shared
 
     @State private var pendingRenameNote: Note?
     @State private var renameText = ""
@@ -430,16 +432,19 @@ struct FolderInteriorView: View {
 
 
     // Typed containers. To-dos are claimed first (any fil with a to-do lives there and nowhere else);
-    // the rest split by kind. Each bucket is sorted most-recent.
+    // the rest split by kind. Each bucket is in manual order (sortIndex), newest-first for ties.
     private func hasTodos(_ note: Note) -> Bool { !note.todoRowItems.isEmpty }
-    private func byRecent(_ a: Note, _ b: Note) -> Bool { a.timestamp > b.timestamp }
+    /// Manual position, then newest-first tiebreak — so an un-reordered folder reads newest-first.
+    private func inFolderOrder(_ a: Note, _ b: Note) -> Bool {
+        a.sortIndex != b.sortIndex ? a.sortIndex < b.sortIndex : a.timestamp > b.timestamp
+    }
 
-    private var todoNotes: [Note] { notes.filter(hasTodos).sorted(by: byRecent) }
+    private var todoNotes: [Note] { notes.filter(hasTodos).sorted(by: inFolderOrder) }
     private var rest: [Note] { notes.filter { !hasTodos($0) } }
-    private var photoNotes: [Note] { rest.filter { $0.isImageFil }.sorted(by: byRecent) }
-    private var linkNotes: [Note] { rest.filter { $0.isLinkFil }.sorted(by: byRecent) }
-    private var voiceNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && !$0.audioFilePath.isEmpty }.sorted(by: byRecent) }
-    private var plainNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && $0.audioFilePath.isEmpty }.sorted(by: byRecent) }
+    private var photoNotes: [Note] { rest.filter { $0.isImageFil }.sorted(by: inFolderOrder) }
+    private var linkNotes: [Note] { rest.filter { $0.isLinkFil }.sorted(by: inFolderOrder) }
+    private var voiceNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && !$0.audioFilePath.isEmpty }.sorted(by: inFolderOrder) }
+    private var plainNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && $0.audioFilePath.isEmpty }.sorted(by: inFolderOrder) }
 
     private func cased(_ text: String) -> String { prefersLowercase ? text.lowercased() : text }
 
@@ -464,18 +469,17 @@ struct FolderInteriorView: View {
             .padding(.top, 8)
             .padding(.bottom, 14)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 26) {
-                    // To-dos ride at the top; every other type is a horizontal shelf below.
-                    if !todoNotes.isEmpty { todoContainer }
-                    if !photoNotes.isEmpty { shelf("Photos", "photo", photoNotes) }
-                    if !plainNotes.isEmpty { shelf("Notes", "note.text", plainNotes) }
-                    if !linkNotes.isEmpty { shelf("Links", "link", linkNotes) }
-                    if !voiceNotes.isEmpty { shelf("Voice", "waveform", voiceNotes) }
-                }
-                .padding(.top, 4)
-                .padding(.bottom, 28)
+            // Sections are reorderable Lists: long-press-drag a card to reorder within its type
+            // (like folders). Swipe leading to select, trailing for rename / move / landfil.
+            List {
+                todoSection
+                filSection("Photos", "photo", photoNotes)
+                filSection("Notes", "note.text", plainNotes)
+                filSection("Links", "link", linkNotes)
+                filSection("Voice", "waveform", voiceNotes)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
             .scrollIndicators(.hidden)
             .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
         }
@@ -543,23 +547,77 @@ struct FolderInteriorView: View {
         .padding(.horizontal, 16)
     }
 
-    /// One type's fils as full-width single-column cards: the rich component (photo thumb / fil blob)
-    /// on the left, light-weight text on the right.
-    private func shelf(_ label: String, _ icon: String, _ items: [Note]) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            containerHeader(label, icon, items.count)
-            VStack(spacing: 10) {
+    /// One type's fils as a reorderable List section of full-width cards. Long-press-drag reorders
+    /// (persisted to `sortIndex`); swipe leading to select, trailing for rename / move / landfil.
+    @ViewBuilder private func filSection(_ label: String, _ icon: String, _ items: [Note]) -> some View {
+        if !items.isEmpty {
+            Section {
                 ForEach(items, id: \.uuid) { note in
-                    filRow(note)
-                        .contentShape(Rectangle())
-                        // Tap opens; a swipe-to-select won't fire this (a drag cancels the tap).
-                        .onTapGesture { onOpen(note, items) }
-                        .contextMenu { filActions(note) }
-                        .swipeToSelect(note.uuid)   // swipe left to add to the selection basket
+                    cardRow(filRow(note), note: note, container: items)
+                }
+                .onMove { reorder(items, from: $0, to: $1) }
+            } header: {
+                sectionHeader(label, icon, items.count)
+            }
+        }
+    }
+
+    /// Shared per-row chrome: selected overlay, tap-to-open, and the leading/trailing swipe actions.
+    private func cardRow<Card: View>(_ card: Card, note: Note, container: [Note]) -> some View {
+        card
+            .overlay(alignment: .topTrailing) {
+                if isSelected(note) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.green)
+                        .padding(10)
                 }
             }
-            .padding(.horizontal, 16)
-        }
+            .opacity(isSelected(note) ? 0.6 : 1)
+            .contentShape(Rectangle())
+            .onTapGesture { onOpen(note, container) }
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button { toggleSelect(note) } label: {
+                    Label(isSelected(note) ? "Deselect" : "Select",
+                          systemImage: isSelected(note) ? "checkmark.circle.fill" : "circle")
+                }
+                .tint(.green)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                Button { startRename(note) } label: { Label("Rename", systemImage: "pencil") }.tint(.blue)
+                Button { moveTargetNote = note } label: { Label("Move", systemImage: "folder") }.tint(.indigo)
+                Button(role: .destructive) { pendingLandfilNote = note } label: { Label("Landfil", systemImage: "trash") }
+                    .tint(.red)
+            }
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+    }
+
+    private func sectionHeader(_ label: String, _ icon: String, _ count: Int) -> some View {
+        containerHeader(label, icon, count)
+            .textCase(nil)
+            .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 2, trailing: 0))
+            .listRowBackground(Color.clear)
+    }
+
+    /// Persist a drag-reorder: rewrite the section's `sortIndex` to its new order (0…n).
+    private func reorder(_ items: [Note], from source: IndexSet, to destination: Int) {
+        var arr = items
+        arr.move(fromOffsets: source, toOffset: destination)
+        for (index, note) in arr.enumerated() { note.sortIndex = index }
+        try? context.save()
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
+    }
+
+    private func isSelected(_ note: Note) -> Bool { selection.contains(note.uuid) }
+    private func toggleSelect(_ note: Note) {
+        withAnimation(.snappy) { selection.toggle(note.uuid) }
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
     }
 
     /// A full-width card row: the rich component (photo thumb / fil blob) on the left, light text right.
@@ -640,22 +698,18 @@ struct FolderInteriorView: View {
         .frame(width: size, height: size)
     }
 
-    // The To-dos container: one card per fil that has to-dos (styled like the note cards — source
-    // fil's blob on the left, gradient wash), listing that fil's to-dos with an inline checkbox each.
-    private var todoContainer: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            containerHeader("To-dos", "checklist", todoNotes.reduce(0) { $0 + $1.todoRowItems.count })
-            VStack(spacing: 10) {
+    // The To-dos section: one reorderable card per fil that has to-dos (styled like the note cards),
+    // listing that fil's to-dos with an inline checkbox each.
+    @ViewBuilder private var todoSection: some View {
+        if !todoNotes.isEmpty {
+            Section {
                 ForEach(todoNotes, id: \.uuid) { note in
-                    todoCard(note)
-                        .contentShape(Rectangle())
-                        // Tapping empty space opens the fil; the checkbox Buttons capture their own taps.
-                        .onTapGesture { onOpen(note, todoNotes) }
-                        .contextMenu { filActions(note) }
-                        .swipeToSelect(note.uuid)
+                    cardRow(todoCard(note), note: note, container: todoNotes)
                 }
+                .onMove { reorder(todoNotes, from: $0, to: $1) }
+            } header: {
+                sectionHeader("To-dos", "checklist", todoNotes.reduce(0) { $0 + $1.todoRowItems.count })
             }
-            .padding(.horizontal, 16)
         }
     }
 
@@ -706,12 +760,6 @@ struct FolderInteriorView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
-    }
-
-    @ViewBuilder private func filActions(_ note: Note) -> some View {
-        Button { startRename(note) } label: { Label("Rename", systemImage: "pencil") }
-        Button { moveTargetNote = note } label: { Label("Move", systemImage: "folder") }
-        Button(role: .destructive) { pendingLandfilNote = note } label: { Label("Landfil", systemImage: "trash") }
     }
 
     /// Toggle a to-do's completion, keeping `completedTodos` aligned with `todos` (mirrors ArticleView).

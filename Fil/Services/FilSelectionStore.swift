@@ -45,7 +45,7 @@ final class FilSelectionStore {
     }
 
     func moveSelected(to folder: Folder?) {
-        for note in selectedNotes() { note.folder = folder }
+        for note in selectedNotes() { note.folder = folder; note.sortIndex = 0 }   // order is per-folder
         try? context?.save()
         clear()
     }
