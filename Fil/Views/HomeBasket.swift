@@ -31,6 +31,8 @@ struct HomeBasket: View {
                 if hasSelection { selectionSection }
                 if hasSelection && hasBin { Divider().overlay(Theme.divider) }
                 if hasBin { binSection }
+                // Separates the basket from the composer below it in the shared dock.
+                Divider().overlay(Theme.divider).padding(.top, 2)
             }
             .animation(.snappy(duration: 0.3), value: hasSelection)
             .animation(.snappy(duration: 0.3), value: unfiled.count)

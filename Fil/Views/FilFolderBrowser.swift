@@ -91,6 +91,7 @@ struct FoldersHomeSection: View {
                             Button(role: .destructive) { pendingLandfilFolder = folder } label: {
                                 Label("Landfil", systemImage: "trash")
                             }
+                            .tint(.red)   // the NavigationStack .tint would otherwise override the destructive red
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             let pinned = PinnedFolderStore.shared.isPinned(folder.id)

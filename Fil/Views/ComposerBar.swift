@@ -47,6 +47,14 @@ struct ComposerBar: View {
             }
 
             HStack(alignment: .center, spacing: 10) {
+                Button(action: addTodoPill) {
+                    Image(systemName: "checklist")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(Theme.primaryText)
+                        .frame(width: 56, height: 56).contentShape(Circle())
+                }
+                .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
+
                 PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 8, matching: .images) {
                     Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 24, weight: .semibold))
@@ -56,15 +64,18 @@ struct ComposerBar: View {
                 .disabled(isProcessing)
                 .accessibilityLabel("add photos")
 
-                Button(action: addTodoPill) {
-                    Image(systemName: "checklist")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Theme.primaryText)
-                        .frame(width: 56, height: 56).contentShape(Circle())
-                }
-                .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
-
                 Spacer(minLength: 0)
+
+                // A manual keyboard dismiss, shown only while the composer is focused.
+                if focus.wrappedValue {
+                    Button { focus.wrappedValue = false } label: {
+                        Image(systemName: "keyboard.chevron.compact.down")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(Theme.secondaryText)
+                            .frame(width: 56, height: 56).contentShape(Circle())
+                    }
+                    .buttonStyle(.plain).accessibilityLabel("dismiss keyboard")
+                }
 
                 trailingButton
             }
