@@ -22,13 +22,16 @@ struct ComposerBar: View {
     /// In search mode the field IS the query: the capture icons hide, the placeholder changes, and
     /// the trailing button runs the search instead of sending a fil.
     var searchMode: Bool = false
+    /// Rotating search placeholders (empty → the static `searchPlaceholder`).
+    var searchPrompts: [String] = []
     var searchPlaceholder: String = "search your thoughts"
     let onSend: () -> Void
     let onRecordVoice: () -> Void
     let onRemoveStagedImage: (Int) -> Void
-    /// Enter search (from the resting composer's trailing button); run the search (search-mode submit).
+    /// Enter search (resting trailing); run the search (search submit); exit search (X, empty query).
     var onEnterSearch: () -> Void = {}
     var onSubmitSearch: () -> Void = {}
+    var onExitSearch: () -> Void = {}
 
     @State private var dissolvingText: String?
     @FocusState private var focusedTodoID: UUID?
@@ -157,10 +160,19 @@ struct ComposerBar: View {
         ZStack(alignment: .leading) {
             if trimmedText.isEmpty, dissolvingText == nil {
                 if searchMode {
-                    AnimatedGradientRevealText(text: searchPlaceholder, maxDuration: 1.2, settledOpacity: 0.4)
-                        .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                    if searchPrompts.isEmpty {
+                        AnimatedGradientRevealText(text: searchPlaceholder, maxDuration: 1.2, settledOpacity: 0.4)
+                            .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                            .allowsHitTesting(false)
+                            .id(searchPlaceholder)
+                    } else {
+                        TimelineView(.periodic(from: .now, by: placeholderInterval)) { context in
+                            let index = Int(context.date.timeIntervalSinceReferenceDate / placeholderInterval) % searchPrompts.count
+                            AnimatedGradientRevealText(text: searchPrompts[index], maxDuration: 1.2, settledOpacity: 0.4)
+                                .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                        }
                         .allowsHitTesting(false)
-                        .id(searchPlaceholder)
+                    }
                 } else if let contextLabel {
                     AnimatedGradientRevealText(text: contextLabel, maxDuration: 1.2, settledOpacity: 0.4)
                         .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
@@ -202,6 +214,16 @@ struct ComposerBar: View {
                     beamedCircle(symbol: "arrow.up", weight: .bold)
                 }
                 .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("search")
+            } else {
+                // Empty query → an X that leaves search (the old header "home" button).
+                Button(action: onExitSearch) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(Theme.background)
+                        .frame(width: 56, height: 56)
+                        .background(Theme.primaryText, in: Circle())
+                }
+                .buttonStyle(.plain).accessibilityLabel("close search")
             }
         } else if isComposing {
             Button(action: sendWithDissolve) {

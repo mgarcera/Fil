@@ -194,31 +194,45 @@ struct CanvasHome: View {
         .overlay(alignment: .bottom) {
             if phase == .composing || isSearching {
                 VStack(spacing: 10) {
-                    // Floating glass buttons above the dock (settings over new-folder), aligned over the
-                    // composer's trailing icon column; on the resting home only, fade out while focused.
-                    if phase == .composing && !composerFocused {
-                        VStack(spacing: 10) {
-                            Button(action: onSettings) {
-                                Image("FilLogo")
-                                    .resizable().scaledToFit()
-                                    .frame(width: 24, height: 24)
-                                    .frame(width: 56, height: 56)
-                                    .glassEffect(.regular.interactive(), in: .circle)
-                            }
-                            .buttonStyle(.plain).accessibilityLabel("Settings")
+                    // Floating glass buttons above the dock. Resting home: settings + new-folder,
+                    // right-aligned over the composer's trailing icon (fade in/out). Search results:
+                    // a centered refresh (new-search) FAB.
+                    if !composerFocused {
+                        if phase == .composing {
+                            VStack(spacing: 10) {
+                                Button(action: onSettings) {
+                                    Image("FilLogo")
+                                        .resizable().scaledToFit()
+                                        .frame(width: 24, height: 24)
+                                        .frame(width: 56, height: 56)
+                                        .glassEffect(.regular.interactive(), in: .circle)
+                                }
+                                .buttonStyle(.plain).accessibilityLabel("Settings")
 
-                            Button { newFolderRequest = true } label: {
-                                Image(systemName: "folder.badge.plus")
+                                Button { newFolderRequest = true } label: {
+                                    Image(systemName: "folder.badge.plus")
+                                        .font(.system(size: 20, weight: .semibold))
+                                        .foregroundStyle(Theme.primaryText)
+                                        .frame(width: 56, height: 56)
+                                        .glassEffect(.regular.interactive(), in: .circle)
+                                }
+                                .buttonStyle(.plain).accessibilityLabel("new folder")
+                            }
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .padding(.trailing, 14)   // line up with the composer's trailing icon
+                            .transition(.opacity)
+                        } else if phase == .results {
+                            Button { beginSurface() } label: {
+                                Image(systemName: "arrow.clockwise")
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundStyle(Theme.primaryText)
                                     .frame(width: 56, height: 56)
                                     .glassEffect(.regular.interactive(), in: .circle)
                             }
-                            .buttonStyle(.plain).accessibilityLabel("new folder")
+                            .buttonStyle(.plain).accessibilityLabel("new search")
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .transition(.opacity)
                         }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .padding(.trailing, 14)   // line up with the composer's trailing icon
-                        .transition(.scale.combined(with: .opacity))
                     }
 
                     VStack(spacing: 12) {
@@ -461,6 +475,7 @@ struct CanvasHome: View {
             contextLabel: contextFolder.map { "Add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
             focus: $composerFocused,
             searchMode: isSearching,
+            searchPrompts: searchPrompts,
             onSend: { Task { await createFil() } },
             onRecordVoice: startVoiceCapture,
             onRemoveStagedImage: { index in
@@ -469,8 +484,15 @@ struct CanvasHome: View {
                 }
             },
             onEnterSearch: { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true } },
-            onSubmitSearch: { Task { await runQuery() } }
+            onSubmitSearch: { Task { await runQuery() } },
+            onExitSearch: { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = false } }
         )
+    }
+
+    /// Rotating search placeholders: the Pro smart-query examples (quoted), or the free keyword hint.
+    private var searchPrompts: [String] {
+        guard StoreManager.shared.isPro else { return ["search by keyword"] }
+        return Self.queryPrompts.map { $0 == "search your thoughts" ? $0 : "“\($0)”" }
     }
 
     /// A stop button, shown below the gooey blob while recording. Tapping it ends the recording and

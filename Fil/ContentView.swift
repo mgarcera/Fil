@@ -54,16 +54,8 @@ struct ContentView: View {
             // timeline + bottom composer + FABs. Text-only capture for now.
             CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen, deepLink: $homeDeepLink, onSettings: { SoundscapeManager.shared.playSettingsSound(); showFilSetup = true })
 
-            // The header floats top-pinned only during search — it holds the back switcher (+ refresh).
-            // On the home, settings + search live as floating buttons over the composer instead.
-            if !folderInteriorOpen && searchActive {
-                VStack(spacing: 0) {
-                    header
-                    Spacer(minLength: 0)
-                }
-                .transition(.opacity)
-            }
-
+            // Home controls (settings, search/close, new-search refresh) all live as floating buttons
+            // over the composer now — no top header.
         }
         .overlay {
             // The full-bleed frame lives on this always-present container that ignores
