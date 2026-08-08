@@ -773,14 +773,12 @@ struct BrowserFilPager: View {
     init(notes: [Note], startID: UUID) {
         self.notes = notes
         _selection = State(initialValue: startID)
-        let start = notes.first { $0.uuid == startID }
-        _detent = State(initialValue: (start?.isLinkFil ?? false) ? .fraction(0.2) : .fraction(0.6))
+        _detent = State(initialValue: .fraction(0.6))
     }
 
-    // A container is a single type, so the first fil's kind sets the detents for the whole session.
-    private var detents: Set<PresentationDetent> {
-        (notes.first?.isLinkFil ?? false) ? [.fraction(0.2)] : [.fraction(0.6), .large]
-    }
+    // Every type opens at the same size as a text fil, so a mixed container (e.g. the Bin) doesn't
+    // jump sizes as you swipe between links, photos, and notes.
+    private let detents: Set<PresentationDetent> = [.fraction(0.6), .large]
 
     var body: some View {
         TabView(selection: $selection) {
