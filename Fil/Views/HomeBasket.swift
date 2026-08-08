@@ -18,6 +18,7 @@ struct HomeBasket: View {
     @Query(filter: #Predicate<Note> { $0.folder == nil }, sort: \Note.timestamp, order: .reverse)
     private var unfiled: [Note]
     @State private var pendingBulkLandfil: BulkLandfilRequest?
+    @State private var copied = false   // brief checkmark after "copy as markdown"
 
     private var selected: [Note] { selection.selectedNotes() }
     private var hasSelection: Bool { !selection.isEmpty }
@@ -47,6 +48,7 @@ struct HomeBasket: View {
                 Text("\(selected.count) selected")
                     .font(Theme.dmSans(13, weight: .medium)).foregroundStyle(Theme.primaryText)
                 Spacer()
+                Button { copyAsMarkdown() } label: { iconLabel(copied ? "checkmark" : "doc.on.doc") }
                 Menu {
                     ForEach(selection.folders()) { folder in
                         Button(folder.name) { withAnimation(.snappy) { selection.moveSelected(to: folder) } }
@@ -88,6 +90,15 @@ struct HomeBasket: View {
     }
 
     // MARK: - Shared pieces
+
+    private func copyAsMarkdown() {
+        selection.copySelectedAsMarkdown()
+        withAnimation(.snappy) { copied = true }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.2))
+            withAnimation(.snappy) { copied = false }
+        }
+    }
 
     /// A 56pt icon button label (matches the composer's).
     private func iconLabel(_ name: String) -> some View {

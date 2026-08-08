@@ -58,6 +58,42 @@ final class FilSelectionStore {
         try? context?.save()
         clear()
     }
+
+    /// Copy the selected fils to the clipboard as Markdown (thought + link + to-do checkboxes).
+    /// Non-destructive — the selection stays intact.
+    func copySelectedAsMarkdown() {
+        let md = selectedNotes().map(Self.markdown(for:)).joined(separator: "\n\n---\n\n")
+        guard !md.isEmpty else { return }
+        #if canImport(UIKit)
+        UIPasteboard.general.string = md
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
+    }
+
+    /// One fil as a Markdown block: optional `## title`, link URL, thought body, and to-dos as
+    /// GitHub-style checkboxes. Photos/voice are noted since their content isn't text.
+    private static func markdown(for note: Note) -> String {
+        var blocks: [String] = []
+        let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !title.isEmpty { blocks.append("## \(title)") }
+        if note.isLinkFil, let url = note.sourceURL?.absoluteString { blocks.append(url) }
+        if !body.isEmpty { blocks.append(body) }
+
+        let checkboxes = note.todos.indices.compactMap { index -> String? in
+            let text = note.todos[index].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            let done = note.completedTodos.indices.contains(index) && note.completedTodos[index]
+            return "- [\(done ? "x" : " ")] \(text)"
+        }
+        if !checkboxes.isEmpty { blocks.append(checkboxes.joined(separator: "\n")) }
+
+        if note.isImageFil { blocks.append("_(photo)_") }
+        if !note.audioFilePath.isEmpty { blocks.append("_(voice note)_") }
+
+        return blocks.isEmpty ? "_(empty fil)_" : blocks.joined(separator: "\n\n")
+    }
 }
 
 /// Swipe a fil card LEFT (right-to-left) to toggle it into the selection basket — the opposite
