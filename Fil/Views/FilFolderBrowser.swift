@@ -776,9 +776,13 @@ struct BrowserFilPager: View {
         _detent = State(initialValue: .fraction(0.6))
     }
 
-    // Every type opens at the same size as a text fil, so a mixed container (e.g. the Bin) doesn't
-    // jump sizes as you swipe between links, photos, and notes.
-    private let detents: Set<PresentationDetent> = [.fraction(0.6), .large]
+    private var currentNote: Note? { notes.first { $0.uuid == selection } }
+
+    // All types share the 0.6 base size (so a mixed container like the Bin doesn't jump), but only
+    // non-link fils can expand to .large — links cap at 0.6.
+    private var detents: Set<PresentationDetent> {
+        (currentNote?.isLinkFil ?? false) ? [.fraction(0.6)] : [.fraction(0.6), .large]
+    }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -790,6 +794,12 @@ struct BrowserFilPager: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
         .presentationDetents(detents, selection: $detent)
         .presentationBackground(Theme.background)
+        .onChange(of: selection) { _, _ in
+            // Swiping from an expanded note onto a link snaps back down to the link's 0.6 cap.
+            if (currentNote?.isLinkFil ?? false), detent == .large {
+                detent = .fraction(0.6)
+            }
+        }
     }
 }
 
