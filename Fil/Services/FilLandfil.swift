@@ -29,16 +29,13 @@ extension View {
 }
 
 /// Shared teardown for permanently removing a fil ("landfil"), so the home grid and the article view
-/// don't drift. Clears the fil's lock-screen pin (snapshot + Live Activity) if it was the pinned one,
-/// then deletes its audio file. Callers still own the actual `modelContext.delete` + save + any
-/// animation — this is only the side-effect cleanup that both paths share.
+/// don't drift. Deletes the fil's audio + attached video files. Callers still own the actual
+/// `modelContext.delete` + save + any animation — this is only the side-effect cleanup both paths
+/// share. (A pinned folder's Live Activity count re-syncs on the next background pass, so a landfil'd
+/// fil doesn't need to poke the pin here.)
 @MainActor
 enum FilLandfil {
     static func cleanUpResources(for note: Note) {
-        if PinnedFilStore.shared.isPinned(note) {
-            PinnedFilStore.shared.unpin()
-            Task { await PinnedFilLiveActivityController.unpin() }
-        }
         if let audioURL = AudioPlayerViewModel.audioFileURL(for: note.audioFilePath) {
             try? FileManager.default.removeItem(at: audioURL)
         }

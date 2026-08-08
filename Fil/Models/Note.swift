@@ -173,6 +173,17 @@ final class Note {
     }
 }
 
+extension Note {
+    /// A short, single-line label for Lock Screen surfaces (the Bin activity, a pinned folder's
+    /// peek) — the fil's badge text, else a snippet of the thought.
+    func islandTitle(lowercase: Bool) -> String {
+        let badge = displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = !badge.isEmpty ? badge : (body.isEmpty ? "fil" : String(body.prefix(40)))
+        return lowercase ? title.lowercased() : title
+    }
+}
+
 private extension String {
     var nilIfEmpty: String? {
         isEmpty ? nil : self

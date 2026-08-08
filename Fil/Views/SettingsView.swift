@@ -175,12 +175,12 @@ struct SettingsView: View {
         }
     }
 
-    /// Chooses which Live Activity Fil keeps on the Lock Screen / Dynamic Island. "Folder" is
-    /// locked until the folder-pin activity ships (Phase 2).
+    /// Chooses which Live Activity Fil keeps on the Lock Screen / Dynamic Island. "Folder" pins from a
+    /// folder's swipe action; choosing it here with nothing pinned simply shows nothing until you pin one.
     private var lockScreenSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             settingLabel("Lock Screen", icon: "lock.iphone")
-            Text("Keep a live widget on the Lock Screen and Dynamic Island. Bin shows your unfiled fils.")
+            Text("Keep a live widget on the Lock Screen and Dynamic Island. Bin shows your unfiled fils; Folder shows one folder you pin.")
                 .font(Theme.dmSans(13))
                 .foregroundStyle(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
@@ -192,30 +192,22 @@ struct SettingsView: View {
     }
 
     private func lockScreenPill(_ option: LockScreenActivity) -> some View {
-        let locked = option == .pinnedFolder   // Phase 2
-        let isSelected = lockScreenActivityRaw == option.rawValue && !locked
+        let isSelected = lockScreenActivityRaw == option.rawValue
         return Button {
-            guard !locked else { return }
             SoundscapeManager.shared.playTabSound()
             withAnimation(.snappy) { lockScreenActivityRaw = option.rawValue }
         } label: {
-            HStack(spacing: 6) {
-                Text(option.title)
-                if locked {
-                    Image(systemName: "lock.fill").font(.system(size: 10))
+            Text(option.title)
+                .font(Theme.instrumentSerif(18))
+                .foregroundStyle(isSelected ? Color.black : .white)
+                .padding(.horizontal, 16)
+                .frame(height: 40)
+                .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
+                .overlay {
+                    Capsule().stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
                 }
-            }
-            .font(Theme.instrumentSerif(18))
-            .foregroundStyle(isSelected ? Color.black : .white.opacity(locked ? 0.4 : 1))
-            .padding(.horizontal, 16)
-            .frame(height: 40)
-            .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
-            .overlay {
-                Capsule().stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
-            }
         }
         .buttonStyle(.plain)
-        .disabled(locked)
     }
 
     /// The hairline between settings options (matches the About section's dividers).

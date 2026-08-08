@@ -2,66 +2,76 @@ import ActivityKit
 import WidgetKit
 import SwiftUI
 
-struct PinnedFilLiveActivityAttributes: ActivityAttributes {
+/// Widget-side mirror of the app's `PinnedFolderLiveActivityAttributes`. Must stay structurally
+/// identical so ActivityKit can decode the shared content state.
+struct PinnedFolderLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {
-        var title: String
-        var previewText: String
-        var keyword: String
+        var name: String
+        var count: Int
+        var peek: [String]
         var gradientStartHex: String
         var gradientEndHex: String
         var updatedAt: Date
     }
 
-    var noteID: UUID
+    var folderID: UUID
 }
 
 struct FilPinnedWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
-        ActivityConfiguration(for: PinnedFilLiveActivityAttributes.self) { context in
-            PinnedFilLockScreenView(state: context.state)
+        ActivityConfiguration(for: PinnedFolderLiveActivityAttributes.self) { context in
+            PinnedFolderLockScreenView(state: context.state)
                 .activityBackgroundTint(Color(red: 0.05, green: 0.05, blue: 0.06))
                 .activitySystemActionForegroundColor(.white)
-                .widgetURL(URL(string: "fil://pinned?id=\(context.attributes.noteID.uuidString)"))
+                .widgetURL(URL(string: "fil://folder?id=\(context.attributes.folderID.uuidString)"))
         } dynamicIsland: { context in
             DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) {
+                    FilBlobMark(size: 24, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    Text("\(context.state.count)")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
                 DynamicIslandExpandedRegion(.bottom) {
-                    PinnedFilExpandedContent(state: context.state)
+                    PinnedFolderExpandedContent(state: context.state)
                 }
             } compactLeading: {
                 FilBlobMark(size: 16, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
             } compactTrailing: {
-                Text(compactText(context.state))
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.72))
+                Text("\(context.state.count)")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.85))
                     .lineLimit(1)
             } minimal: {
                 FilBlobMark(size: 14, startHex: context.state.gradientStartHex, endHex: context.state.gradientEndHex)
             }
-            .widgetURL(URL(string: "fil://pinned?id=\(context.attributes.noteID.uuidString)"))
+            .widgetURL(URL(string: "fil://folder?id=\(context.attributes.folderID.uuidString)"))
             .keylineTint(Color(red: 0.2, green: 0.75, blue: 0.6))
             .contentMargins(.all, 0, for: .expanded)
         }
     }
-
-    private func compactText(_ state: PinnedFilLiveActivityAttributes.ContentState) -> String {
-        let preview = state.previewText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return String((preview.isEmpty ? "fil" : preview).prefix(10))
-    }
 }
 
-private struct PinnedFilLockScreenView: View {
-    let state: PinnedFilLiveActivityAttributes.ContentState
+private struct PinnedFolderLockScreenView: View {
+    let state: PinnedFolderLiveActivityAttributes.ContentState
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             FilBlobMark(size: 26, startHex: state.gradientStartHex, endHex: state.gradientEndHex)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(displayPreview)
-                    .font(.system(size: 15, weight: .regular))
+                Text(headline)
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(5)
+
+                ForEach(Array(state.peek.prefix(3).enumerated()), id: \.offset) { _, title in
+                    Text(title)
+                        .font(.system(size: 13, weight: .regular))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .lineLimit(1)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -73,34 +83,32 @@ private struct PinnedFilLockScreenView: View {
         }
     }
 
-    private var displayPreview: String {
-        state.previewText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "open Fil to continue" : state.previewText
+    private var headline: String {
+        let n = state.count
+        return "\(state.name) · \(n) \(n == 1 ? "fil" : "fils")"
     }
 }
 
-private struct PinnedFilExpandedContent: View {
-    let state: PinnedFilLiveActivityAttributes.ContentState
+private struct PinnedFolderExpandedContent: View {
+    let state: PinnedFolderLiveActivityAttributes.ContentState
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(displayPreview)
-                .font(.system(size: 13, weight: .regular))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.leading)
-                .lineLimit(3)
-                .truncationMode(.tail)
+            ForEach(Array(state.peek.prefix(3).enumerated()), id: \.offset) { _, title in
+                Text(title)
+                    .font(.system(size: 13, weight: .regular))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 32)
-        .padding(.top, 8)
-        .padding(.bottom, 16)
+        .padding(.horizontal, 24)
+        .padding(.top, 6)
+        .padding(.bottom, 14)
         .background(alignment: .bottom) {
             FilLiveActivityBottomGlow(startHex: state.gradientStartHex, endHex: state.gradientEndHex)
         }
-    }
-
-    private var displayPreview: String {
-        state.previewText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "open Fil to continue" : state.previewText
     }
 }
 
@@ -253,18 +261,18 @@ extension Color {
     }
 }
 
-extension PinnedFilLiveActivityAttributes {
-    fileprivate static var preview: PinnedFilLiveActivityAttributes {
-        PinnedFilLiveActivityAttributes(noteID: UUID())
+extension PinnedFolderLiveActivityAttributes {
+    fileprivate static var preview: PinnedFolderLiveActivityAttributes {
+        PinnedFolderLiveActivityAttributes(folderID: UUID())
     }
 }
 
-extension PinnedFilLiveActivityAttributes.ContentState {
-    fileprivate static var sample: PinnedFilLiveActivityAttributes.ContentState {
-        PinnedFilLiveActivityAttributes.ContentState(
-            title: "Follow up with Jordan",
-            previewText: "Draft the intake summary and check whether the PDF attachment made it into the case note.",
-            keyword: "todo",
+extension PinnedFolderLiveActivityAttributes.ContentState {
+    fileprivate static var sample: PinnedFolderLiveActivityAttributes.ContentState {
+        PinnedFolderLiveActivityAttributes.ContentState(
+            name: "House move",
+            count: 5,
+            peek: ["Call the framer back", "gift idea: cyanotype kit", "measure the hallway"],
             gradientStartHex: "#33BF99",
             gradientEndHex: "#408CD9",
             updatedAt: .now
@@ -272,8 +280,8 @@ extension PinnedFilLiveActivityAttributes.ContentState {
     }
 }
 
-#Preview("Pinned Fil", as: .content, using: PinnedFilLiveActivityAttributes.preview) {
+#Preview("Pinned Folder", as: .content, using: PinnedFolderLiveActivityAttributes.preview) {
     FilPinnedWidgetLiveActivity()
 } contentStates: {
-    PinnedFilLiveActivityAttributes.ContentState.sample
+    PinnedFolderLiveActivityAttributes.ContentState.sample
 }

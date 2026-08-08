@@ -82,6 +82,13 @@ struct FoldersHomeSection: View {
                                 Label("Landfil", systemImage: "trash")
                             }
                         }
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            let pinned = PinnedFolderStore.shared.isPinned(folder.id)
+                            Button { togglePin(folder) } label: {
+                                Label(pinned ? "Unpin" : "Pin", systemImage: pinned ? "pin.slash" : "pin")
+                            }
+                            .tint(pinned ? .gray : .indigo)
+                        }
                         .dropDestination(for: String.self) { items, _ in
                             handleDrop(items, on: folder)
                         } isTargeted: { targeted in
@@ -265,8 +272,36 @@ struct FoldersHomeSection: View {
     }
 
     private func delete(_ folder: Folder) {
+        if PinnedFolderStore.shared.isPinned(folder.id) {
+            PinnedFolderStore.shared.unpin()
+            Task { await PinnedFolderLiveActivityController.unpin() }
+        }
         context.delete(folder)   // .nullify → its fils fall back to the unfiled deck
         try? context.save()
+    }
+
+    /// Pin a folder to the Lock Screen widget (or unpin it). Pinning also flips the Lock Screen
+    /// setting to Folder so the activity actually shows; unpinning turns it off. The coordinator
+    /// builds/refreshes the snapshot from the folder's live contents.
+    private func togglePin(_ folder: Folder) {
+        SoundscapeManager.shared.playTabSound()
+        if PinnedFolderStore.shared.isPinned(folder.id) {
+            PinnedFolderStore.shared.unpin()
+            UserDefaults.filAppGroup.set(LockScreenActivity.off.rawValue, forKey: LockScreenActivity.storageKey)
+        } else {
+            let newest = folder.notes.sorted { $0.timestamp > $1.timestamp }
+            let peek = newest.prefix(4).map { $0.islandTitle(lowercase: prefersLowercase) }
+            PinnedFolderStore.shared.pin(
+                id: folder.id,
+                name: cased(folder.name),
+                count: folder.notes.count,
+                peek: Array(peek),
+                gradientStartHex: folder.gradientStartHex,
+                gradientEndHex: folder.gradientEndHex
+            )
+            UserDefaults.filAppGroup.set(LockScreenActivity.pinnedFolder.rawValue, forKey: LockScreenActivity.storageKey)
+        }
+        Task { await LockScreenActivityCoordinator.sync(modelContext: context) }
     }
 
     /// New folders draw a gradient from the full range the fils use.

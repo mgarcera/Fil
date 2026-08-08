@@ -4,7 +4,7 @@ import Foundation
 import ActivityKit
 
 /// The basket Live Activity — a single, always-one activity that shows how many captures
-/// are waiting and a peek at the most recent. Kept separate from `PinnedFilLiveActivityAttributes`
+/// are waiting and a peek at the most recent. Kept separate from `PinnedFolderLiveActivityAttributes`
 /// so capture never disturbs a user-pinned fil.
 struct FilBasketLiveActivityAttributes: ActivityAttributes {
     struct ContentState: Codable, Hashable {

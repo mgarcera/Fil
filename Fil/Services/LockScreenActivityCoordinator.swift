@@ -12,19 +12,22 @@ enum LockScreenActivityCoordinator {
         case .off:
             BinActivitySnapshot.write(count: 0, titles: [])
             await FilBasketLiveActivityController.end()
-            await PinnedFilLiveActivityController.unpin()
+            await PinnedFolderLiveActivityController.unpin()
 
         case .bin:
             let bin = binState(modelContext: modelContext)
             BinActivitySnapshot.write(count: bin.count, titles: bin.titles)
-            await PinnedFilLiveActivityController.unpin()   // never let the two coexist
+            await PinnedFolderLiveActivityController.unpin()   // never let the two coexist
             await FilBasketLiveActivityController.apply(count: bin.count, recentTitles: bin.titles)
 
         case .pinnedFolder:
-            // Phase 2 wires the folder-pin activity here. For now keep the Bin activity down so the
-            // switch still behaves (choosing "Folder" simply shows nothing yet).
             BinActivitySnapshot.write(count: 0, titles: [])
             await FilBasketLiveActivityController.end()
+            if let snapshot = refreshedFolderSnapshot(modelContext: modelContext) {
+                await PinnedFolderLiveActivityController.pin(snapshot)
+            } else {
+                await PinnedFolderLiveActivityController.unpin()
+            }
         }
     }
 
@@ -36,16 +39,31 @@ enum LockScreenActivityCoordinator {
         )
         let notes = (try? modelContext.fetch(descriptor)) ?? []
         let lowercase = UserDefaults.standard.bool(forKey: "prefersLowercase")
-        let titles = notes.prefix(3).map { binTitle($0, lowercase: lowercase) }
+        let titles = notes.prefix(3).map { $0.islandTitle(lowercase: lowercase) }
         return (notes.count, titles)
     }
 
-    /// A short island label for a fil — its badge text, else a snippet of the thought. Mirrors the
-    /// home's `displayTitle` so the island reads the same as the Bin.
-    private static func binTitle(_ note: Note, lowercase: Bool) -> String {
-        let badge = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        let title = !badge.isEmpty ? badge : (body.isEmpty ? "fil" : String(body.prefix(40)))
-        return lowercase ? title.lowercased() : title
+    /// Rebuilds the pinned folder's snapshot from its live contents (count + peek can drift as fils
+    /// are added/filed/landfil'd) and persists it. Returns nil (and clears the pin) if the folder is
+    /// gone or nothing is pinned.
+    private static func refreshedFolderSnapshot(modelContext: ModelContext) -> PinnedFolderSnapshot? {
+        guard let id = PinnedFolderStore.shared.pinnedFolderID else { return nil }
+        let descriptor = FetchDescriptor<Folder>(predicate: #Predicate { $0.id == id })
+        guard let folder = try? modelContext.fetch(descriptor).first else {
+            PinnedFolderStore.shared.unpin()
+            return nil
+        }
+        let lowercase = UserDefaults.standard.bool(forKey: "prefersLowercase")
+        let newest = folder.notes.sorted { $0.timestamp > $1.timestamp }
+        let peek = newest.prefix(4).map { $0.islandTitle(lowercase: lowercase) }
+        let name = lowercase ? folder.name.lowercased() : folder.name
+        return PinnedFolderStore.shared.pin(
+            id: folder.id,
+            name: name,
+            count: folder.notes.count,
+            peek: Array(peek),
+            gradientStartHex: folder.gradientStartHex,
+            gradientEndHex: folder.gradientEndHex
+        )
     }
 }

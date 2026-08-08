@@ -9,45 +9,45 @@ import WidgetKit
 import SwiftUI
 
 private let appGroupIdentifier = "group.com.masongarcera.Fil"
-private let pinnedFilFileName = "pinnedFilSnapshot.json"
+private let pinnedFolderFileName = "pinnedFolderSnapshot.json"
 
-/// Mirrors the app's `PinnedFilSnapshot`, decoded from the shared App Group container.
-struct PinnedFilWidgetSnapshot: Codable {
+/// Mirrors the app's `PinnedFolderSnapshot`, decoded from the shared App Group container.
+struct PinnedFolderWidgetSnapshot: Codable {
     var id: UUID
-    var title: String
-    var previewText: String
-    var keyword: String
+    var name: String
+    var count: Int
+    var peek: [String]
     var gradientStartHex: String
     var gradientEndHex: String
     var updatedAt: Date
 
-    static let sample = PinnedFilWidgetSnapshot(
+    static let sample = PinnedFolderWidgetSnapshot(
         id: UUID(),
-        title: "Follow up with Jordan",
-        previewText: "Draft the intake summary and check whether the PDF attachment made it into the case note.",
-        keyword: "todo",
+        name: "House move",
+        count: 5,
+        peek: ["Call the framer back", "gift idea: cyanotype kit", "measure the hallway"],
         gradientStartHex: "#33BF99",
         gradientEndHex: "#408CD9",
         updatedAt: Date()
     )
 }
 
-struct PinnedFilEntry: TimelineEntry {
+struct PinnedFolderEntry: TimelineEntry {
     let date: Date
-    let snapshot: PinnedFilWidgetSnapshot?
+    let snapshot: PinnedFolderWidgetSnapshot?
 }
 
 struct Provider: TimelineProvider {
-    func placeholder(in context: Context) -> PinnedFilEntry {
-        PinnedFilEntry(date: Date(), snapshot: .sample)
+    func placeholder(in context: Context) -> PinnedFolderEntry {
+        PinnedFolderEntry(date: Date(), snapshot: .sample)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (PinnedFilEntry) -> Void) {
-        completion(PinnedFilEntry(date: Date(), snapshot: loadSnapshot() ?? (context.isPreview ? .sample : nil)))
+    func getSnapshot(in context: Context, completion: @escaping (PinnedFolderEntry) -> Void) {
+        completion(PinnedFolderEntry(date: Date(), snapshot: loadSnapshot() ?? (context.isPreview ? .sample : nil)))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedFilEntry>) -> Void) {
-        let entry = PinnedFilEntry(date: Date(), snapshot: loadSnapshot())
+    func getTimeline(in context: Context, completion: @escaping (Timeline<PinnedFolderEntry>) -> Void) {
+        let entry = PinnedFolderEntry(date: Date(), snapshot: loadSnapshot())
         // Self-heal: re-read the shared file periodically so the widget converges
         // on the current pin even if an explicit WidgetCenter reload is dropped
         // (or a stale timeline was restored when the widget was re-added).
@@ -55,14 +55,14 @@ struct Provider: TimelineProvider {
         completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
     }
 
-    private func loadSnapshot() -> PinnedFilWidgetSnapshot? {
+    private func loadSnapshot() -> PinnedFolderWidgetSnapshot? {
         guard let url = FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: appGroupIdentifier)?
-            .appendingPathComponent(pinnedFilFileName),
+            .appendingPathComponent(pinnedFolderFileName),
             let data = try? Data(contentsOf: url) else {
             return nil
         }
-        return try? JSONDecoder().decode(PinnedFilWidgetSnapshot.self, from: data)
+        return try? JSONDecoder().decode(PinnedFolderWidgetSnapshot.self, from: data)
     }
 }
 
@@ -84,12 +84,12 @@ struct FilPinnedWidgetEntryView: View {
 
     private var destinationURL: URL? {
         if let snapshot = entry.snapshot {
-            return URL(string: "fil://pinned?id=\(snapshot.id.uuidString)")
+            return URL(string: "fil://folder?id=\(snapshot.id.uuidString)")
         }
         return URL(string: "fil://draft")
     }
 
-    private func pinnedContent(_ snapshot: PinnedFilWidgetSnapshot) -> some View {
+    private func pinnedContent(_ snapshot: PinnedFolderWidgetSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             FilBlobMark(
                 size: family == .systemSmall ? 30 : 34,
@@ -99,11 +99,14 @@ struct FilPinnedWidgetEntryView: View {
 
             Spacer(minLength: 0)
 
-            Text(displayPreview(snapshot))
-                .font(.system(size: family == .systemSmall ? 14 : 15, weight: .regular))
+            Text(snapshot.name)
+                .font(.system(size: family == .systemSmall ? 15 : 16, weight: .semibold))
                 .foregroundStyle(.white)
-                .multilineTextAlignment(.leading)
-                .lineLimit(family == .systemSmall ? 4 : 4)
+                .lineLimit(1)
+
+            Text("\(snapshot.count) \(snapshot.count == 1 ? "fil" : "fils")")
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(.white.opacity(0.6))
         }
     }
 
@@ -114,19 +117,14 @@ struct FilPinnedWidgetEntryView: View {
 
             Spacer(minLength: 0)
 
-            Text("no pinned fil")
+            Text("no pinned folder")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.white)
 
-            Text("pin a fil to see it here")
+            Text("pin a folder to see it here")
                 .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(.white.opacity(0.6))
         }
-    }
-
-    private func displayPreview(_ snapshot: PinnedFilWidgetSnapshot) -> String {
-        let preview = snapshot.previewText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return preview.isEmpty ? "open Fil to continue" : preview
     }
 }
 
@@ -148,8 +146,8 @@ struct FilPinnedWidget: Widget {
                     }
                 }
         }
-        .configurationDisplayName("Pinned Fil")
-        .description("Your pinned fil at a glance.")
+        .configurationDisplayName("Pinned Folder")
+        .description("Your pinned folder at a glance.")
         .supportedFamilies([.systemSmall])
     }
 }
@@ -157,6 +155,6 @@ struct FilPinnedWidget: Widget {
 #Preview(as: .systemSmall) {
     FilPinnedWidget()
 } timeline: {
-    PinnedFilEntry(date: .now, snapshot: .sample)
-    PinnedFilEntry(date: .now, snapshot: nil)
+    PinnedFolderEntry(date: .now, snapshot: .sample)
+    PinnedFolderEntry(date: .now, snapshot: nil)
 }
