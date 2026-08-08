@@ -78,18 +78,6 @@ struct ComposerBar: View {
                 .disabled(isProcessing)
                 .accessibilityLabel("add photos")
 
-                // New folder (only on the folders root) — a filled circle, like the old mic button.
-                if showsFolderActions {
-                    Button(action: onNewFolder) {
-                        Image(systemName: "folder.badge.plus")
-                            .font(.system(size: 20, weight: .semibold))
-                            .foregroundStyle(Theme.background)
-                            .frame(width: 56, height: 56)
-                            .background(Theme.primaryText, in: Circle())
-                    }
-                    .buttonStyle(.plain).accessibilityLabel("new folder")
-                }
-
                 Spacer(minLength: 0)
 
                 // A manual keyboard dismiss, shown only while the composer is focused.
@@ -186,13 +174,23 @@ struct ComposerBar: View {
         .padding(.vertical, 8)
     }
 
-    // The trailing action is send (voice now lives in the leading row). Shown only while composing.
+    // The trailing action: send while composing; otherwise, on the folders root, the new-folder
+    // filled circle sits where the mic used to. (Voice now lives in the leading row.)
     @ViewBuilder private var trailingButton: some View {
         if isComposing {
             Button(action: sendWithDissolve) {
                 beamedCircle(symbol: "arrow.up", weight: .bold).opacity(canSend ? 1 : 0.4)
             }
             .buttonStyle(.plain).disabled(isProcessing || !canSend).accessibilityLabel("send fil")
+        } else if showsFolderActions {
+            Button(action: onNewFolder) {
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Theme.background)
+                    .frame(width: 56, height: 56)
+                    .background(Theme.primaryText, in: Circle())
+            }
+            .buttonStyle(.plain).accessibilityLabel("new folder")
         }
     }
 
