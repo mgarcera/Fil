@@ -53,8 +53,8 @@ struct NoteCardView: View {
                         .font(Theme.dmMono(voiceMetricFont))
                         .foregroundStyle(blobTextColor.opacity(0.9))
                 } else {
-                    // Small chips: a play glyph instead of the time (too small for both).
-                    Image(systemName: "play.fill")
+                    // Small chips: a mic glyph instead of the time (too small for both).
+                    Image(systemName: "mic.fill")
                         .font(.system(size: max(11, cardHeight * 0.3), weight: .semibold))
                         .foregroundStyle(blobTextColor.opacity(0.9))
                 }
