@@ -23,6 +23,7 @@ struct ContentView: View {
     @State private var showingResults = false         // canvas → header: results on screen (show refresh)
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
     @State private var folderInteriorOpen = false      // canvas → header: hide the floating header inside a folder
+    @State private var homeDeepLink: HomeDeepLink?      // Lock Screen widget tap → open the Bin / a folder
     /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
@@ -51,7 +52,7 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen)
+            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen, deepLink: $homeDeepLink)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
             // glass controls reliably receive taps while content scrolls beneath it. Hidden inside a
@@ -468,13 +469,18 @@ struct ContentView: View {
             let host = (url.host() ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))).lowercased()
             switch host {
             case "basket":
-                // Land on the home so the Bin dock is in view. (A richer reveal — focusing the
-                // composer / expanding the dock — lands with the Phase-1 UI pass.)
+                // Pop to the folders home root, where the Bin dock is visible.
                 searchActive = false
+                homeDeepLink = .bin
                 SoundscapeManager.shared.playOpenFilClick()
                 return
             case "folder":
-                // Phase 2 navigates into the pinned folder; recognized now so it's not draft text.
+                // Open the tapped folder's interior. The folders section routes it once it mounts.
+                if let id = folderID(from: url) {
+                    searchActive = false
+                    homeDeepLink = .folder(id)
+                    SoundscapeManager.shared.playOpenFilClick()
+                }
                 return
             default:
                 break
@@ -496,6 +502,15 @@ struct ContentView: View {
         let path = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")).lowercased()
         guard host == "pinned" || path == "pinned" else { return nil }
 
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        guard let idValue = components?.queryItems?.first(where: { $0.name == "id" })?.value else {
+            return nil
+        }
+        return UUID(uuidString: idValue)
+    }
+
+    /// Parses the `id` query item of `fil://folder?id=<uuid>` (the pinned-folder widget / activity).
+    private func folderID(from url: URL) -> UUID? {
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
         guard let idValue = components?.queryItems?.first(where: { $0.name == "id" })?.value else {
             return nil

@@ -4,6 +4,14 @@ import SwiftData
 import UIKit
 #endif
 
+/// A Lock Screen / widget tap destination the home should route to on launch.
+enum HomeDeepLink: Equatable {
+    /// Show the Bin (pop to the folders root, where the Bin dock is visible).
+    case bin
+    /// Open a specific folder's interior.
+    case folder(UUID)
+}
+
 /// The folders surface, embedded inline on the home below the compose bar (no longer a modal).
 /// Free: manual filing — create folders, rename/move fils, landfil. Pro: "smart organize" via Claude.
 /// Tapping a folder pushes its typed-container interior; ＋ / ✨ ride in a compact header row.
@@ -13,6 +21,8 @@ struct FoldersHomeSection: View {
     /// Reports the currently-open folder (nil at the root), so the home can hide its floating header
     /// and make the composer contextual ("add to {folder}").
     var onContextFolderChange: (Folder?) -> Void = { _ in }
+    /// A pending deep-link target (from the Lock Screen widget). Consumed once routed, then cleared.
+    @Binding var deepLink: HomeDeepLink?
 
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
     @Query private var allNotes: [Note]
@@ -122,7 +132,9 @@ struct FoldersHomeSection: View {
                 if case let .folder(folder) = newPath.last { onContextFolderChange(folder) }
                 else { onContextFolderChange(nil) }
             }
-            .onAppear { normalizeFolderOrder() }
+            .onAppear { normalizeFolderOrder(); applyDeepLink() }
+            .onChange(of: deepLink) { _, _ in applyDeepLink() }
+            .onChange(of: folders.map(\.id)) { _, _ in applyDeepLink() }   // retry once folders load (cold launch)
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .folder(let folder):
@@ -169,6 +181,21 @@ struct FoldersHomeSection: View {
                     .padding(20)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+        }
+    }
+
+    /// Routes a pending Lock Screen deep link: the Bin pops to the folders root; a folder opens its
+    /// interior. A folder id that isn't loaded yet is left pending — the `folders` onChange retries.
+    private func applyDeepLink() {
+        guard let link = deepLink else { return }
+        switch link {
+        case .bin:
+            if !path.isEmpty { path = [] }
+            deepLink = nil
+        case .folder(let id):
+            guard let folder = folders.first(where: { $0.id == id }) else { return }
+            path = [.folder(folder)]
+            deepLink = nil
         }
     }
 

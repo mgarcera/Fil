@@ -69,6 +69,8 @@ struct CanvasHome: View {
     var screensaverActive: Bool = false
     /// Set true while a folder interior is open, so ContentView hides its floating header there.
     @Binding var folderInteriorOpen: Bool
+    /// A pending Lock Screen deep link (Bin / a folder), routed by the folders section once it mounts.
+    @Binding var deepLink: HomeDeepLink?
     /// The folder the composer is currently scoped to (nil at the root) — makes the bar contextual.
     @State private var contextFolder: Folder?
     /// Live height of the bottom dock (composer + baskets), so scroll content insets track it.
@@ -168,6 +170,13 @@ struct CanvasHome: View {
                 recentChipsBar
             }
 
+        }
+        // A Lock Screen tap must land on the folders home (where the Bin dock + folders live), not a
+        // leftover search/results screen. Flip to composing so FoldersHomeSection mounts + routes it.
+        .onChange(of: deepLink) { _, link in
+            if link != nil, phase != .composing {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { phase = .composing }
+            }
         }
         // The home dock: one liquid-glass container holding the selection + Bin baskets ABOVE the
         // composer input — one surface, no overlap. Floats at the bottom, rides above the keyboard.
@@ -368,7 +377,8 @@ struct CanvasHome: View {
                     contextFolder = folder
                     folderInteriorOpen = (folder != nil)
                 }
-            }
+            },
+            deepLink: $deepLink
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .transition(.opacity)
