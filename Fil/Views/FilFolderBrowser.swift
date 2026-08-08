@@ -572,11 +572,12 @@ struct FolderInteriorView: View {
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(30)
                     .fixedSize(horizontal: false, vertical: true)
-                if !isPlainNote {
-                    let caption = cased(captionText(note))
-                    if !caption.isEmpty {
-                        Text(caption).font(.system(size: 12, weight: .light)).foregroundStyle(Theme.secondaryText).lineLimit(1)
-                    }
+                // Plain notes caption their date; typed fils keep their identity caption (domain/duration).
+                let caption = isPlainNote
+                    ? cased(note.timestamp.formatted(date: .abbreviated, time: .omitted))
+                    : cased(captionText(note))
+                if !caption.isEmpty {
+                    Text(caption).font(.system(size: 12, weight: .light)).foregroundStyle(Theme.secondaryText).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
