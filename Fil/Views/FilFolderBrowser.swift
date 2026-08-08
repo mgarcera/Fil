@@ -584,21 +584,10 @@ struct FolderInteriorView: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.cardBackground)
-        // A soft pool of the fil's color bleeding from the top-left corner — a glassy reflection.
-        .overlay {
-            let start = Color(hex: note.gradientStartHex)
-            RadialGradient(
-                gradient: Gradient(colors: [start.opacity(0.55), start.opacity(0.0)]),
-                center: .topLeading,
-                startRadius: 0,
-                endRadius: 130
-            )
-            .blendMode(.plusLighter)
-            .allowsHitTesting(false)
-        }
+        // The whole card wears the fil's gradient.
+        .background(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
     }
 
     /// The row's leading rich component: a rounded photo thumbnail for image fils, else the fil blob.
