@@ -75,6 +75,9 @@ struct CanvasHome: View {
     @State private var contextFolder: Folder?
     /// Live height of the bottom dock (composer + baskets), so scroll content insets track it.
     @State private var dockHeight: CGFloat = 0
+    /// Composer ＋ / ✨ → folders section (new-folder popup / smart-organize).
+    @State private var newFolderRequest = false
+    @State private var organizeRequest = false
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -391,7 +394,9 @@ struct CanvasHome: View {
                     folderInteriorOpen = (folder != nil)
                 }
             },
-            deepLink: $deepLink
+            deepLink: $deepLink,
+            newFolderRequest: $newFolderRequest,
+            organizeRequest: $organizeRequest
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .transition(.opacity)
@@ -407,13 +412,16 @@ struct CanvasHome: View {
             isProcessing: false,
             contextLabel: contextFolder.map { "add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
             focus: $composerFocused,
+            showsFolderActions: contextFolder == nil,   // only on the folders root, not inside a folder
             onSend: { Task { await createFil() } },
             onRecordVoice: startVoiceCapture,
             onRemoveStagedImage: { index in
                 if pendingPhotos.indices.contains(index) {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos.remove(at: index) }
                 }
-            }
+            },
+            onNewFolder: { newFolderRequest = true },
+            onOrganize: { organizeRequest = true }
         )
     }
 

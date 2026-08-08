@@ -19,9 +19,13 @@ struct ComposerBar: View {
     /// When set (inside a folder), the placeholder reads "add to {folder}" and the fil files there.
     var contextLabel: String? = nil
     var focus: FocusState<Bool>.Binding
+    /// Show the folder-management controls (new folder + organize) — only on the folders root.
+    var showsFolderActions: Bool = false
     let onSend: () -> Void
     let onRecordVoice: () -> Void
     let onRemoveStagedImage: (Int) -> Void
+    var onNewFolder: () -> Void = {}
+    var onOrganize: () -> Void = {}
 
     @State private var dissolvingText: String?
     @FocusState private var focusedTodoID: UUID?
@@ -63,6 +67,27 @@ struct ComposerBar: View {
                 }
                 .disabled(isProcessing)
                 .accessibilityLabel("add photos")
+
+                // Folder management (only on the folders root): new folder + a small organize menu.
+                if showsFolderActions {
+                    Button(action: onNewFolder) {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 56, height: 56).contentShape(Circle())
+                    }
+                    .buttonStyle(.plain).accessibilityLabel("new folder")
+
+                    Menu {
+                        Button { onOrganize() } label: { Label("Organize with AI", systemImage: "sparkles") }
+                    } label: {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 56, height: 56).contentShape(Circle())
+                    }
+                    .accessibilityLabel("organize")
+                }
 
                 Spacer(minLength: 0)
 

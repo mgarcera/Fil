@@ -35,6 +35,9 @@ struct FoldersHomeSection: View {
     var onContextFolderChange: (Folder?) -> Void = { _ in }
     /// A pending deep-link target (from the Lock Screen widget). Consumed once routed, then cleared.
     @Binding var deepLink: HomeDeepLink?
+    /// Set true by the composer's ＋ / ✨ to open the new-folder popup / run smart-organize; reset here.
+    @Binding var newFolderRequest: Bool
+    @Binding var organizeRequest: Bool
 
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
     @Query private var allNotes: [Note]
@@ -121,19 +124,6 @@ struct FoldersHomeSection: View {
                         }
                     }
                     .onMove(perform: moveFolders)   // long-press a folder to drag-reorder
-                } header: {
-                    HStack(spacing: 16) {
-                        Text("Folders")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Theme.secondaryText)
-                        Spacer()
-                        Button { organize() } label: { Image(systemName: "sparkles") }
-                            .disabled(organizing || allNotes.isEmpty)
-                        Button { pendingMoveNote = nil; showNewFolder = true } label: { Image(systemName: "plus") }
-                    }
-                    .font(.system(size: 15))
-                    .foregroundStyle(Theme.primaryText)
-                    .textCase(nil)
                 }
             }
             .listStyle(.plain)
@@ -147,6 +137,12 @@ struct FoldersHomeSection: View {
                 else { onContextFolderChange(nil) }
             }
             .onAppear { normalizeFolderOrder(); applyDeepLink() }
+            .onChange(of: newFolderRequest) { _, req in
+                if req { pendingMoveNote = nil; showNewFolder = true; newFolderRequest = false }
+            }
+            .onChange(of: organizeRequest) { _, req in
+                if req { organize(); organizeRequest = false }
+            }
             .onChange(of: deepLink) { _, _ in applyDeepLink() }
             .onChange(of: folders.map(\.id)) { _, _ in applyDeepLink() }   // retry once folders load (cold launch)
             .navigationDestination(for: Route.self) { route in
@@ -371,6 +367,7 @@ struct FoldersHomeSection: View {
     // MARK: - Smart organize (Pro)
 
     private func organize() {
+        guard !organizing else { return }
         guard StoreManager.shared.isPro else { showPaywall = true; return }
         // Reorganize the whole library, not just the Bin — Claude regroups everything.
         let targets = Array(allNotes.prefix(200))
