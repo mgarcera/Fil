@@ -639,27 +639,59 @@ struct FolderInteriorView: View {
         .frame(width: size, height: size)
     }
 
-    // The To-dos container: an aggregated checklist across every fil in the folder that has to-dos.
-    // Tapping a row toggles the to-do; long-press opens the source fil's actions.
+    // The To-dos container: one card per fil that has to-dos (styled like the note cards — source
+    // fil's blob on the left, gradient wash), listing that fil's to-dos with an inline checkbox each.
     private var todoContainer: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             containerHeader("To-dos", "checklist", todoNotes.reduce(0) { $0 + $1.todoRowItems.count })
-            VStack(spacing: 0) {
+            VStack(spacing: 10) {
                 ForEach(todoNotes, id: \.uuid) { note in
-                    ForEach(note.todoRowItems) { item in
-                        TodoRowContent(
-                            text: cased(item.text),
-                            isCompleted: item.done,
-                            font: Theme.fredoka(16, weight: .light),
-                            onToggle: { toggleTodo(note, at: item.index) }
-                        )
-                        .padding(.vertical, 5)
+                    todoCard(note)
                         .contextMenu { filActions(note) }
-                    }
+                        .swipeToSelect(note.uuid)
                 }
             }
             .padding(.horizontal, 16)
         }
+    }
+
+    /// A fil's to-dos as a note-style card: blob left + gradient wash; each to-do is a checkbox +
+    /// light text row on the right.
+    private func todoCard(_ note: Note) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            filMarker(note, size: 48)
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(note.todoRowItems) { item in
+                    Button { toggleTodo(note, at: item.index) } label: {
+                        HStack(alignment: .top, spacing: 10) {
+                            TodoStatusCircle(isCompleted: item.done)
+                            Text(cased(item.text))
+                                .font(Theme.fredoka(15, weight: .light))
+                                .foregroundStyle(Theme.primaryText)
+                                .strikethrough(item.done, color: Theme.tertiaryText)
+                                .opacity(item.done ? 0.6 : 1)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            ZStack {
+                Theme.cardBackground
+                Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed)
+                    .opacity(0.14)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
     }
 
     @ViewBuilder private func filActions(_ note: Note) -> some View {
