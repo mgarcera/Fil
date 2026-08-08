@@ -78,13 +78,14 @@ struct ComposerBar: View {
                 .disabled(isProcessing)
                 .accessibilityLabel("add photos")
 
-                // New folder (only on the folders root).
+                // New folder (only on the folders root) — a filled circle, like the old mic button.
                 if showsFolderActions {
                     Button(action: onNewFolder) {
                         Image(systemName: "folder.badge.plus")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 56, height: 56).contentShape(Circle())
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundStyle(Theme.background)
+                            .frame(width: 56, height: 56)
+                            .background(Theme.primaryText, in: Circle())
                     }
                     .buttonStyle(.plain).accessibilityLabel("new folder")
                 }
