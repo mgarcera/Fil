@@ -52,7 +52,11 @@ private extension FilApp {
     /// Register bundled custom fonts (e.g. Instrument Serif) so `Font.custom` can find them,
     /// without needing a UIAppFonts Info.plist entry.
     static func registerBundledFonts() {
-        for name in ["InstrumentSerif-Regular"] {
+        let names = [
+            "InstrumentSerif-Regular",
+            "Fredoka-Light", "Fredoka-Regular", "Fredoka-Medium", "Fredoka-SemiBold", "Fredoka-Bold"
+        ]
+        for name in names {
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
             CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
         }

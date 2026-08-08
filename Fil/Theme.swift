@@ -60,6 +60,20 @@ enum Theme {
         .custom("InstrumentSerif-Regular", size: size, relativeTo: .body)
     }
 
+    /// Fredoka — a rounded, friendly sans bundled at launch (OFL). Dynamic-Type aware; maps the
+    /// requested weight to the nearest bundled cut (Light/Regular/Medium/SemiBold/Bold).
+    static func fredoka(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .ultraLight, .thin, .light: name = "Fredoka-Light"
+        case .medium:                     name = "Fredoka-Medium"
+        case .semibold:                   name = "Fredoka-SemiBold"
+        case .bold, .heavy, .black:       name = "Fredoka-Bold"
+        default:                          name = "Fredoka-Regular"
+        }
+        return .custom(name, size: size, relativeTo: .body)
+    }
+
     private static let filGradientPalettes: [[String]] = [
         [
             "#F24D59",  // coral red
