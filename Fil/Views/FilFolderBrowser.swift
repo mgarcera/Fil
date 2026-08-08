@@ -568,9 +568,9 @@ struct FolderInteriorView: View {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
                 Text(cased(cardContent(note)))
-                    .font(Theme.fredoka(15, weight: .light))
+                    .font(Theme.fredoka(12, weight: .regular))
                     .foregroundStyle(Theme.primaryText)
-                    .lineLimit(2)
+                    .lineLimit(3)
                     .fixedSize(horizontal: false, vertical: true)
                 if !isPlainNote {
                     let caption = cased(captionText(note))
