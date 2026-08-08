@@ -25,8 +25,6 @@ struct CanvasHome: View {
     @Environment(\.openURL) private var openURL
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
-    /// Handedness (shared with the header): the send FAB sits on the left when true, else right.
-    @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
     // First-run onboarding, re-homed here because creation now happens on the canvas (not through
     // ContentView.createFil). See docs/onboarding/.
@@ -69,6 +67,8 @@ struct CanvasHome: View {
     /// True while a screensaver is on screen — it overrides the keyboard (resigns composer/query
     /// focus), and focus is restored to the current mode when it dismisses.
     var screensaverActive: Bool = false
+    /// Set true while a folder interior is open, so ContentView hides its floating header there.
+    @Binding var folderInteriorOpen: Bool
 
     @State private var phase: Phase = .composing
     @State private var text = ""
@@ -135,6 +135,8 @@ struct CanvasHome: View {
     /// responder — the composer is a UITextView (for its custom edit menu), not a SwiftUI TextField.
     @State private var fieldFocused = false
     @FocusState private var queryFocused: Bool
+    /// The pull-down "New" compose page overlay (the only compose surface now the bar is gone).
+    @State private var showNew = false
 
     private var notesByID: [UUID: Note] {
         Dictionary(uniqueKeysWithValues: notes.map { ($0.uuid, $0) })
@@ -166,20 +168,7 @@ struct CanvasHome: View {
             if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
                 recentChipsBar
             }
-            // Folders entry: a bottom grabber you drag up to reveal folders, while composing + empty.
-            if phase == .composing && !hasText && pendingPhotos.isEmpty {
-                HomeFoldersPeek()
-            }
-        }
-        // The send FAB floats as an overlay (not a ZStack sibling) so its Button reliably wins hit
-        // testing over the full-screen background tap-catcher below.
-        .overlay(alignment: controlsOnLeft ? .bottomLeading : .bottomTrailing) {
-            // Send needs words — even with photos staged, the user types a caption first.
-            if phase == .composing && hasText {
-                sendFAB
-                    .padding(controlsOnLeft ? .leading : .trailing, 24)
-                    .padding(.bottom, 24)
-            }
+
         }
         // While recording, a stop button sits below the pulsing gooey blob.
         .overlay(alignment: .bottom) {
@@ -277,7 +266,7 @@ struct CanvasHome: View {
                 if phase == .querying || phase == .results { savedSearchPhase = phase }
                 queryFocused = false
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
-                fieldFocused = true   // returning home: raise the composer keyboard
+                // Tap-to-focus: return to the resting home (folders visible); don't raise the keyboard.
             }
         }
         // Header sync only. Composer focus is set at genuine entry points (launch, after creating a
@@ -300,18 +289,14 @@ struct CanvasHome: View {
                 }
             } else {
                 switch phase {
-                case .composing: fieldFocused = true
+                case .composing: break   // tap-to-focus: don't auto-raise the composer keyboard
                 case .querying:  queryFocused = true
                 default:         break
                 }
             }
         }
-        .onAppear {
-            // Cold launch lands in the composer — raise the keyboard once the view is ready.
-            if phase == .composing {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { fieldFocused = true }
-            }
-        }
+        // Tap-to-focus: the compose bar rests unfocused at launch (folders are browsable); the
+        // keyboard rises only when the user taps the bar.
         // The header's refresh button asks for a fresh search.
         .onChange(of: newSearchRequested) { _, requested in
             if requested {
@@ -357,50 +342,122 @@ struct CanvasHome: View {
 
     // MARK: - Capture states
 
-    /// Writing surface: just the text input, left-aligned in the upper-left. Sending is the FAB.
-    /// This is the home's resting state — "let thoughts be" is the entrance.
+    /// The home's resting state: the folders. Pulling the top grabber down (or tapping it) inserts the
+    /// "New" compose card inline above the folders (which slide down beneath it) — not an overlay.
     private var composer: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Staged photos ride above the input as a scrollable strip of rounded squares.
-            if !pendingPhotos.isEmpty {
-                photoThumbnailStrip
-                    .padding(.bottom, 16)
+        VStack(spacing: 0) {
+            if showNew {
+                newFilPage
+                    .padding(.top, 52)   // clear the floating ContentView header (settings + search)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
-            // UITextView-backed so "record voice" / "add photo" live in its edit menu.
+            FoldersHomeSection(
+                onNew: { openNew() },
+                onInteriorOpenChange: { open in
+                    withAnimation(.easeInOut(duration: 0.2)) { folderInteriorOpen = open }
+                }
+            )
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .transition(.opacity)
+    }
+
+    /// The "New" compose page: a full-screen writing surface with an explicit capture row (voice +
+    /// photo) and send. Reached by pulling down on the folders home; slides in from the top.
+    private var newFilPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("New").font(Theme.instrumentSerif(22)).foregroundStyle(Theme.primaryText)
+                Spacer()
+                Button { closeNew() } label: {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 24)).foregroundStyle(Theme.tertiaryText)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
+
+            if !pendingPhotos.isEmpty { photoThumbnailStrip }
+
+            // UITextView-backed so "record voice" / "add photo" also live in its edit menu.
             ComposerTextView(
                 text: $text,
                 isFocused: $fieldFocused,
                 onRecordVoice: startVoiceCapture,
                 onAddPhoto: { showPhotoPicker = true }
             )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .overlay(alignment: .topLeading) {
-                    if text.isEmpty && pendingPhotos.isEmpty {
-                        AnimatedGradientRevealText(text: "let thoughts be")
-                            .font(Theme.dmSans(20, weight: .medium))
-                            .foregroundStyle(Theme.tertiaryText)
-                            .allowsHitTesting(false)
-                    }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .topLeading) {
+                if text.isEmpty && pendingPhotos.isEmpty {
+                    AnimatedGradientRevealText(text: "let thoughts be")
+                        .font(Theme.dmSans(20, weight: .medium))
+                        .foregroundStyle(Theme.tertiaryText)
+                        .allowsHitTesting(false)
                 }
-            Spacer(minLength: 0)
+            }
+
+            // Explicit capture row: voice + photo on the left, send trailing.
+            HStack(spacing: 12) {
+                captureButton("mic.fill", label: "Record voice") { showNew = false; startVoiceCapture() }
+                captureButton("photo.on.rectangle", label: "Add photo") { showPhotoPicker = true }
+                Spacer()
+                Button { Task { await sendFromNew() } } label: {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Theme.primaryText)
+                        .frame(width: 56, height: 56)
+                        .glassEffect(.regular, in: .circle)
+                }
+                .buttonStyle(.plain)
+                .disabled(!hasText && pendingPhotos.isEmpty)
+                .opacity((!hasText && pendingPhotos.isEmpty) ? 0.4 : 1)
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 20)
-        .padding(.top, 80)
-        .transition(.opacity)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Theme.cardBackground))
+        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
+        .padding(.horizontal, 10)
+        .padding(.top, 8)
     }
 
-    /// Floating send button (positioned by the overlay), shown while composing. Rides above the keyboard.
-    private var sendFAB: some View {
-        Button { Task { await createFil() } } label: {
-            Image(systemName: "arrow.up")
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(Theme.primaryText)
-                .frame(width: 56, height: 56)
-                .glassEffect(.regular, in: .circle)
+    private func captureButton(_ icon: String, label: String, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(Theme.secondaryText)
+                .frame(width: 46, height: 46)
+                .background(Circle().fill(Theme.primaryText.opacity(0.06)))
+                .overlay(Circle().stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
         }
         .buttonStyle(.plain)
-        .transition(.scale.combined(with: .opacity))
+        .accessibilityLabel(label)
+    }
+
+    // MARK: - New page control
+
+    private func openNew() {
+        guard !showNew else { return }   // already composing — don't wipe an in-progress draft
+        text = ""
+        pendingPhotos = []
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) { showNew = true }
+        // Raise the keyboard once the page has slid in.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { fieldFocused = true }
+    }
+
+    private func closeNew() {
+        fieldFocused = false
+        text = ""
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            pendingPhotos = []
+            showNew = false
+        }
+    }
+
+    /// Send from the New page: dismiss it, then run the shared creation flow (gooey → settle → folders).
+    private func sendFromNew() async {
+        fieldFocused = false
+        withAnimation(.easeOut(duration: 0.2)) { showNew = false }
+        await createFil()
     }
 
     /// Write the staged photos to temp files and open the tapped one in native QuickLook (swipeable).
@@ -978,20 +1035,17 @@ struct CanvasHome: View {
             note = LinkFil.make(url: url, gradient: gradient, in: modelContext)
             try? await Task.sleep(for: .milliseconds(700))
         } else {
-            // Floor the creating beat so a near-instant title (e.g. a two-word thought) still lets
-            // the gooey blob breathe rather than snapping straight to the settled fil.
-            let started = Date()
-            let title = await ArticleGenerationService.shared.generateTitle(from: thought)
+            // Text fils have no generated title anymore — the card shows the thought itself. Let the
+            // gooey blob breathe a beat since there's no title generation to fill the moment.
             note = Note(
-                title: title,
+                title: "",
                 transcript: thought,
-                keyword: title,
+                keyword: "",
                 gradientStartHex: gradient.start,
                 gradientEndHex: gradient.end
             )
             modelContext.insert(note)
-            let elapsed = Date().timeIntervalSince(started)
-            if elapsed < 0.7 { try? await Task.sleep(for: .seconds(0.7 - elapsed)) }
+            try? await Task.sleep(for: .milliseconds(700))
         }
         modelContext.saveOrLog()
 
@@ -1115,7 +1169,7 @@ struct CanvasHome: View {
             withAnimation(.easeIn(duration: 0.28)) { formedShown = false }
             try? await Task.sleep(for: .milliseconds(300))
             withAnimation(.easeOut(duration: 0.2)) { phase = .composing }
-            fieldFocused = true   // ready to write the next thought
+            // Tap-to-focus: settle back to the resting home; the new fil is in the Bin below.
         }
         await afterUserFilCreated()
     }
@@ -1162,7 +1216,6 @@ struct CanvasHome: View {
             withAnimation(.easeIn(duration: 0.28)) { formedShown = false }
             try? await Task.sleep(for: .milliseconds(300))
             withAnimation(.easeOut(duration: 0.2)) { phase = .composing }
-            fieldFocused = true
         }
     }
 
@@ -1705,7 +1758,9 @@ struct CanvasHome: View {
 
     private func displayTitle(_ note: Note) -> String {
         let trimmed = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let title = trimmed.isEmpty ? "fil" : trimmed
+        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Text fils no longer carry a title, so fall back to a snippet of the thought itself.
+        let title = !trimmed.isEmpty ? trimmed : (body.isEmpty ? "fil" : String(body.prefix(80)))
         return prefersLowercase ? title.lowercased() : title
     }
 }

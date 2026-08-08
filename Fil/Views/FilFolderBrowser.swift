@@ -1,13 +1,29 @@
 import SwiftUI
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
-/// Real-data folders browser (DEBUG integration surface).
+/// The folders surface, embedded inline on the home below the compose bar (no longer a modal).
 /// Free: manual filing — create folders, rename/move fils, landfil. Pro: "smart organize" via Claude.
-/// Rows are the authentic 36pt fil chips and open the real fil on tap; swipe a row for actions.
-struct RealFoldersBrowser: View {
-    @Query(sort: \Folder.createdAt, order: .reverse) private var folders: [Folder]
+/// Tapping a folder pushes its typed-container interior; ＋ / ✨ ride in a compact header row.
+struct FoldersHomeSection: View {
+    /// Called on release of a past-threshold downward pull (swipe-to-refresh style) to start a new fil.
+    var onNew: () -> Void = {}
+    /// Reports whether a folder interior is pushed, so the home can hide its floating header there.
+    var onInteriorOpenChange: (Bool) -> Void = { _ in }
+
+    @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
     @Query private var allNotes: [Note]
     @Environment(\.modelContext) private var context
+
+    /// Live overscroll pull distance (>=0) and whether it has passed the commit threshold.
+    @State private var pull: CGFloat = 0
+    @State private var armed = false
+    private let revealThreshold: CGFloat = 96
+
+    /// The folder a drag is currently over (drop highlight).
+    @State private var targetedFolderID: UUID?
 
     @State private var path: [Route] = []
     @State private var pagerSelection: FilPagerSelection?
@@ -26,47 +42,62 @@ struct RealFoldersBrowser: View {
 
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
-    private var inbox: [Note] { allNotes.filter { $0.folder == nil } }
-
     private func cased(_ text: String) -> String { prefersLowercase ? text.lowercased() : text }
+
+    private func pullHaptic() {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
+    }
 
     enum Route: Hashable {
         case folder(Folder)
-        case inbox
     }
 
     var body: some View {
         NavigationStack(path: $path) {
             List {
-                Button { path.append(.inbox) } label: {
-                    listRow(seed: 0.5, start: "#8A8A99", end: "#5A5A6B", glyph: "tray.full.fill",
-                            title: "Bin", trailing: "\(inbox.count) waiting")
+                // Pull-to-add affordance (grows in the top overscroll gap; unfiled fils now live in the
+                // bottom Bin basket rather than a hero deck).
+                Section {
+                    VStack(spacing: 6) {
+                        Image(systemName: armed ? "checkmark.circle.fill" : "plus.circle.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(armed ? .green : Theme.secondaryText)
+                        Text(armed ? "release to add" : "pull to add")
+                            .font(Theme.dmSans(13, weight: .medium)).foregroundStyle(Theme.tertiaryText)
+                    }
+                    .frame(height: max(0, min(pull, revealThreshold + 30)))
+                    .frame(maxWidth: .infinity)
+                    .opacity(Double(min(pull / 40, 1)))
+                    .clipped()
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 }
-                .buttonStyle(.plain)
-                .contentShape(Rectangle())
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
 
                 Section {
                     if folders.isEmpty {
                         Text("No folders yet. Tap ＋ to make one.")
                             .font(.system(size: 13))
                             .foregroundStyle(Theme.tertiaryText)
-                            .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                            .listRowBackground(Color.clear)
                     }
                     ForEach(folders) { folder in
                         Button { path.append(.folder(folder)) } label: {
                             listRow(seed: seed(for: folder), start: folder.gradientStartHex, end: folder.gradientEndHex,
                                     glyph: nil, title: folder.name, trailing: "\(folder.notes.count)", caption: folder.summary)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .fill(targetedFolderID == folder.id ? Theme.primaryText.opacity(0.10) : .clear)
+                                )
                         }
                         .buttonStyle(.plain)
-                        .contentShape(Rectangle())
-                        .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                         .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+                        // Native swipe actions (back by request) + a drop target for a dragged card.
                         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                             Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
                                 .tint(.blue)
@@ -74,32 +105,53 @@ struct RealFoldersBrowser: View {
                                 Label("Landfil", systemImage: "trash")
                             }
                         }
+                        .dropDestination(for: String.self) { items, _ in
+                            handleDrop(items, on: folder)
+                        } isTargeted: { targeted in
+                            if targeted { targetedFolderID = folder.id }
+                            else if targetedFolderID == folder.id { targetedFolderID = nil }
+                        }
                     }
+                    .onMove(perform: moveFolders)   // long-press a folder to drag-reorder
                 } header: {
-                    Text("Folders")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Theme.secondaryText)
-                        .textCase(nil)
+                    HStack(spacing: 16) {
+                        Text("Folders")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.secondaryText)
+                        Spacer()
+                        Button { organize() } label: { Image(systemName: "sparkles") }
+                            .disabled(organizing || allNotes.isEmpty)
+                        Button { pendingMoveNote = nil; showNewFolder = true } label: { Image(systemName: "plus") }
+                    }
+                    .font(.system(size: 15))
+                    .foregroundStyle(Theme.primaryText)
+                    .textCase(nil)
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
-            .background(Theme.background.ignoresSafeArea())
-            .navigationTitle("Folders")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { organize() } label: { Image(systemName: "sparkles") }
-                        .disabled(organizing || allNotes.isEmpty)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { pendingMoveNote = nil; showNewFolder = true } label: { Image(systemName: "plus") }
+            .scrollDismissesKeyboard(.interactively)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
+                pull = max(0, -y)
+                let nowArmed = pull >= revealThreshold
+                if nowArmed != armed {
+                    withAnimation(.easeOut(duration: 0.12)) { armed = nowArmed }
+                    if nowArmed { pullHaptic() }
                 }
             }
+            .onScrollPhaseChange { oldPhase, newPhase in
+                let wasDragging = oldPhase == .interacting || oldPhase == .tracking
+                if wasDragging && newPhase != .interacting && newPhase != .tracking && armed {
+                    armed = false
+                    onNew()
+                }
+            }
+            .background(Theme.background.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .onChange(of: path) { _, newPath in onInteriorOpenChange(!newPath.isEmpty) }
+            .onAppear { normalizeFolderOrder() }
             .navigationDestination(for: Route.self) { route in
                 switch route {
-                case .inbox:
-                    interior(title: "Bin", summary: "", seed: 0.5, start: "#8A8A99", end: "#5A5A6B", glyph: "tray.full.fill", notes: inbox, folder: nil)
                 case .folder(let folder):
                     interior(title: folder.name, summary: folder.summary, seed: seed(for: folder), start: folder.gradientStartHex,
                              end: folder.gradientEndHex, glyph: nil, notes: folder.notes, folder: folder)
@@ -128,7 +180,7 @@ struct RealFoldersBrowser: View {
             Button("Cancel", role: .cancel) { pendingRenameFolder = nil }
         }
         .landfilConfirmation(item: $pendingLandfilFolder, message: { _ in
-            "This folder is removed. Its fils return to the Bin."
+            "This folder is removed. Its fils return to the deck."
         }, onConfirm: { folder in delete(folder) })
         .alert("Couldn't organize", isPresented: .init(
             get: { organizeError != nil },
@@ -154,6 +206,34 @@ struct RealFoldersBrowser: View {
             onMove: { note, folder in move(note, to: folder) },
             onNewFolder: { note in pendingMoveNote = note; showNewFolder = true }
         )
+    }
+
+    // MARK: - Drag & drop (file a card / reorder folders)
+
+    private func handleDrop(_ items: [String], on folder: Folder) -> Bool {
+        defer { targetedFolderID = nil }
+        guard let payload = items.first, payload.hasPrefix("card:"),
+              let id = UUID(uuidString: String(payload.dropFirst(5))),
+              let note = allNotes.first(where: { $0.uuid == id }) else { return false }
+        move(note, to: folder)   // file the dragged Bin card into this folder
+        pullHaptic()
+        return true
+    }
+
+    /// List long-press drag-reorder: renumber sortIndex to the new order.
+    private func moveFolders(from source: IndexSet, to destination: Int) {
+        var ordered = folders
+        ordered.move(fromOffsets: source, toOffset: destination)
+        for (index, folder) in ordered.enumerated() { folder.sortIndex = index }
+        try? context.save()
+    }
+
+    /// First load after adding `sortIndex`: everything is 0 → seed the order by createdAt (newest first).
+    private func normalizeFolderOrder() {
+        guard folders.count > 1, folders.allSatisfy({ $0.sortIndex == 0 }) else { return }
+        let ordered = folders.sorted { $0.createdAt > $1.createdAt }
+        for (i, folder) in ordered.enumerated() { folder.sortIndex = i }
+        try? context.save()
     }
 
     private func listRow(seed: Double, start: String, end: String, glyph: String?, title: String, trailing: String? = nil, caption: String? = nil) -> some View {
@@ -217,14 +297,15 @@ struct RealFoldersBrowser: View {
     }
 
     private func delete(_ folder: Folder) {
-        context.delete(folder)   // .nullify → its fils fall back to the Bin
+        context.delete(folder)   // .nullify → its fils fall back to the unfiled deck
         try? context.save()
     }
 
     /// New folders draw a gradient from the full range the fils use.
     private func makeFolder(named name: String) -> Folder {
         let pair = Theme.randomGradientPair()
-        let folder = Folder(name: name, gradientStartHex: pair.start, gradientEndHex: pair.end)
+        let nextIndex = (folders.map(\.sortIndex).max() ?? -1) + 1
+        let folder = Folder(name: name, gradientStartHex: pair.start, gradientEndHex: pair.end, sortIndex: nextIndex)
         context.insert(folder)
         return folder
     }
@@ -461,22 +542,24 @@ struct FolderInteriorView: View {
         .padding(.horizontal, 16)
     }
 
-    /// A horizontal shelf for one type (photos read big; notes/links/voice as compact cards).
+    /// One type's fils in a two-column grid (photos as thumbnails; notes/links/voice as cards).
     private func shelf(_ label: String, _ icon: String, _ items: [Note], isPhoto: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
+        return VStack(alignment: .leading, spacing: 12) {
             containerHeader(label, icon, items.count)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(alignment: .top, spacing: isPhoto ? 16 : 12) {
-                    ForEach(items, id: \.uuid) { note in
-                        Button { onOpen(note, items) } label: {
-                            if isPhoto { photoShelfCard(note) } else { filShelfCard(note) }
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu { filActions(note) }
+            LazyVGrid(columns: columns, spacing: 14) {
+                ForEach(items, id: \.uuid) { note in
+                    Group {
+                        if isPhoto { photoShelfCard(note) } else { filShelfCard(note) }
                     }
+                    .contentShape(Rectangle())
+                    // Tap opens; a swipe-to-select won't fire this (a drag cancels the tap).
+                    .onTapGesture { onOpen(note, items) }
+                    .contextMenu { filActions(note) }
+                    .swipeToSelect(note.uuid)   // swipe left to add to the selection basket
                 }
-                .padding(.horizontal, 16)
             }
+            .padding(.horizontal, 16)
         }
     }
 
@@ -489,7 +572,7 @@ struct FolderInteriorView: View {
                 .frame(height: 84)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             Text(cased(displayTitle(note)))
-                .font(Theme.dmSans(15, weight: .medium))
+                .font(Theme.dmSans(13, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -513,17 +596,21 @@ struct FolderInteriorView: View {
     /// Styled like the home-screen pinned-fil widget: a dark rounded card with a gradient glow pooled
     /// at the bottom, the fil's blob mark floating top-left, and the text pushed to the bottom edge.
     private func filShelfCard(_ note: Note) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        // Plain notes show their contents (no title); links/voice show identity + a caption.
+        let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
+        return VStack(alignment: .leading, spacing: 6) {
             filMarker(note, size: 30)
             Spacer(minLength: 6)
-            Text(cased(displayTitle(note)))
-                .font(Theme.dmSans(15, weight: .medium))
+            Text(cased(cardContent(note)))
+                .font(Theme.dmSans(13, weight: .medium))
                 .foregroundStyle(Theme.primaryText)
-                .lineLimit(3)
+                .lineLimit(4)
                 .fixedSize(horizontal: false, vertical: true)
-            let caption = cased(captionText(note))
-            if !caption.isEmpty {
-                Text(caption).font(.system(size: 11)).foregroundStyle(Theme.secondaryText).lineLimit(1)
+            if !isPlainNote {
+                let caption = cased(captionText(note))
+                if !caption.isEmpty {
+                    Text(caption).font(.system(size: 11)).foregroundStyle(Theme.secondaryText).lineLimit(1)
+                }
             }
         }
         .padding(14)
@@ -531,6 +618,13 @@ struct FolderInteriorView: View {
         .background(Theme.cardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
+    }
+
+    /// A card's main text: plain notes show their contents; typed fils show their identity.
+    private func cardContent(_ note: Note) -> String {
+        if note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty { return displayTitle(note) }
+        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        return body.isEmpty ? displayTitle(note) : body
     }
 
     /// The fil marker: each fil's shape + color (a play glyph / favicon for voice / links).
@@ -657,42 +751,6 @@ struct FolderShape: Shape {
         path.addRoundedRect(in: body, cornerSize: CGSize(width: radius, height: radius))
 
         return path
-    }
-}
-
-/// The folders entry point: a single grabber pinned to the bottom of the compose home. Drag it up
-/// past a short threshold and the folders browser rises as a sheet. Static (no follow/arm motion).
-/// Owns its own sheet so it can't interfere with CanvasHome's other sheets.
-struct HomeFoldersPeek: View {
-    @State private var showBrowser = false
-
-    private let threshold: CGFloat = -44
-
-    var body: some View {
-        VStack {
-            Spacer()
-            VStack(spacing: 8) {
-                Image(systemName: "chevron.up")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(Theme.secondaryText)
-            }
-            .padding(.vertical, 14)
-            .padding(.horizontal, 40)
-            .contentShape(Rectangle())
-            .onTapGesture { showBrowser = true }
-            .gesture(
-                DragGesture(minimumDistance: 4)
-                    .onEnded { value in
-                        if value.translation.height <= threshold { showBrowser = true }
-                    }
-            )
-            .padding(.bottom, 12)
-        }
-        .frame(maxWidth: .infinity)
-        .sheet(isPresented: $showBrowser) {
-            RealFoldersBrowser()
-                .presentationBackground(Theme.background)
-        }
     }
 }
 

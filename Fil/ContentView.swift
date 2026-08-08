@@ -22,6 +22,7 @@ struct ContentView: View {
     @State private var searchActive = false          // header button ↔ canvas: search screen vs composer
     @State private var showingResults = false         // canvas → header: results on screen (show refresh)
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
+    @State private var folderInteriorOpen = false      // canvas → header: hide the floating header inside a folder
     /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
     @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
@@ -47,14 +48,26 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond)
+            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen)
 
             // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
-            // glass controls reliably receive taps while content scrolls beneath it.
-            VStack(spacing: 0) {
-                header
-                Spacer(minLength: 0)
+            // glass controls reliably receive taps while content scrolls beneath it. Hidden inside a
+            // folder interior (which has its own back button) so it doesn't track onto every page.
+            if !folderInteriorOpen {
+                VStack(spacing: 0) {
+                    header
+                    Spacer(minLength: 0)
+                }
+                .transition(.opacity)
             }
+
+            // Bottom baskets: the manual selection basket stacks above the persistent Bin (unfiled fils).
+            VStack(spacing: 8) {
+                Spacer(minLength: 0)
+                SelectionBasket()
+                BinBasket(onOpen: { openFil(with: $0) })
+            }
+            .padding(.bottom, 12)
         }
         .overlay {
             // The full-bleed frame lives on this always-present container that ignores
@@ -140,6 +153,7 @@ struct ContentView: View {
         .onChange(of: shouldKeepScreenAwake) { _, _ in applyScreenAwake() }
         .task {
             if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
+            FilSelectionStore.shared.context = modelContext   // let the selection basket resolve + mutate fils
             ingestSharedDrafts()
         }
     }

@@ -13,6 +13,9 @@ final class Folder {
     var gradientStartHex: String
     var gradientEndHex: String
     var createdAt: Date
+    /// Manual sort position (drag-to-reorder on the home). Lower = higher in the list. Defaults to 0
+    /// for folders made before this existed; normalized on first load.
+    var sortIndex: Int = 0
 
     /// Fils filed into this folder. Deleting a folder nullifies membership — the fils survive and
     /// fall back to the inbox (unfiled) rather than being deleted.
@@ -25,7 +28,8 @@ final class Folder {
         summary: String = "",
         gradientStartHex: String = "#408CD9",
         gradientEndHex: String = "#6659CC",
-        createdAt: Date = .now
+        createdAt: Date = .now,
+        sortIndex: Int = 0
     ) {
         self.id = id
         self.name = name
@@ -33,5 +37,6 @@ final class Folder {
         self.gradientStartHex = gradientStartHex
         self.gradientEndHex = gradientEndHex
         self.createdAt = createdAt
+        self.sortIndex = sortIndex
     }
 }
