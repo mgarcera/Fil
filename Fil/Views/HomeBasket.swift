@@ -51,7 +51,6 @@ struct HomeBasket: View {
                     .font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.secondaryText)
                     .lineLimit(1).minimumScaleFactor(0.6)
                     .frame(width: 56, height: 56)
-                    .background(Circle().fill(Theme.primaryText.opacity(0.08)))
                 Spacer()
                 Button { pendingBulkLandfil = BulkLandfilRequest() } label: { iconLabel("trash") }
                     .foregroundStyle(.red)
