@@ -22,15 +22,18 @@ struct ComposerBar: View {
     /// In search mode the field IS the query: the capture icons hide, the placeholder changes, and
     /// the trailing button runs the search instead of sending a fil.
     var searchMode: Bool = false
+    /// True once a search has run (results on screen) — the trailing button becomes "restart".
+    var searchShowingResults: Bool = false
     /// Rotating search placeholders (empty → the static `searchPlaceholder`).
     var searchPrompts: [String] = []
     var searchPlaceholder: String = "search your thoughts"
     let onSend: () -> Void
     let onRecordVoice: () -> Void
     let onRemoveStagedImage: (Int) -> Void
-    /// Enter search (resting trailing); run the search (search submit); exit search (X, empty query).
+    /// Enter search (resting trailing); run it (submit); restart it (refresh, on results); exit (X, empty).
     var onEnterSearch: () -> Void = {}
     var onSubmitSearch: () -> Void = {}
+    var onRestartSearch: () -> Void = {}
     var onExitSearch: () -> Void = {}
 
     @State private var dissolvingText: String?
@@ -209,12 +212,7 @@ struct ComposerBar: View {
     //  • capture + idle → enter search (a filled-circle magnifier where the mic used to be).
     @ViewBuilder private var trailingButton: some View {
         if searchMode {
-            if hasText {
-                Button(action: onSubmitSearch) {
-                    beamedCircle(symbol: "arrow.up", weight: .bold)
-                }
-                .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("search")
-            } else {
+            if !hasText {
                 // Empty query → an X that leaves search (the old header "home" button).
                 Button(action: onExitSearch) {
                     Image(systemName: "xmark")
@@ -224,6 +222,17 @@ struct ComposerBar: View {
                         .background(Theme.primaryText, in: Circle())
                 }
                 .buttonStyle(.plain).accessibilityLabel("close search")
+            } else if searchShowingResults {
+                // Results on screen → refresh restarts the search (fresh query).
+                Button(action: onRestartSearch) {
+                    beamedCircle(symbol: "arrow.clockwise", weight: .bold)
+                }
+                .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("new search")
+            } else {
+                Button(action: onSubmitSearch) {
+                    beamedCircle(symbol: "arrow.up", weight: .bold)
+                }
+                .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("search")
             }
         } else if isComposing {
             Button(action: sendWithDissolve) {

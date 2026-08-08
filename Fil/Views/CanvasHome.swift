@@ -221,17 +221,6 @@ struct CanvasHome: View {
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .padding(.trailing, 14)   // line up with the composer's trailing icon
                             .transition(.opacity)
-                        } else if phase == .results {
-                            Button { beginSurface() } label: {
-                                Image(systemName: "arrow.clockwise")
-                                    .font(.system(size: 20, weight: .semibold))
-                                    .foregroundStyle(Theme.primaryText)
-                                    .frame(width: 56, height: 56)
-                                    .glassEffect(.regular.interactive(), in: .circle)
-                            }
-                            .buttonStyle(.plain).accessibilityLabel("new search")
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .transition(.opacity)
                         }
                     }
 
@@ -475,6 +464,7 @@ struct CanvasHome: View {
             contextLabel: contextFolder.map { "Add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
             focus: $composerFocused,
             searchMode: isSearching,
+            searchShowingResults: phase == .results,
             searchPrompts: searchPrompts,
             onSend: { Task { await createFil() } },
             onRecordVoice: startVoiceCapture,
@@ -485,6 +475,7 @@ struct CanvasHome: View {
             },
             onEnterSearch: { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true } },
             onSubmitSearch: { Task { await runQuery() } },
+            onRestartSearch: { beginSurface() },
             onExitSearch: { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = false } }
         )
     }

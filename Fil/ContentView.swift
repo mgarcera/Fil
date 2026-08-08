@@ -24,8 +24,6 @@ struct ContentView: View {
     @State private var newSearchRequested = false     // header refresh → canvas: start a fresh search
     @State private var folderInteriorOpen = false      // canvas → header: hide the floating header inside a folder
     @State private var homeDeepLink: HomeDeepLink?      // Lock Screen widget tap → open the Bin / a folder
-    /// Handedness: primary controls (header cluster + send FAB) sit on the left when true, else right.
-    @AppStorage("controlsOnLeft") private var controlsOnLeft = false
 
     /// First-party, on-device activation instrumentation (no third-party SDK). Epoch seconds.
     /// (The first-fil payoff — congrats, "from mason" seed, review ask — now lives in CanvasHome,
@@ -178,88 +176,6 @@ struct ContentView: View {
         }
     }
 
-    private var header: some View {
-        GlassEffectContainer(spacing: 12) {
-            HStack(spacing: 12) {
-                // Handedness: the search/fil cluster sits on the user's chosen side, the refresh on
-                // the other. See Settings → Appearance.
-                if controlsOnLeft {
-                    searchFilCluster
-                    Spacer()
-                    if showingResults { refreshButton }
-                } else {
-                    if showingResults { refreshButton }
-                    Spacer()
-                    searchFilCluster
-                }
-            }
-            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: showingResults)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 4)
-    }
-
-    /// Search/back + fil in one glass container. Order follows handedness: search/back then fil on
-    /// the left; fil then search/back on the right (so the switcher stays toward the screen edge).
-    private var searchFilCluster: some View {
-        searchBackButton
-            .padding(.horizontal, 6)
-            .glassEffect()
-    }
-
-    /// True when tapping/swiping the switcher does nothing (composer, empty library).
-    private var switcherDisabled: Bool { !searchActive && notes.isEmpty }
-
-    /// The search/back switcher. Tap toggles home ↔ search; a deliberate vertical swipe on the icon
-    /// does the exact same thing (commit on release, past a threshold or a flick) — just a second,
-    /// tactile way to trigger it. The icon itself stays put.
-    private var searchBackButton: some View {
-        Button { toggleSearch() } label: {
-            Image(systemName: searchActive ? "house" : "magnifyingglass")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(Theme.primaryText)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .disabled(switcherDisabled)
-        .opacity(switcherDisabled ? 0.45 : 1)
-        .accessibilityLabel(searchActive ? "Back" : "Search your thoughts")
-        .simultaneousGesture(modeSwitchDrag)
-    }
-
-    private func toggleSearch() {
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive.toggle() }
-    }
-
-    /// A vertical swipe on the switcher, committed on release — same effect as the tap.
-    private var modeSwitchDrag: some Gesture {
-        DragGesture(minimumDistance: 12)
-            .onEnded { value in
-                let committed = abs(value.translation.height) > 30 || abs(value.velocity.height) > 500
-                guard committed, !switcherDisabled else { return }
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                toggleSearch()
-            }
-    }
-
-    /// Shown only while surfaced results are up: start a fresh search.
-    private var refreshButton: some View {
-        Button {
-            newSearchRequested = true
-        } label: {
-            Image(systemName: "arrow.clockwise")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Theme.primaryText)
-                .frame(width: 46, height: 46)
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .glassEffect(in: .circle)
-        .accessibilityLabel("New search")
-        .transition(.scale.combined(with: .opacity))
-    }
 
     /// How many fils each screensaver needs before it unlocks. Denser modes (the wave
     /// lattice, the drifting leaves field) ask for more so they don't open sparse.
