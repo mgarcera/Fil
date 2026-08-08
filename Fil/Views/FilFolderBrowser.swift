@@ -564,13 +564,13 @@ struct FolderInteriorView: View {
     /// A full-width card row: the rich component (photo thumb / fil blob) on the left, light text right.
     private func filRow(_ note: Note) -> some View {
         let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
-        return HStack(spacing: 14) {
+        return HStack(alignment: .top, spacing: 14) {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
                 Text(cased(cardContent(note)))
-                    .font(Theme.fredoka(12, weight: .regular))
+                    .font(Theme.fredoka(15, weight: .regular))
                     .foregroundStyle(Theme.primaryText)
-                    .lineLimit(3)
+                    .lineLimit(30)
                     .fixedSize(horizontal: false, vertical: true)
                 if !isPlainNote {
                     let caption = cased(captionText(note))
@@ -597,14 +597,27 @@ struct FolderInteriorView: View {
         .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
     }
 
-    /// The row's leading rich component: a rounded photo thumbnail for image fils, else the fil blob.
+    /// The row's leading rich component. Plain-note blobs and photo thumbnails stretch to the card's
+    /// height (so long notes don't leave dead space beside them); link/voice markers stay fixed squares.
     @ViewBuilder private func rowRich(_ note: Note) -> some View {
         if note.isImageFil {
             photoThumb(note)
-                .frame(width: 52, height: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        } else {
+                .frame(width: 52)
+                .frame(minHeight: 52, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        } else if note.isLinkFil || !note.audioFilePath.isEmpty {
             filMarker(note, size: 48)
+        } else {
+            // NoteBlobShape squares itself to the min side, so a tall frame would just center a 48pt
+            // blob. Draw it square, then stretch vertically to fill the row's height — an elongated blob.
+            GeometryReader { geo in
+                let w = geo.size.width
+                NoteBlobShape(seed: note.blobShapeSeed)
+                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+                    .scaleEffect(x: 1, y: max(1, geo.size.height / max(w, 1)), anchor: .center)
+            }
+            .frame(width: 48)
+            .frame(minHeight: 48, maxHeight: .infinity)
         }
     }
 
