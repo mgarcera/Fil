@@ -61,11 +61,18 @@ private struct PinnedFolderLockScreenView: View {
     let state: PinnedFolderLiveActivityAttributes.ContentState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(headline)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                FolderMark(size: 22, startHex: state.gradientStartHex, endHex: state.gradientEndHex)
+                Text(state.name)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+            }
+
+            Text(countLabel)
+                .font(.system(size: 13, weight: .regular))
+                .foregroundStyle(.white.opacity(0.72))
 
             FilActivityBlobRow(blobs: state.blobs)
         }
@@ -77,9 +84,9 @@ private struct PinnedFolderLockScreenView: View {
         }
     }
 
-    private var headline: String {
+    private var countLabel: String {
         let n = state.count
-        return "\(state.name) • \(n) \(n == 1 ? "item" : "items")"
+        return "\(n) \(n == 1 ? "item" : "items")"
     }
 }
 
@@ -206,9 +213,73 @@ struct FolderMark: View {
     }
 }
 
-/// Fixed Bin gradient (teal → blue), echoing the capture accent. Used by the Bin card's bottom glow.
+/// Fallback Bin gradient (teal → blue) when the Bin is empty of color data.
 let binStartHex = "#33BF99"
 let binEndHex = "#408CD9"
+
+// MARK: - Chlorofil-style Bin coloration
+
+/// Each fil's blended mid-color (start↔end), sampled across the Bin up to `cap` colors — the same
+/// idea as the Chlorofil screensaver, which paints fils' mid-colors as light. Empty → the fallback.
+func binGlowColors(_ blobs: [FilActivityBlob], cap: Int = 5) -> [Color] {
+    let mids = blobs.map { midColor($0.startHex, $0.endHex) }
+    guard !mids.isEmpty else { return [Color(hex: binStartHex), Color(hex: binEndHex)] }
+    guard mids.count > cap else { return mids }
+    return (0..<cap).map { mids[$0 * (mids.count - 1) / (cap - 1)] }
+}
+
+/// The 50/50 blend of two hex colors (widget-local — avoids depending on iOS 18's Color.mix).
+private func midColor(_ startHex: String, _ endHex: String) -> Color {
+    let a = rgbComponents(startHex), b = rgbComponents(endHex)
+    return Color(.sRGB, red: (a.r + b.r) / 2, green: (a.g + b.g) / 2, blue: (a.b + b.b) / 2)
+}
+
+private func rgbComponents(_ hex: String) -> (r: Double, g: Double, b: Double) {
+    let clean = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+    var value: UInt64 = 0
+    guard Scanner(string: clean).scanHexInt64(&value), clean.count == 6 else {
+        return (0.25, 0.55, 0.85)
+    }
+    return (Double((value >> 16) & 0xFF) / 255, Double((value >> 8) & 0xFF) / 255, Double(value & 0xFF) / 255)
+}
+
+/// A soft multi-color glow pooled at the bottom — one blurred pool per sampled color, spread across
+/// the width. The Bin's counterpart to the folder's single-gradient `FilLiveActivityBottomGlow`.
+struct FilActivityColorGlow: View {
+    let colors: [Color]
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height
+
+            ZStack {
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0.35),
+                        .init(color: (colors.first ?? .clear).opacity(0.28), location: 1.0)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                ForEach(Array(colors.enumerated()), id: \.offset) { index, color in
+                    Circle()
+                        .fill(color.opacity(0.6))
+                        .frame(width: 150, height: 150)
+                        .blur(radius: 40)
+                        .position(x: width * xFraction(index, of: colors.count), y: height + 28)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func xFraction(_ index: Int, of count: Int) -> CGFloat {
+        guard count > 1 else { return 0.5 }
+        return 0.15 + 0.7 * CGFloat(index) / CGFloat(count - 1)
+    }
+}
 
 /// A soft gradient glow pooled at the bottom of the card, echoing the article view.
 /// Fills whatever space it's given; the glow circles are centered just below the bottom
