@@ -664,6 +664,16 @@ struct FolderInteriorView: View {
         HStack(alignment: .top, spacing: 14) {
             filMarker(note, size: 48)
             VStack(alignment: .leading, spacing: 8) {
+                // The fil's own thought, so the user sees what they typed above its to-dos.
+                let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !body.isEmpty {
+                    Text(cased(body))
+                        .font(Theme.fredoka(15, weight: .regular))
+                        .foregroundStyle(Theme.primaryText)
+                        .lineLimit(30)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 ForEach(note.todoRowItems) { item in
                     Button { toggleTodo(note, at: item.index) } label: {
                         HStack(alignment: .top, spacing: 10) {
