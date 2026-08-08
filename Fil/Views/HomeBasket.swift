@@ -47,17 +47,20 @@ struct HomeBasket: View {
     private var selectionSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 14) {
-                Text("\(selected.count) selected")
-                    .font(Theme.dmSans(13, weight: .medium)).foregroundStyle(Theme.primaryText)
+                Text("\(selected.count)")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
+                    .padding(.horizontal, 7).padding(.vertical, 2)
+                    .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
                 Spacer()
-                Button { copyAsMarkdown() } label: { iconLabel(copied ? "checkmark" : "doc.on.doc") }
+                Button { pendingBulkLandfil = BulkLandfilRequest() } label: { iconLabel("trash") }
+                    .foregroundStyle(.red)
                 Menu {
                     ForEach(selection.folders()) { folder in
                         Button(folder.name) { withAnimation(.snappy) { selection.moveSelected(to: folder) } }
                     }
                 } label: { iconLabel("folder") }
                 .disabled(selection.folders().isEmpty)
-                Button { pendingBulkLandfil = BulkLandfilRequest() } label: { iconLabel("trash") }
+                Button { copyAsMarkdown() } label: { iconLabel(copied ? "checkmark" : "doc.on.doc") }
                 Button { withAnimation(.snappy) { selection.clear() } } label: { iconLabel("xmark") }
             }
             .foregroundStyle(Theme.primaryText)
