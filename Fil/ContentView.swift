@@ -61,13 +61,14 @@ struct ContentView: View {
                 .transition(.opacity)
             }
 
-            // Bottom baskets: the manual selection basket stacks above the persistent Bin (unfiled fils).
+            // Bottom baskets: the manual selection basket stacks above the persistent Bin. They ride
+            // above the composer bar; the Bin only shows on the folders home (not inside a folder).
             VStack(spacing: 8) {
                 Spacer(minLength: 0)
                 SelectionBasket()
-                BinBasket(onOpen: { openFil(with: $0) })
+                if !folderInteriorOpen { BinBasket(onOpen: { openFil(with: $0) }) }
             }
-            .padding(.bottom, 12)
+            .padding(.bottom, 76)
         }
         .overlay {
             // The full-bleed frame lives on this always-present container that ignores

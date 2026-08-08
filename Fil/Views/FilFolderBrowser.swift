@@ -8,19 +8,12 @@ import UIKit
 /// Free: manual filing — create folders, rename/move fils, landfil. Pro: "smart organize" via Claude.
 /// Tapping a folder pushes its typed-container interior; ＋ / ✨ ride in a compact header row.
 struct FoldersHomeSection: View {
-    /// Called on release of a past-threshold downward pull (swipe-to-refresh style) to start a new fil.
-    var onNew: () -> Void = {}
     /// Reports whether a folder interior is pushed, so the home can hide its floating header there.
     var onInteriorOpenChange: (Bool) -> Void = { _ in }
 
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
     @Query private var allNotes: [Note]
     @Environment(\.modelContext) private var context
-
-    /// Live overscroll pull distance (>=0) and whether it has passed the commit threshold.
-    @State private var pull: CGFloat = 0
-    @State private var armed = false
-    private let revealThreshold: CGFloat = 96
 
     /// The folder a drag is currently over (drop highlight).
     @State private var targetedFolderID: UUID?
@@ -57,25 +50,6 @@ struct FoldersHomeSection: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
-                // Pull-to-add affordance (grows in the top overscroll gap; unfiled fils now live in the
-                // bottom Bin basket rather than a hero deck).
-                Section {
-                    VStack(spacing: 6) {
-                        Image(systemName: armed ? "checkmark.circle.fill" : "plus.circle.fill")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(armed ? .green : Theme.secondaryText)
-                        Text(armed ? "release to add" : "pull to add")
-                            .font(Theme.dmSans(13, weight: .medium)).foregroundStyle(Theme.tertiaryText)
-                    }
-                    .frame(height: max(0, min(pull, revealThreshold + 30)))
-                    .frame(maxWidth: .infinity)
-                    .opacity(Double(min(pull / 40, 1)))
-                    .clipped()
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                }
-
                 Section {
                     if folders.isEmpty {
                         Text("No folders yet. Tap ＋ to make one.")
@@ -131,21 +105,6 @@ struct FoldersHomeSection: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
             .scrollDismissesKeyboard(.interactively)
-            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y } action: { _, y in
-                pull = max(0, -y)
-                let nowArmed = pull >= revealThreshold
-                if nowArmed != armed {
-                    withAnimation(.easeOut(duration: 0.12)) { armed = nowArmed }
-                    if nowArmed { pullHaptic() }
-                }
-            }
-            .onScrollPhaseChange { oldPhase, newPhase in
-                let wasDragging = oldPhase == .interacting || oldPhase == .tracking
-                if wasDragging && newPhase != .interacting && newPhase != .tracking && armed {
-                    armed = false
-                    onNew()
-                }
-            }
             .background(Theme.background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: path) { _, newPath in onInteriorOpenChange(!newPath.isEmpty) }

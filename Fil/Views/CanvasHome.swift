@@ -114,13 +114,9 @@ struct CanvasHome: View {
     @State private var showMicPriming = false
     @State private var recordingPulse = false
     // Photo capture: "add photo" in the composer edit menu opens the picker.
-    @State private var showPhotoPicker = false
     @State private var photoItems: [PhotosPickerItem] = []
-    /// Photos picked but not yet sent — shown as a strip above the composer; words can be added first.
+    /// Photos picked but not yet sent — staged as thumbnails in the composer bar; words can be added first.
     @State private var pendingPhotos: [PendingPhoto] = []
-    /// Staged photos tapped for a native QuickLook preview (temp file URLs; current + the full set).
-    @State private var previewImageURL: URL?
-    @State private var previewImageURLs: [URL] = []
     /// The fil sheet's current detent, bound so ArticleView knows when it's expanded to full.
     @State private var filSheetDetent: PresentationDetent = .fraction(0.6)
     /// Navigation path inside the fil sheet, so filaments (and linked fils) can push. Without this,
@@ -131,12 +127,11 @@ struct CanvasHome: View {
     /// Recent search terms, newline-joined, most-recent first (persisted on-device, capped).
     @AppStorage("recentSearchesRaw") private var recentSearchesRaw = ""
 
-    /// Composer focus. A plain Bool (not @FocusState) so it can drive ComposerTextView's first
-    /// responder — the composer is a UITextView (for its custom edit menu), not a SwiftUI TextField.
-    @State private var fieldFocused = false
+    /// Focus for the composer bar's text field (raises/dismisses the keyboard).
+    @FocusState private var composerFocused: Bool
     @FocusState private var queryFocused: Bool
-    /// The pull-down "New" compose page overlay (the only compose surface now the bar is gone).
-    @State private var showNew = false
+    /// To-do "pills" being composed alongside the current thought in the composer bar.
+    @State private var composeTodos: [ComposerTodo] = []
 
     private var notesByID: [UUID: Note] {
         Dictionary(uniqueKeysWithValues: notes.map { ($0.uuid, $0) })
@@ -169,6 +164,15 @@ struct CanvasHome: View {
                 recentChipsBar
             }
 
+        }
+        // The always-on composer bar floats at the bottom (rides above the keyboard) on the folders
+        // home — not inside a folder interior, and not while searching/creating.
+        .overlay(alignment: .bottom) {
+            if phase == .composing && !folderInteriorOpen {
+                composerBar
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 8)
+            }
         }
         // While recording, a stop button sits below the pulsing gooey blob.
         .overlay(alignment: .bottom) {
@@ -217,8 +221,6 @@ struct CanvasHome: View {
             .presentationDetents([.medium])
             .presentationBackground(Theme.background)
         }
-        .quickLookPreview($previewImageURL, in: previewImageURLs)
-        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 10, matching: .images, photoLibrary: .shared())
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
             Task {
@@ -238,7 +240,7 @@ struct CanvasHome: View {
                 if !loaded.isEmpty {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos.append(contentsOf: loaded) }
                 }
-                fieldFocused = true   // keep composing — words can be added to the photos before sending
+                composerFocused = true   // keep composing — words can be added to the photos before sending
             }
         }
         .landfilConfirmation(item: $pendingLandfilNote, message: { _ in
@@ -277,13 +279,13 @@ struct CanvasHome: View {
         // A screensaver overrides the keyboard: drop focus while it's up, restore it on dismiss.
         .onChange(of: screensaverActive) { _, active in
             if active {
-                fieldFocused = false
+                composerFocused = false
                 queryFocused = false
                 // A screensaver launched from Settings dismisses its sheet ~0.35s later, and SwiftUI
                 // would otherwise restore first responder to the composer — re-clear once it settles.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                     if screensaverActive {
-                        fieldFocused = false
+                        composerFocused = false
                         queryFocused = false
                     }
                 }
@@ -345,177 +347,32 @@ struct CanvasHome: View {
     /// The home's resting state: the folders. Pulling the top grabber down (or tapping it) inserts the
     /// "New" compose card inline above the folders (which slide down beneath it) — not an overlay.
     private var composer: some View {
-        VStack(spacing: 0) {
-            if showNew {
-                newFilPage
-                    .padding(.top, 52)   // clear the floating ContentView header (settings + search)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+        FoldersHomeSection(
+            onInteriorOpenChange: { open in
+                withAnimation(.easeInOut(duration: 0.2)) { folderInteriorOpen = open }
             }
-            FoldersHomeSection(
-                onNew: { openNew() },
-                onInteriorOpenChange: { open in
-                    withAnimation(.easeInOut(duration: 0.2)) { folderInteriorOpen = open }
-                }
-            )
-        }
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .transition(.opacity)
     }
 
-    /// The "New" compose page: a full-screen writing surface with an explicit capture row (voice +
-    /// photo) and send. Reached by pulling down on the folders home; slides in from the top.
-    private var newFilPage: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("New").font(Theme.instrumentSerif(22)).foregroundStyle(Theme.primaryText)
-                Spacer()
-                Button { closeNew() } label: {
-                    Image(systemName: "xmark.circle.fill").font(.system(size: 24)).foregroundStyle(Theme.tertiaryText)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Close")
-            }
-
-            if !pendingPhotos.isEmpty { photoThumbnailStrip }
-
-            // UITextView-backed so "record voice" / "add photo" also live in its edit menu.
-            ComposerTextView(
-                text: $text,
-                isFocused: $fieldFocused,
-                onRecordVoice: startVoiceCapture,
-                onAddPhoto: { showPhotoPicker = true }
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .topLeading) {
-                if text.isEmpty && pendingPhotos.isEmpty {
-                    AnimatedGradientRevealText(text: "let thoughts be")
-                        .font(Theme.dmSans(20, weight: .medium))
-                        .foregroundStyle(Theme.tertiaryText)
-                        .allowsHitTesting(false)
+    /// The always-on composer bar, pinned at the bottom over the keyboard (see body overlay).
+    private var composerBar: some View {
+        ComposerBar(
+            text: $text,
+            todos: $composeTodos,
+            selectedPhotos: $photoItems,
+            stagedImageData: pendingPhotos.map(\.data),
+            isProcessing: false,
+            focus: $composerFocused,
+            onSend: { Task { await createFil() } },
+            onRecordVoice: startVoiceCapture,
+            onRemoveStagedImage: { index in
+                if pendingPhotos.indices.contains(index) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos.remove(at: index) }
                 }
             }
-
-            // Explicit capture row: voice + photo on the left, send trailing.
-            HStack(spacing: 12) {
-                captureButton("mic.fill", label: "Record voice") { showNew = false; startVoiceCapture() }
-                captureButton("photo.on.rectangle", label: "Add photo") { showPhotoPicker = true }
-                Spacer()
-                Button { Task { await sendFromNew() } } label: {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Theme.primaryText)
-                        .frame(width: 56, height: 56)
-                        .glassEffect(.regular, in: .circle)
-                }
-                .buttonStyle(.plain)
-                .disabled(!hasText && pendingPhotos.isEmpty)
-                .opacity((!hasText && pendingPhotos.isEmpty) ? 0.4 : 1)
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Theme.cardBackground))
-        .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
-        .padding(.horizontal, 10)
-        .padding(.top, 8)
-    }
-
-    private func captureButton(_ icon: String, label: String, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Theme.secondaryText)
-                .frame(width: 46, height: 46)
-                .background(Circle().fill(Theme.primaryText.opacity(0.06)))
-                .overlay(Circle().stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-
-    // MARK: - New page control
-
-    private func openNew() {
-        guard !showNew else { return }   // already composing — don't wipe an in-progress draft
-        text = ""
-        pendingPhotos = []
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) { showNew = true }
-        // Raise the keyboard once the page has slid in.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { fieldFocused = true }
-    }
-
-    private func closeNew() {
-        fieldFocused = false
-        text = ""
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            pendingPhotos = []
-            showNew = false
-        }
-    }
-
-    /// Send from the New page: dismiss it, then run the shared creation flow (gooey → settle → folders).
-    private func sendFromNew() async {
-        fieldFocused = false
-        withAnimation(.easeOut(duration: 0.2)) { showNew = false }
-        await createFil()
-    }
-
-    /// Write the staged photos to temp files and open the tapped one in native QuickLook (swipeable).
-    private func openPendingPreview(_ tapped: PendingPhoto) {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("fil-compose-preview", isDirectory: true)
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        var urls: [URL] = []
-        var tappedURL: URL?
-        for photo in pendingPhotos {
-            let url = tempDir.appendingPathComponent("pending-\(photo.id.uuidString).jpg")
-            if (try? photo.data.write(to: url)) != nil {
-                urls.append(url)
-                if photo.id == tapped.id { tappedURL = url }
-            }
-        }
-        previewImageURLs = urls
-        previewImageURL = tappedURL
-    }
-
-    /// Staged photos as rounded squares in a horizontal scroller above the input; ✕ removes one.
-    private var photoThumbnailStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(pendingPhotos) { photo in
-                    Button { openPendingPreview(photo) } label: {
-                        Image(uiImage: photo.image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 72, height: 72)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
-                    }
-                    .buttonStyle(.plain)
-                    .overlay(alignment: .topTrailing) {
-                        // A generous (invisible) hit area around the small ✕, easier to tap.
-                        Button {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                pendingPhotos.removeAll { $0.id == photo.id }
-                            }
-                        } label: {
-                            Color.clear
-                                .frame(width: 40, height: 40)
-                                .overlay(alignment: .topTrailing) {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .frame(width: 22, height: 22)
-                                        .background(.black.opacity(0.5), in: Circle())
-                                        .padding(3)
-                                }
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        }
-        .scrollIndicators(.hidden)
+        )
     }
 
     /// A stop button, shown below the gooey blob while recording. Tapping it ends the recording and
@@ -1013,9 +870,11 @@ struct CanvasHome: View {
     }
 
     private func createFil() async {
+        let composedTodos = composeTodos.map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        composeTodos = []
         // Photos pending → this is a photo fil (the text becomes its caption).
         if !pendingPhotos.isEmpty {
-            await createImageFil(images: pendingPhotos.map(\.data), caption: text)
+            await createImageFil(images: pendingPhotos.map(\.data), caption: text, todos: composedTodos)
             return
         }
 
@@ -1047,6 +906,7 @@ struct CanvasHome: View {
             modelContext.insert(note)
             try? await Task.sleep(for: .milliseconds(700))
         }
+        for todo in composedTodos { note.addTodo(todo) }
         modelContext.saveOrLog()
 
         SoundscapeManager.shared.stopMeshDuringProcessSound()
@@ -1070,7 +930,7 @@ struct CanvasHome: View {
     }
 
     private func beginRecording() async {
-        fieldFocused = false
+        composerFocused = false
         await recorder.startRecording()
         guard recorder.isRecording else { return }   // setup failed → stay in the composer
         withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .recording }
@@ -1081,7 +941,7 @@ struct CanvasHome: View {
     private func finishRecording() async {
         guard let (url, duration) = recorder.stopRecording() else {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { phase = .composing }
-            fieldFocused = true
+            composerFocused = true
             return
         }
 
@@ -1116,7 +976,7 @@ struct CanvasHome: View {
     /// Turn a picked image into an image fil, flowing through the same gooey-blob creation animation.
     /// Turn the pending photos (+ optional caption) into one image fil, flowing through the same
     /// gooey-blob creation animation typed fils use.
-    private func createImageFil(images: [Data], caption: String) async {
+    private func createImageFil(images: [Data], caption: String, todos: [String] = []) async {
         let caption = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         text = ""
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos = [] }
@@ -1135,6 +995,7 @@ struct CanvasHome: View {
             gradientEndHex: gradient.end
         )
         note.imageFilImages = images.enumerated().map { index, data in NoteImage(data: data, order: index, note: note) }
+        for todo in todos { note.addTodo(todo) }
         modelContext.insert(note)
         modelContext.saveOrLog()
 
@@ -1148,7 +1009,7 @@ struct CanvasHome: View {
 
     /// Start the creating animation for a user fil: the full-screen gooey blob.
     private func beginCreation() {
-        fieldFocused = false
+        composerFocused = false
         withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
         SoundscapeManager.shared.startMeshDuringProcessSound()
     }
@@ -1198,7 +1059,7 @@ struct CanvasHome: View {
         modelContext.saveOrLog()
 
         // Full-screen gooey creating blob…
-        fieldFocused = false
+        composerFocused = false
         withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
         SoundscapeManager.shared.startMeshDuringProcessSound()
         try? await Task.sleep(for: .milliseconds(900))
