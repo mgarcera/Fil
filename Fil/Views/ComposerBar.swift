@@ -59,6 +59,16 @@ struct ComposerBar: View {
                 }
                 .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
 
+                // Voice — a bare mic (no filled circle), between to-do and photo.
+                Button(action: onRecordVoice) {
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(Theme.primaryText)
+                        .frame(width: 56, height: 56).contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("record voice note").accessibilityAddTraits(.startsMediaSession)
+
                 PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 8, matching: .images) {
                     Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 24, weight: .semibold))
@@ -68,7 +78,7 @@ struct ComposerBar: View {
                 .disabled(isProcessing)
                 .accessibilityLabel("add photos")
 
-                // Folder management (only on the folders root): new folder + a small organize menu.
+                // New folder (only on the folders root).
                 if showsFolderActions {
                     Button(action: onNewFolder) {
                         Image(systemName: "folder.badge.plus")
@@ -77,16 +87,6 @@ struct ComposerBar: View {
                             .frame(width: 56, height: 56).contentShape(Circle())
                     }
                     .buttonStyle(.plain).accessibilityLabel("new folder")
-
-                    Menu {
-                        Button { onOrganize() } label: { Label("Organize with AI", systemImage: "sparkles") }
-                    } label: {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 56, height: 56).contentShape(Circle())
-                    }
-                    .accessibilityLabel("organize")
                 }
 
                 Spacer(minLength: 0)
@@ -185,17 +185,13 @@ struct ComposerBar: View {
         .padding(.vertical, 8)
     }
 
+    // The trailing action is send (voice now lives in the leading row). Shown only while composing.
     @ViewBuilder private var trailingButton: some View {
         if isComposing {
             Button(action: sendWithDissolve) {
                 beamedCircle(symbol: "arrow.up", weight: .bold).opacity(canSend ? 1 : 0.4)
             }
             .buttonStyle(.plain).disabled(isProcessing || !canSend).accessibilityLabel("send fil")
-        } else {
-            Button(action: onRecordVoice) {
-                filledCircle(symbol: "mic.fill")
-            }
-            .buttonStyle(.plain).accessibilityLabel("record voice note").accessibilityAddTraits(.startsMediaSession)
         }
     }
 
@@ -217,11 +213,6 @@ struct ComposerBar: View {
             try? await Task.sleep(for: .seconds(0.6))
             dissolvingText = nil
         }
-    }
-
-    private func filledCircle(symbol: String) -> some View {
-        Image(systemName: symbol).font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.background)
-            .frame(width: 56, height: 56).background(Theme.primaryText, in: Circle())
     }
 
     private func beamedCircle(symbol: String, weight: Font.Weight) -> some View {
