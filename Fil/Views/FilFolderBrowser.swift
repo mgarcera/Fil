@@ -467,10 +467,10 @@ struct FolderInteriorView: View {
                 VStack(alignment: .leading, spacing: 26) {
                     // To-dos ride at the top; every other type is a horizontal shelf below.
                     if !todoNotes.isEmpty { todoContainer }
-                    if !photoNotes.isEmpty { shelf("Photos", "photo", photoNotes, isPhoto: true) }
-                    if !plainNotes.isEmpty { shelf("Notes", "note.text", plainNotes, isPhoto: false) }
-                    if !linkNotes.isEmpty { shelf("Links", "link", linkNotes, isPhoto: false) }
-                    if !voiceNotes.isEmpty { shelf("Voice", "waveform", voiceNotes, isPhoto: false) }
+                    if !photoNotes.isEmpty { shelf("Photos", "photo", photoNotes) }
+                    if !plainNotes.isEmpty { shelf("Notes", "note.text", plainNotes) }
+                    if !linkNotes.isEmpty { shelf("Links", "link", linkNotes) }
+                    if !voiceNotes.isEmpty { shelf("Voice", "waveform", voiceNotes) }
                 }
                 .padding(.top, 4)
                 .padding(.bottom, 28)
@@ -542,47 +542,62 @@ struct FolderInteriorView: View {
         .padding(.horizontal, 16)
     }
 
-    /// One type's fils in a two-column grid (photos as thumbnails; notes/links/voice as cards).
-    private func shelf(_ label: String, _ icon: String, _ items: [Note], isPhoto: Bool) -> some View {
-        let columns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
-        return VStack(alignment: .leading, spacing: 12) {
+    /// One type's fils as full-width single-column rows: the rich component (photo thumb / fil blob)
+    /// on the left, light-weight text on the right.
+    private func shelf(_ label: String, _ icon: String, _ items: [Note]) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
             containerHeader(label, icon, items.count)
-            LazyVGrid(columns: columns, spacing: 14) {
+            VStack(spacing: 10) {
                 ForEach(items, id: \.uuid) { note in
-                    Group {
-                        if isPhoto { photoShelfCard(note) } else { filShelfCard(note) }
-                    }
-                    .contentShape(Rectangle())
-                    // Tap opens; a swipe-to-select won't fire this (a drag cancels the tap).
-                    .onTapGesture { onOpen(note, items) }
-                    .contextMenu { filActions(note) }
-                    .swipeToSelect(note.uuid)   // swipe left to add to the selection basket
+                    filRow(note)
+                        .contentShape(Rectangle())
+                        // Tap opens; a swipe-to-select won't fire this (a drag cancels the tap).
+                        .onTapGesture { onOpen(note, items) }
+                        .contextMenu { filActions(note) }
+                        .swipeToSelect(note.uuid)   // swipe left to add to the selection basket
                 }
             }
             .padding(.horizontal, 16)
         }
     }
 
-    /// Photos wear the same widget-style card as notes, but the top slot is a rounded photo
-    /// thumbnail instead of a blob marker; title pinned to the bottom.
-    private func photoShelfCard(_ note: Note) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            photoThumb(note)
-                .frame(maxWidth: .infinity)
-                .frame(height: 84)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            Text(cased(displayTitle(note)))
-                .font(Theme.dmSans(13, weight: .medium))
-                .foregroundStyle(Theme.primaryText)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+    /// A full-width row: the rich component (photo thumb / fil blob) on the left, light text on the right.
+    private func filRow(_ note: Note) -> some View {
+        let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
+        return HStack(spacing: 14) {
+            rowRich(note)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(cased(cardContent(note)))
+                    .font(Theme.dmSans(15, weight: .light))
+                    .foregroundStyle(Theme.primaryText)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !isPlainNote {
+                    let caption = cased(captionText(note))
+                    if !caption.isEmpty {
+                        Text(caption).font(.system(size: 12, weight: .light)).foregroundStyle(Theme.secondaryText).lineLimit(1)
+                    }
+                }
+            }
             Spacer(minLength: 0)
         }
-        .padding(12)
-        .frame(width: 150, height: 150, alignment: .topLeading)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Theme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
+    }
+
+    /// The row's leading rich component: a rounded photo thumbnail for image fils, else the fil blob.
+    @ViewBuilder private func rowRich(_ note: Note) -> some View {
+        if note.isImageFil {
+            photoThumb(note)
+                .frame(width: 52, height: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        } else {
+            filMarker(note, size: 48)
+        }
     }
 
     @ViewBuilder private func photoThumb(_ note: Note) -> some View {
@@ -591,33 +606,6 @@ struct FolderInteriorView: View {
         } else {
             Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed)
         }
-    }
-
-    /// Styled like the home-screen pinned-fil widget: a dark rounded card with a gradient glow pooled
-    /// at the bottom, the fil's blob mark floating top-left, and the text pushed to the bottom edge.
-    private func filShelfCard(_ note: Note) -> some View {
-        // Plain notes show their contents (no title); links/voice show identity + a caption.
-        let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
-        return VStack(alignment: .leading, spacing: 6) {
-            filMarker(note, size: 30)
-            Spacer(minLength: 6)
-            Text(cased(cardContent(note)))
-                .font(Theme.dmSans(13, weight: .medium))
-                .foregroundStyle(Theme.primaryText)
-                .lineLimit(4)
-                .fixedSize(horizontal: false, vertical: true)
-            if !isPlainNote {
-                let caption = cased(captionText(note))
-                if !caption.isEmpty {
-                    Text(caption).font(.system(size: 11)).foregroundStyle(Theme.secondaryText).lineLimit(1)
-                }
-            }
-        }
-        .padding(14)
-        .frame(width: 150, height: 150, alignment: .topLeading)
-        .background(Theme.cardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
     }
 
     /// A card's main text: plain notes show their contents; typed fils show their identity.
