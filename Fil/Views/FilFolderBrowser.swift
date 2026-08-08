@@ -245,7 +245,7 @@ struct FoldersHomeSection: View {
                 Text(cased(title)).font(Theme.instrumentSerif(22)).foregroundStyle(Theme.primaryText).lineLimit(1)
                 if let caption, !caption.isEmpty {
                     Text(cased(caption))
-                        .font(.system(size: 12))
+                        .font(Theme.fredoka(12, weight: .regular))
                         .foregroundStyle(Theme.secondaryText)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -450,7 +450,7 @@ struct FolderInteriorView: View {
                     Text(cased(title)).font(Theme.instrumentSerif(26)).foregroundStyle(Theme.primaryText)
                     if !summary.isEmpty {
                         Text(cased(summary))
-                            .font(.system(size: 13))
+                            .font(Theme.fredoka(13, weight: .regular))
                             .foregroundStyle(Theme.secondaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -568,7 +568,7 @@ struct FolderInteriorView: View {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
                 Text(cased(cardContent(note)))
-                    .font(Theme.dmSans(15, weight: .light))
+                    .font(Theme.fredoka(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -584,8 +584,15 @@ struct FolderInteriorView: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        // The whole card wears the fil's gradient.
-        .background(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
+        // A dark card tinted with the fil's gradient — enough color to feel like the fil, but kept
+        // low so light text stays legible.
+        .background {
+            ZStack {
+                Theme.cardBackground
+                Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed)
+                    .opacity(0.28)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
     }
@@ -640,6 +647,7 @@ struct FolderInteriorView: View {
                         TodoRowContent(
                             text: cased(item.text),
                             isCompleted: item.done,
+                            font: Theme.fredoka(16, weight: .light),
                             onToggle: { toggleTodo(note, at: item.index) }
                         )
                         .padding(.vertical, 5)

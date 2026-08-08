@@ -89,7 +89,7 @@ struct ComposerBar: View {
         HStack(spacing: 10) {
             Image(systemName: "circle").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.secondaryText)
             TextField("to-do", text: todo.text)
-                .font(Theme.dmMono(13)).foregroundStyle(Theme.secondaryText)
+                .font(Theme.fredoka(13, weight: .light)).foregroundStyle(Theme.secondaryText)
                 .focused($focusedTodoID, equals: todo.wrappedValue.id)
                 .submitLabel(.next)
                 .onSubmit { handleTodoReturn(for: todo.wrappedValue.id) }
@@ -127,7 +127,7 @@ struct ComposerBar: View {
             if trimmedText.isEmpty, dissolvingText == nil {
                 if let contextLabel {
                     AnimatedGradientRevealText(text: contextLabel, maxDuration: 1.2, settledOpacity: 0.4)
-                        .font(Theme.dmSans(15)).foregroundStyle(Theme.primaryText)
+                        .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
                         .allowsHitTesting(false)
                         .id(contextLabel)   // re-reveal when the folder context changes
                 } else {
@@ -136,13 +136,13 @@ struct ComposerBar: View {
             }
 
             TextField("", text: $text, axis: .vertical)
-                .font(Theme.dmSans(15)).foregroundStyle(Theme.primaryText)
+                .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
                 .lineLimit(1...4).focused(focus).submitLabel(.return)
                 .opacity(dissolvingText == nil ? 1 : 0)
 
             if let dissolvingText {
                 GradientDissolveText(text: dissolvingText)
-                    .font(Theme.dmSans(15)).foregroundStyle(Theme.primaryText)
+                    .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
                     .allowsHitTesting(false)
             }
         }
@@ -167,7 +167,7 @@ struct ComposerBar: View {
         TimelineView(.periodic(from: .now, by: placeholderInterval)) { context in
             let index = Int(context.date.timeIntervalSinceReferenceDate / placeholderInterval) % placeholders.count
             AnimatedGradientRevealText(text: placeholders[index], maxDuration: 1.2, settledOpacity: 0.4)
-                .font(Theme.dmSans(15)).foregroundStyle(Theme.primaryText)
+                .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
         }
         .allowsHitTesting(false)
     }

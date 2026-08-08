@@ -56,6 +56,8 @@ struct TodoStatusCircle: View {
 struct TodoRowContent: View {
     let text: String
     let isCompleted: Bool
+    /// The to-do text font — defaults to the shared DM Sans; folders pass Fredoka.
+    var font: Font = Theme.dmSans(16, weight: .regular)
     let onToggle: () -> Void
 
     var body: some View {
@@ -64,7 +66,7 @@ struct TodoRowContent: View {
                 TodoStatusCircle(isCompleted: isCompleted)
 
                 Text(text)
-                    .font(Theme.dmSans(16, weight: .regular))
+                    .font(font)
                     .foregroundStyle(Theme.secondaryText)
                     .strikethrough(isCompleted, color: Theme.tertiaryText)
                     .opacity(isCompleted ? 0.65 : 1)
