@@ -524,7 +524,8 @@ struct FolderInteriorView: View {
                 .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
             Spacer()
         }
-        .padding(.horizontal, 16)
+        // No internal horizontal padding — the List's default section-header inset positions it,
+        // matching the home "Folders" header.
     }
 
     /// One type's fils as a reorderable List section of full-width cards. Long-press-drag reorders
@@ -575,11 +576,11 @@ struct FolderInteriorView: View {
     }
 
     private func sectionHeader(_ label: String, _ icon: String, _ count: Int) -> some View {
-        // No listRowBackground override, so it wears the plain-List section-header material — matching
-        // the home's "Folders" header (which pins with the same translucent background).
+        // Match the home's "Folders" header exactly: no listRowInsets / listRowBackground override, so
+        // it keeps the native plain-List section-header material (semi-transparent, pins on scroll).
+        // Setting custom insets strips that default chrome and drops it onto the opaque list background.
         containerHeader(label, icon, count)
             .textCase(nil)
-            .listRowInsets(EdgeInsets(top: 12, leading: 0, bottom: 2, trailing: 0))
     }
 
     /// Persist a drag-reorder: rewrite the section's `sortIndex` to its new order (0…n).
