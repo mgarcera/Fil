@@ -421,8 +421,6 @@ struct FolderInteriorView: View {
 
     @Environment(\.modelContext) private var context
     @AppStorage("prefersLowercase") private var prefersLowercase = false
-    /// Prototype toggle: false = individual cards, true = flat Finder-style rows with hairline dividers.
-    @AppStorage("folderRowsFlat") private var flatRows = false
 
     @State private var pendingRenameNote: Note?
     @State private var renameText = ""
@@ -460,15 +458,6 @@ struct FolderInteriorView: View {
                         .font(.system(size: 12)).foregroundStyle(Theme.tertiaryText)
                 }
                 Spacer()
-                // Prototype: flip between card rows and flat Finder rows.
-                Button {
-                    withAnimation(.snappy) { flatRows.toggle() }
-                } label: {
-                    Image(systemName: flatRows ? "rectangle.grid.1x2" : "list.bullet")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(Theme.secondaryText)
-                }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -553,33 +542,29 @@ struct FolderInteriorView: View {
         .padding(.horizontal, 16)
     }
 
-    /// One type's fils as full-width single-column rows: the rich component (photo thumb / fil blob)
-    /// on the left, light-weight text on the right. Two styles: individual cards, or flat Finder rows.
+    /// One type's fils as full-width single-column cards: the rich component (photo thumb / fil blob)
+    /// on the left, light-weight text on the right.
     private func shelf(_ label: String, _ icon: String, _ items: [Note]) -> some View {
-        VStack(alignment: .leading, spacing: flatRows ? 2 : 10) {
+        VStack(alignment: .leading, spacing: 10) {
             containerHeader(label, icon, items.count)
-            VStack(spacing: flatRows ? 0 : 10) {
-                ForEach(Array(items.enumerated()), id: \.element.uuid) { index, note in
+            VStack(spacing: 10) {
+                ForEach(items, id: \.uuid) { note in
                     filRow(note)
                         .contentShape(Rectangle())
                         // Tap opens; a swipe-to-select won't fire this (a drag cancels the tap).
                         .onTapGesture { onOpen(note, items) }
                         .contextMenu { filActions(note) }
                         .swipeToSelect(note.uuid)   // swipe left to add to the selection basket
-                    if flatRows && index < items.count - 1 {
-                        Divider().overlay(Theme.divider).padding(.leading, 62)
-                    }
                 }
             }
             .padding(.horizontal, 16)
         }
     }
 
-    /// A full-width row: the rich component (photo thumb / fil blob) on the left, light text on the right.
-    /// Styled as an individual card, or (flat) as a bare Finder row separated by hairline dividers.
-    @ViewBuilder private func filRow(_ note: Note) -> some View {
+    /// A full-width card row: the rich component (photo thumb / fil blob) on the left, light text right.
+    private func filRow(_ note: Note) -> some View {
         let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
-        let content = HStack(spacing: 14) {
+        return HStack(spacing: 14) {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
                 Text(cased(cardContent(note)))
@@ -596,18 +581,12 @@ struct FolderInteriorView: View {
             }
             Spacer(minLength: 0)
         }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-
-        if flatRows {
-            content.padding(.vertical, 10)
-        } else {
-            content
-                .padding(.vertical, 12)
-                .padding(.horizontal, 14)
-                .background(Theme.cardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
-        }
+        .background(Theme.cardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.primaryText.opacity(0.06), lineWidth: 1))
     }
 
     /// The row's leading rich component: a rounded photo thumbnail for image fils, else the fil blob.
