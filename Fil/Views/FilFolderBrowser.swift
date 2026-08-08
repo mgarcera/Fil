@@ -52,6 +52,7 @@ struct FoldersHomeSection: View {
 
     @State private var pendingRenameFolder: Folder?
     @State private var renameFolderText = ""
+    @State private var renameFolderCaption = ""
     @State private var pendingLandfilFolder: Folder?
 
     @State private var showPaywall = false
@@ -179,6 +180,7 @@ struct FoldersHomeSection: View {
             set: { if !$0 { pendingRenameFolder = nil } }
         )) {
             TextField("name", text: $renameFolderText)
+            TextField("caption (optional)", text: $renameFolderCaption)
             Button("Save") { commitFolderRename() }
             Button("Cancel", role: .cancel) { pendingRenameFolder = nil }
         }
@@ -299,6 +301,7 @@ struct FoldersHomeSection: View {
 
     private func startRename(_ folder: Folder) {
         renameFolderText = folder.name
+        renameFolderCaption = folder.summary
         pendingRenameFolder = folder
     }
 
@@ -306,6 +309,7 @@ struct FoldersHomeSection: View {
         let name = renameFolderText.trimmingCharacters(in: .whitespacesAndNewlines)
         if let folder = pendingRenameFolder, !name.isEmpty {
             folder.name = name
+            folder.summary = renameFolderCaption.trimmingCharacters(in: .whitespacesAndNewlines)
             try? context.save()
         }
         pendingRenameFolder = nil
