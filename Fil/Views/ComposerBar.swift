@@ -19,18 +19,21 @@ struct ComposerBar: View {
     /// When set (inside a folder), the placeholder reads "add to {folder}" and the fil files there.
     var contextLabel: String? = nil
     var focus: FocusState<Bool>.Binding
-    /// Show the folder-management controls (new folder + organize) — only on the folders root.
-    var showsFolderActions: Bool = false
+    /// In search mode the field IS the query: the capture icons hide, the placeholder changes, and
+    /// the trailing button runs the search instead of sending a fil.
+    var searchMode: Bool = false
+    var searchPlaceholder: String = "search your thoughts"
     let onSend: () -> Void
     let onRecordVoice: () -> Void
     let onRemoveStagedImage: (Int) -> Void
-    var onNewFolder: () -> Void = {}
-    var onOrganize: () -> Void = {}
+    /// Enter search (from the resting composer's trailing button); run the search (search-mode submit).
+    var onEnterSearch: () -> Void = {}
+    var onSubmitSearch: () -> Void = {}
 
     @State private var dissolvingText: String?
     @FocusState private var focusedTodoID: UUID?
 
-    private let placeholders = ["tap to write", "thoughts come in all shapes and sizes"]
+    private let placeholders = ["Tap to write", "Thoughts come in all shapes and sizes"]
     private let placeholderInterval: TimeInterval = 10
 
     private var trimmedText: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -41,42 +44,45 @@ struct ComposerBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if !stagedImageData.isEmpty { stagedImageRow }
+            if !searchMode && !stagedImageData.isEmpty { stagedImageRow }
 
             inputArea
 
-            if !todos.isEmpty {
+            if !searchMode && !todos.isEmpty {
                 Divider().overlay(Theme.divider).padding(.top, 2)
                 todoRows
             }
 
             HStack(alignment: .center, spacing: 10) {
-                Button(action: addTodoPill) {
-                    Image(systemName: "checklist")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Theme.primaryText)
-                        .frame(width: 56, height: 56).contentShape(Circle())
-                }
-                .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
+                // Capture controls — hidden in search mode (the field is a query there).
+                if !searchMode {
+                    Button(action: addTodoPill) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 56, height: 56).contentShape(Circle())
+                    }
+                    .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
 
-                // Voice — a bare mic (no filled circle), between to-do and photo.
-                Button(action: onRecordVoice) {
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Theme.primaryText)
-                        .frame(width: 56, height: 56).contentShape(Circle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("record voice note").accessibilityAddTraits(.startsMediaSession)
+                    // Voice — a bare mic (no filled circle), between to-do and photo.
+                    Button(action: onRecordVoice) {
+                        Image(systemName: "mic.fill")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 56, height: 56).contentShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("record voice note").accessibilityAddTraits(.startsMediaSession)
 
-                PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 8, matching: .images) {
-                    Image(systemName: "photo.on.rectangle.angled")
-                        .font(.system(size: 24, weight: .semibold))
-                        .foregroundStyle(Theme.primaryText)
-                        .frame(width: 56, height: 56).contentShape(Circle())
+                    PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 8, matching: .images) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 24, weight: .semibold))
+                            .foregroundStyle(Theme.primaryText)
+                            .frame(width: 56, height: 56).contentShape(Circle())
+                    }
+                    .disabled(isProcessing)
+                    .accessibilityLabel("add photos")
                 }
-                .disabled(isProcessing)
-                .accessibilityLabel("add photos")
 
                 Spacer(minLength: 0)
 
@@ -150,7 +156,12 @@ struct ComposerBar: View {
     private var inputArea: some View {
         ZStack(alignment: .leading) {
             if trimmedText.isEmpty, dissolvingText == nil {
-                if let contextLabel {
+                if searchMode {
+                    AnimatedGradientRevealText(text: searchPlaceholder, maxDuration: 1.2, settledOpacity: 0.4)
+                        .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                        .allowsHitTesting(false)
+                        .id(searchPlaceholder)
+                } else if let contextLabel {
                     AnimatedGradientRevealText(text: contextLabel, maxDuration: 1.2, settledOpacity: 0.4)
                         .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                         .allowsHitTesting(false)
@@ -162,8 +173,14 @@ struct ComposerBar: View {
 
             TextField("", text: $text, axis: .vertical)
                 .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
-                .lineLimit(1...4).focused(focus).submitLabel(.return)
+                .lineLimit(1...4).focused(focus).submitLabel(searchMode ? .search : .return)
                 .opacity(dissolvingText == nil ? 1 : 0)
+                // Return in the vertical field inserts a newline; in search treat it as "run search".
+                .onChange(of: text) { _, newValue in
+                    guard searchMode, newValue.contains("\n") else { return }
+                    text = newValue.replacingOccurrences(of: "\n", with: "")
+                    onSubmitSearch()
+                }
 
             if let dissolvingText {
                 GradientDissolveText(text: dissolvingText)
@@ -174,23 +191,32 @@ struct ComposerBar: View {
         .padding(.vertical, 8)
     }
 
-    // The trailing action: send while composing; otherwise, on the folders root, the new-folder
-    // filled circle sits where the mic used to. (Voice now lives in the leading row.)
+    // Trailing action:
+    //  • search mode → run the search (beamed arrow, when there's a query);
+    //  • capture + composing → send;
+    //  • capture + idle → enter search (a filled-circle magnifier where the mic used to be).
     @ViewBuilder private var trailingButton: some View {
-        if isComposing {
+        if searchMode {
+            if hasText {
+                Button(action: onSubmitSearch) {
+                    beamedCircle(symbol: "arrow.up", weight: .bold)
+                }
+                .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("search")
+            }
+        } else if isComposing {
             Button(action: sendWithDissolve) {
                 beamedCircle(symbol: "arrow.up", weight: .bold).opacity(canSend ? 1 : 0.4)
             }
             .buttonStyle(.plain).disabled(isProcessing || !canSend).accessibilityLabel("send fil")
-        } else if showsFolderActions {
-            Button(action: onNewFolder) {
-                Image(systemName: "folder.badge.plus")
+        } else {
+            Button(action: onEnterSearch) {
+                Image(systemName: "magnifyingglass")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Theme.background)
                     .frame(width: 56, height: 56)
                     .background(Theme.primaryText, in: Circle())
             }
-            .buttonStyle(.plain).accessibilityLabel("new folder")
+            .buttonStyle(.plain).accessibilityLabel("search your thoughts")
         }
     }
 

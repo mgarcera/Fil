@@ -142,7 +142,6 @@ struct CanvasHome: View {
 
     /// Focus for the composer bar's text field (raises/dismisses the keyboard).
     @FocusState private var composerFocused: Bool
-    @FocusState private var queryFocused: Bool
     /// To-do "pills" being composed alongside the current thought in the composer bar.
     @State private var composeTodos: [ComposerTodo] = []
 
@@ -150,13 +149,21 @@ struct CanvasHome: View {
         Dictionary(uniqueKeysWithValues: notes.map { ($0.uuid, $0) })
     }
 
+    /// Search mode: the composer is the query input and the results (or a blank canvas) sit behind it.
+    private var isSearching: Bool { phase == .querying || phase == .results }
+
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
+            // In search the page wears the folder-browser gray; otherwise the plain background.
+            if isSearching {
+                FolderBrowserBackground()
+            } else {
+                Theme.background.ignoresSafeArea()
+            }
 
             switch phase {
             case .composing: composer
-            case .querying:  queryField
+            case .querying:  Color.clear   // blank canvas; the query lives in the composer, chips ride above it
             case .results:   resultsList
             // The creation blobs are rendered below as boolean-gated views, not switch cases: a
             // switch animates a case's insertion but drops its removal transition, so the note blob
@@ -173,10 +180,6 @@ struct CanvasHome: View {
                 formedBlob
             }
 
-            if phase == .querying && query.isEmpty && !recentSearches.isEmpty {
-                recentChipsBar
-            }
-
         }
         // A Lock Screen tap must land on the folders home (where the Bin dock + folders live), not a
         // leftover search/results screen. Flip to composing so FoldersHomeSection mounts + routes it.
@@ -189,11 +192,11 @@ struct CanvasHome: View {
         // composer input — one surface, no overlap. Floats at the bottom, rides above the keyboard.
         // Shown while composing (incl. inside a folder interior, where the composer is contextual).
         .overlay(alignment: .bottom) {
-            if phase == .composing {
+            if phase == .composing || isSearching {
                 VStack(spacing: 10) {
-                    // Floating glass buttons above the dock (settings over search), aligned over the
-                    // composer's trailing icon column; fade out while composing/focused.
-                    if !composerFocused {
+                    // Floating glass buttons above the dock (settings over new-folder), aligned over the
+                    // composer's trailing icon column; on the resting home only, fade out while focused.
+                    if phase == .composing && !composerFocused {
                         VStack(spacing: 10) {
                             Button(action: onSettings) {
                                 Image("FilLogo")
@@ -204,16 +207,14 @@ struct CanvasHome: View {
                             }
                             .buttonStyle(.plain).accessibilityLabel("Settings")
 
-                            Button {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true }
-                            } label: {
-                                Image(systemName: "magnifyingglass")
+                            Button { newFolderRequest = true } label: {
+                                Image(systemName: "folder.badge.plus")
                                     .font(.system(size: 20, weight: .semibold))
                                     .foregroundStyle(Theme.primaryText)
                                     .frame(width: 56, height: 56)
                                     .glassEffect(.regular.interactive(), in: .circle)
                             }
-                            .buttonStyle(.plain).accessibilityLabel("search your thoughts")
+                            .buttonStyle(.plain).accessibilityLabel("new folder")
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.trailing, 14)   // line up with the composer's trailing icon
@@ -221,10 +222,16 @@ struct CanvasHome: View {
                     }
 
                     VStack(spacing: 12) {
-                        HomeBasket(
-                            onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
-                            showBin: !folderInteriorOpen
-                        )
+                        // Above the composer: recent-search chips in search (when the query's empty),
+                        // else the Bin / selection baskets.
+                        if isSearching {
+                            if query.isEmpty && !recentSearches.isEmpty { recentChipsRow }
+                        } else {
+                            HomeBasket(
+                                onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
+                                showBin: !folderInteriorOpen
+                            )
+                        }
                         composerBar
                     }
                     .padding(14)
@@ -333,14 +340,14 @@ struct CanvasHome: View {
                 if let saved = savedSearchPhase {
                     savedSearchPhase = nil
                     withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = saved }
-                    if saved == .querying { queryFocused = true }
+                    if saved == .querying { composerFocused = true }
                 } else if phase != .querying && phase != .results {
                     beginSurface()
                 }
             } else {
                 // Going home: keep the query + results so they're still there on return. Don't clear.
                 if phase == .querying || phase == .results { savedSearchPhase = phase }
-                queryFocused = false
+                composerFocused = false
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .composing }
                 // Tap-to-focus: return to the resting home (folders visible); don't raise the keyboard.
             }
@@ -354,19 +361,17 @@ struct CanvasHome: View {
         .onChange(of: screensaverActive) { _, active in
             if active {
                 composerFocused = false
-                queryFocused = false
                 // A screensaver launched from Settings dismisses its sheet ~0.35s later, and SwiftUI
                 // would otherwise restore first responder to the composer — re-clear once it settles.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
                     if screensaverActive {
                         composerFocused = false
-                        queryFocused = false
                     }
                 }
             } else {
                 switch phase {
                 case .composing: break   // tap-to-focus: don't auto-raise the composer keyboard
-                case .querying:  queryFocused = true
+                case .querying:  composerFocused = true
                 default:         break
                 }
             }
@@ -413,7 +418,7 @@ struct CanvasHome: View {
         todoFilIDs = []
         revealedResultIDs = []
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
-        queryFocused = true
+        composerFocused = true
     }
 
     // MARK: - Capture states
@@ -437,17 +442,25 @@ struct CanvasHome: View {
         .transition(.opacity)
     }
 
+    /// In search mode the composer edits the query; otherwise the capture text.
+    private var composerText: Binding<String> {
+        Binding(
+            get: { isSearching ? query : text },
+            set: { if isSearching { query = $0 } else { text = $0 } }
+        )
+    }
+
     /// The always-on composer bar, pinned at the bottom over the keyboard (see body overlay).
     private var composerBar: some View {
         ComposerBar(
-            text: $text,
+            text: composerText,
             todos: $composeTodos,
             selectedPhotos: $photoItems,
             stagedImageData: pendingPhotos.map(\.data),
             isProcessing: false,
             contextLabel: contextFolder.map { "Add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
             focus: $composerFocused,
-            showsFolderActions: contextFolder == nil,   // only on the folders root, not inside a folder
+            searchMode: isSearching,
             onSend: { Task { await createFil() } },
             onRecordVoice: startVoiceCapture,
             onRemoveStagedImage: { index in
@@ -455,8 +468,8 @@ struct CanvasHome: View {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos.remove(at: index) }
                 }
             },
-            onNewFolder: { newFolderRequest = true },
-            onOrganize: { organizeRequest = true }
+            onEnterSearch: { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true } },
+            onSubmitSearch: { Task { await runQuery() } }
         )
     }
 
@@ -514,84 +527,30 @@ struct CanvasHome: View {
 
     // MARK: - Surfacing states
 
-    /// The query field to surface past fils, positioned exactly like the composer's "let a thought
-    /// be" entrance — upper-left, left-aligned. Opened from the header search.
-    private var queryField: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            TextField("", text: $query, axis: .vertical)
-                .font(Theme.dmSans(20, weight: .medium))
-                .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(.leading)
-                .focused($queryFocused)
-                .submitLabel(.search)
-                .overlay(alignment: .topLeading) {
-                    if query.isEmpty {
-                        if StoreManager.shared.isPro {
-                            // Pro: rotate through the smart-query examples (temporal/type/to-dos) —
-                            // accurate suggestions because cloud surfacing can actually answer them.
-                            TimelineView(.periodic(from: .now, by: Self.queryPromptInterval)) { context in
-                                let index = Int(context.date.timeIntervalSinceReferenceDate / Self.queryPromptInterval) % Self.queryPrompts.count
-                                let prompt = Self.queryPrompts[index]
-                                let display = prompt == "search your thoughts" ? prompt : "“\(prompt)”"
-                                AnimatedGradientRevealText(text: display, maxDuration: 1.2, settledOpacity: 0.4)
-                                    .font(Theme.dmSans(20, weight: .medium))
-                                    .foregroundStyle(Theme.primaryText)
-                            }
-                            .allowsHitTesting(false)
-                        } else {
-                            // Free: keyword-only search, so don't dangle smart-query suggestions.
-                            AnimatedGradientRevealText(text: "search by keyword", maxDuration: 1.2, settledOpacity: 0.4)
-                                .font(Theme.dmSans(20, weight: .medium))
-                                .foregroundStyle(Theme.primaryText)
-                                .allowsHitTesting(false)
-                        }
-                    }
-                }
-                // A vertical-axis TextField wraps long queries, but the return key inserts a newline
-                // instead of submitting; treat that newline as "search" so return still runs the query.
-                .onChange(of: query) { _, newValue in
-                    if newValue.contains("\n") {
-                        query = newValue.replacingOccurrences(of: "\n", with: "")
+    /// Recently-searched terms as tappable chips, shown in the dock's top slot (above the composer)
+    /// while searching with an empty query. Tap to re-run.
+    private var recentChipsRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(recentSearches, id: \.self) { term in
+                    Button {
+                        query = term
                         Task { await runQuery() }
+                    } label: {
+                        Text(term)
+                            .font(Theme.dmSans(14, weight: .medium))
+                            .foregroundStyle(Theme.secondaryText)
+                            .lineLimit(1)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(Capsule().fill(Theme.primaryText.opacity(0.06)))
                     }
+                    .buttonStyle(.plain)
                 }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(.horizontal, 20)
-        .padding(.top, 80)
-        .transition(.opacity)
-    }
-
-
-    /// Recently-searched terms as tappable glass chips, bottom-anchored so they ride above the
-    /// keyboard on the search screen. Tap to re-run.
-    private var recentChipsBar: some View {
-        VStack {
-            Spacer()
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(recentSearches, id: \.self) { term in
-                        Button {
-                            query = term
-                            Task { await runQuery() }
-                        } label: {
-                            Text(term)
-                                .font(Theme.dmSans(14, weight: .medium))
-                                .foregroundStyle(Theme.secondaryText)
-                                .lineLimit(1)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 8)
-                                .glassEffect(.regular, in: .capsule)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 20)
             }
-            .scrollIndicators(.hidden)
         }
-        .padding(.bottom, 12)
+        .scrollIndicators(.hidden)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Two-column grid for the surfaced fils. Blobs fill the column width; tweak spacing here.
@@ -653,9 +612,10 @@ struct CanvasHome: View {
             }
             .padding(.horizontal, 20)
             .padding(.top, 80)
-            .padding(.bottom, 80)
+            .padding(.bottom, 20)
         }
         .scrollIndicators(.hidden)
+        .contentMargins(.bottom, dockHeight + 16, for: .scrollContent)   // clear the composer dock
         .transition(.opacity)
     }
 
@@ -1225,7 +1185,7 @@ struct CanvasHome: View {
         guard !q.isEmpty else { return }
 
         recordSearch(q)
-        queryFocused = false
+        composerFocused = false
         summary = ""
         surfaceError = nil
         results = []

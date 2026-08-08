@@ -7,7 +7,7 @@ import UIKit
 /// The folder browser's page background: `Theme.background` nudged toward the primary color so it
 /// reads as the same soft gray as the blurred header. The blur lifts much more over black than over
 /// white, so dark mode needs a bigger nudge to match.
-private struct FolderBrowserBackground: View {
+struct FolderBrowserBackground: View {
     @Environment(\.colorScheme) private var scheme
     var body: some View {
         Theme.background
