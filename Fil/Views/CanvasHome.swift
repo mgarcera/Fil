@@ -204,6 +204,7 @@ struct CanvasHome: View {
                                         .frame(width: 24, height: 24)
                                         .frame(width: 56, height: 56)
                                         .glassEffect(.regular.interactive(), in: .circle)
+                                        .contentShape(Circle())
                                 }
                                 .buttonStyle(.plain).accessibilityLabel("Settings")
 
@@ -213,12 +214,13 @@ struct CanvasHome: View {
                                         .foregroundStyle(Theme.primaryText)
                                         .frame(width: 56, height: 56)
                                         .glassEffect(.regular.interactive(), in: .circle)
+                                        .contentShape(Circle())
                                 }
                                 .buttonStyle(.plain).accessibilityLabel("new folder")
                             }
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .padding(.trailing, 14)   // line up with the composer's trailing icon
-                            .transition(.opacity)
+                            .transition(.scale.combined(with: .opacity))   // minimize/maximize, not fade
                         }
                     }
 
@@ -240,7 +242,8 @@ struct CanvasHome: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
-                .animation(.spring(response: 0.4, dampingFraction: 0.85), value: composerFocused)
+                // Quick snappy minimize/maximize for the FABs as focus toggles.
+                .animation(.snappy(duration: 0.2), value: composerFocused)
                 // Measure the WHOLE dock (floating buttons + composer) so scroll content clears it all.
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
