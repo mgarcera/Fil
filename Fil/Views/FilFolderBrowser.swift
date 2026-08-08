@@ -568,7 +568,7 @@ struct FolderInteriorView: View {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
                 Text(cased(cardContent(note)))
-                    .font(Theme.fredoka(15, weight: .medium))
+                    .font(Theme.fredoka(15, weight: .regular))
                     .foregroundStyle(Theme.primaryText)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -590,11 +590,11 @@ struct FolderInteriorView: View {
             ZStack {
                 Theme.cardBackground
                 Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed)
-                    .opacity(0.28)
+                    .opacity(0.14)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
     }
 
     /// The row's leading rich component: a rounded photo thumbnail for image fils, else the fil blob.

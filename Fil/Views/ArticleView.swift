@@ -161,7 +161,6 @@ struct ArticleView: View {
                 endPoint: .trailing
             )
             .frame(height: 2)
-            .blendMode(.plusLighter)
             .allowsHitTesting(false)
             .ignoresSafeArea()
         }

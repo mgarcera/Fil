@@ -127,7 +127,7 @@ struct ComposerBar: View {
             if trimmedText.isEmpty, dissolvingText == nil {
                 if let contextLabel {
                     AnimatedGradientRevealText(text: contextLabel, maxDuration: 1.2, settledOpacity: 0.4)
-                        .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
+                        .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                         .allowsHitTesting(false)
                         .id(contextLabel)   // re-reveal when the folder context changes
                 } else {
@@ -136,13 +136,13 @@ struct ComposerBar: View {
             }
 
             TextField("", text: $text, axis: .vertical)
-                .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
+                .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                 .lineLimit(1...4).focused(focus).submitLabel(.return)
                 .opacity(dissolvingText == nil ? 1 : 0)
 
             if let dissolvingText {
                 GradientDissolveText(text: dissolvingText)
-                    .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
+                    .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                     .allowsHitTesting(false)
             }
         }
@@ -167,7 +167,7 @@ struct ComposerBar: View {
         TimelineView(.periodic(from: .now, by: placeholderInterval)) { context in
             let index = Int(context.date.timeIntervalSinceReferenceDate / placeholderInterval) % placeholders.count
             AnimatedGradientRevealText(text: placeholders[index], maxDuration: 1.2, settledOpacity: 0.4)
-                .font(Theme.fredoka(15, weight: .semibold)).foregroundStyle(Theme.primaryText)
+                .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
         }
         .allowsHitTesting(false)
     }
