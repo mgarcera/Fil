@@ -52,12 +52,11 @@ struct ContentView: View {
 
             // The capture-first home: type to capture, header search to surface. Replaces the day
             // timeline + bottom composer + FABs. Text-only capture for now.
-            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen, deepLink: $homeDeepLink)
+            CanvasHome(searchActive: $searchActive, showingResults: $showingResults, newSearchRequested: $newSearchRequested, screensaverActive: activeScreensaverMode != nil || showKoiPond, folderInteriorOpen: $folderInteriorOpen, deepLink: $homeDeepLink, onSettings: { SoundscapeManager.shared.playSettingsSound(); showFilSetup = true })
 
-            // The header floats as a top-pinned sibling (not a ScrollView overlay) so its
-            // glass controls reliably receive taps while content scrolls beneath it. Hidden inside a
-            // folder interior (which has its own back button) so it doesn't track onto every page.
-            if !folderInteriorOpen {
+            // The header floats top-pinned only during search — it holds the back switcher (+ refresh).
+            // On the home, settings + search live as floating buttons over the composer instead.
+            if !folderInteriorOpen && searchActive {
                 VStack(spacing: 0) {
                     header
                     Spacer(minLength: 0)
@@ -212,17 +211,9 @@ struct ContentView: View {
     /// Search/back + fil in one glass container. Order follows handedness: search/back then fil on
     /// the left; fil then search/back on the right (so the switcher stays toward the screen edge).
     private var searchFilCluster: some View {
-        HStack(spacing: 2) {
-            if controlsOnLeft {
-                searchBackButton
-                filButton
-            } else {
-                filButton
-                searchBackButton
-            }
-        }
-        .padding(.horizontal, 6)
-        .glassEffect()
+        searchBackButton
+            .padding(.horizontal, 6)
+            .glassEffect()
     }
 
     /// True when tapping/swiping the switcher does nothing (composer, empty library).
@@ -259,22 +250,6 @@ struct ContentView: View {
                 UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                 toggleSearch()
             }
-    }
-
-    private var filButton: some View {
-        Button {
-            SoundscapeManager.shared.playSettingsSound()
-            showFilSetup = true
-        } label: {
-            Image("FilLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 24, height: 24)
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Settings")
     }
 
     /// Shown only while surfaced results are up: start a fresh search.

@@ -71,6 +71,8 @@ struct CanvasHome: View {
     @Binding var folderInteriorOpen: Bool
     /// A pending Lock Screen deep link (Bin / a folder), routed by the folders section once it mounts.
     @Binding var deepLink: HomeDeepLink?
+    /// Opens Settings (owned by ContentView) — driven by the floating settings button over the composer.
+    var onSettings: () -> Void = {}
     /// The folder the composer is currently scoped to (nil at the root) — makes the bar contextual.
     @State private var contextFolder: Folder?
     /// Live height of the bottom dock (composer + baskets), so scroll content insets track it.
@@ -189,20 +191,30 @@ struct CanvasHome: View {
         .overlay(alignment: .bottom) {
             if phase == .composing {
                 VStack(spacing: 10) {
-                    // A floating glass search button above the dock, aligned over the composer's
-                    // trailing icon column; fades out while composing/focused.
+                    // Floating glass buttons above the dock (settings over search), aligned over the
+                    // composer's trailing icon column; fade out while composing/focused.
                     if !composerFocused {
-                        Button {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true }
-                        } label: {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 20, weight: .semibold))
-                                .foregroundStyle(Theme.primaryText)
-                                .frame(width: 56, height: 56)
-                                .glassEffect(.regular.interactive(), in: .circle)
+                        VStack(spacing: 10) {
+                            Button(action: onSettings) {
+                                Image("FilLogo")
+                                    .resizable().scaledToFit()
+                                    .frame(width: 24, height: 24)
+                                    .frame(width: 56, height: 56)
+                                    .glassEffect(.regular.interactive(), in: .circle)
+                            }
+                            .buttonStyle(.plain).accessibilityLabel("Settings")
+
+                            Button {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true }
+                            } label: {
+                                Image(systemName: "magnifyingglass")
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundStyle(Theme.primaryText)
+                                    .frame(width: 56, height: 56)
+                                    .glassEffect(.regular.interactive(), in: .circle)
+                            }
+                            .buttonStyle(.plain).accessibilityLabel("search your thoughts")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("search your thoughts")
                         .frame(maxWidth: .infinity, alignment: .trailing)
                         .padding(.trailing, 14)   // line up with the composer's trailing icon
                         .transition(.scale.combined(with: .opacity))
@@ -217,11 +229,12 @@ struct CanvasHome: View {
                     }
                     .padding(14)
                     .glassEffect(.regular, in: .rect(cornerRadius: 30))
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 8)
                 .animation(.spring(response: 0.4, dampingFraction: 0.85), value: composerFocused)
+                // Measure the WHOLE dock (floating buttons + composer) so scroll content clears it all.
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
         }
         // While recording, a stop button sits below the pulsing gooey blob.
