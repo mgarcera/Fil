@@ -597,22 +597,16 @@ struct FolderInteriorView: View {
         .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
     }
 
-    /// The row's leading rich component. Plain-note blobs and photo thumbnails stretch to the card's
-    /// height (so long notes don't leave dead space beside them); link/voice markers stay fixed squares.
+    /// The row's leading rich component. Photo thumbnails stretch to the card's height; the fil blob
+    /// and link/voice markers stay fixed squares, top-aligned beside long notes.
     @ViewBuilder private func rowRich(_ note: Note) -> some View {
         if note.isImageFil {
             photoThumb(note)
                 .frame(width: 52)
                 .frame(minHeight: 52, maxHeight: .infinity)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        } else if note.isLinkFil || !note.audioFilePath.isEmpty {
-            filMarker(note, size: 48)
         } else {
-            // A squiggle noodle that fills the card's height — snakes longer as the note grows.
-            SquiggleShape(seed: note.blobShapeSeed)
-                .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                .frame(width: 48)
-                .frame(minHeight: 48, maxHeight: .infinity)
+            filMarker(note, size: 48)
         }
     }
 
@@ -756,38 +750,6 @@ struct FolderShape: Shape {
         path.addRoundedRect(in: body, cornerSize: CGSize(width: radius, height: radius))
 
         return path
-    }
-}
-
-/// A plain-note fil mark that fills its frame: a wavy centerline stroked with round caps, so it snakes
-/// down the card and gains more wiggles as a note grows longer. `seed` varies each fil's wiggle phase.
-struct SquiggleShape: Shape {
-    let seed: Double
-
-    func path(in rect: CGRect) -> Path {
-        let w = rect.width
-        let h = rect.height
-        let halfWidth = w * 0.30
-        let amp = min(w * 0.20, w / 2 - halfWidth - 1)
-        let cycles = max(1.0, (h / 64).rounded())
-        let phase = seed * .pi * 2
-        let cx = rect.midX
-        let top = rect.minY + halfWidth
-        let bottom = rect.maxY - halfWidth
-
-        func centerX(_ y: CGFloat) -> CGFloat {
-            let t = (y - top) / max(bottom - top, 1)
-            return cx + amp * sin(t * .pi * 2 * cycles + phase)
-        }
-
-        var line = Path()
-        line.move(to: CGPoint(x: centerX(top), y: top))
-        let steps = 60
-        for i in 1...steps {
-            let y = top + (bottom - top) * CGFloat(i) / CGFloat(steps)
-            line.addLine(to: CGPoint(x: centerX(y), y: y))
-        }
-        return line.strokedPath(StrokeStyle(lineWidth: halfWidth * 2, lineCap: .round, lineJoin: .round))
     }
 }
 
