@@ -62,12 +62,44 @@ final class FilSelectionStore {
     /// Copy the selected fils to the clipboard as Markdown (thought + link + to-do checkboxes).
     /// Non-destructive — the selection stays intact.
     func copySelectedAsMarkdown() {
-        let md = selectedNotes().map(Self.markdown(for:)).joined(separator: "\n\n---\n\n")
-        guard !md.isEmpty else { return }
+        copyToPasteboard(selectedNotes().map(Self.markdown(for:)).joined(separator: "\n\n---\n\n"))
+    }
+
+    /// Copy the selected fils as plain text (no Markdown syntax) — thought, link, and bulleted to-dos.
+    func copySelectedAsText() {
+        copyToPasteboard(selectedNotes().map(Self.plainText(for:)).joined(separator: "\n\n"))
+    }
+
+    private func copyToPasteboard(_ string: String) {
+        guard !string.isEmpty else { return }
         #if canImport(UIKit)
-        UIPasteboard.general.string = md
+        UIPasteboard.general.string = string
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         #endif
+    }
+
+    /// One fil as plain text: title, link URL, thought body, and to-dos as bullets (✓ when done).
+    private static func plainText(for note: Note) -> String {
+        var blocks: [String] = []
+        let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if !title.isEmpty { blocks.append(title) }
+        if note.isLinkFil, let url = note.sourceURL?.absoluteString { blocks.append(url) }
+        if !body.isEmpty { blocks.append(body) }
+
+        let bullets = note.todos.indices.compactMap { index -> String? in
+            let text = note.todos[index].trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !text.isEmpty else { return nil }
+            let done = note.completedTodos.indices.contains(index) && note.completedTodos[index]
+            return "• \(text)\(done ? " ✓" : "")"
+        }
+        if !bullets.isEmpty { blocks.append(bullets.joined(separator: "\n")) }
+
+        if note.isImageFil { blocks.append("(photo)") }
+        if !note.audioFilePath.isEmpty { blocks.append("(voice note)") }
+
+        return blocks.isEmpty ? "(empty fil)" : blocks.joined(separator: "\n\n")
     }
 
     /// One fil as a Markdown block: optional `## title`, link URL, thought body, and to-dos as

@@ -48,9 +48,10 @@ struct HomeBasket: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 14) {
                 Text("\(selected.count)")
-                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
-                    .padding(.horizontal, 7).padding(.vertical, 2)
-                    .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
+                    .font(.system(size: 20, weight: .semibold)).foregroundStyle(Theme.secondaryText)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(Theme.primaryText.opacity(0.08)))
                 Spacer()
                 Button { pendingBulkLandfil = BulkLandfilRequest() } label: { iconLabel("trash") }
                     .foregroundStyle(.red)
@@ -60,7 +61,10 @@ struct HomeBasket: View {
                     }
                 } label: { iconLabel("folder") }
                 .disabled(selection.folders().isEmpty)
-                Button { copyAsMarkdown() } label: { iconLabel(copied ? "checkmark" : "doc.on.doc") }
+                Menu {
+                    Button { copyAsText() } label: { Label("Copy as text", systemImage: "doc.plaintext") }
+                    Button { copyAsMarkdown() } label: { Label("Copy as Markdown", systemImage: "doc.richtext") }
+                } label: { iconLabel(copied ? "checkmark" : "doc.on.doc") }
                 Button { withAnimation(.snappy) { selection.clear() } } label: { iconLabel("xmark") }
             }
             .foregroundStyle(Theme.primaryText)
@@ -96,8 +100,10 @@ struct HomeBasket: View {
 
     // MARK: - Shared pieces
 
-    private func copyAsMarkdown() {
-        selection.copySelectedAsMarkdown()
+    private func copyAsMarkdown() { selection.copySelectedAsMarkdown(); flashCopied() }
+    private func copyAsText() { selection.copySelectedAsText(); flashCopied() }
+
+    private func flashCopied() {
         withAnimation(.snappy) { copied = true }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(1.2))
