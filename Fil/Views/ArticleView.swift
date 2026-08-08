@@ -27,8 +27,6 @@ struct ArticleView: View {
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
     @State private var player = AudioPlayerViewModel()
-    private let pinnedFilStore = PinnedFilStore.shared
-    @State private var pinnedFil: PinnedFilSnapshot? = PinnedFilStore.shared.pinnedFil
     @State private var linkBrowserURL: URL?
     @State private var showLandfilConfirmation = false
     @State private var pendingLandfilTodo: ArticleTodoLandfil?
@@ -42,8 +40,6 @@ struct ArticleView: View {
     @State private var isAddingTodo = false
     @State private var newTodoText = ""
     @FocusState private var isTodoFieldFocused: Bool
-    @State private var pinToastMessage: String?
-    @State private var pinToastDismissTask: Task<Void, Never>?
     @State private var transcriptDraftBaseline = ""
     @State private var selectedImageFilIndex = 0
     @State private var imagePreviewURL: URL?
@@ -82,10 +78,6 @@ struct ArticleView: View {
     private var isTranscriptEdited: Bool {
         guard let originalTranscript = note.originalTranscript else { return false }
         return originalTranscript != note.transcript
-    }
-
-    private var isCurrentFilPinned: Bool {
-        pinnedFil?.id == note.uuid
     }
 
     private var transcriptBinding: Binding<String> {
@@ -161,9 +153,6 @@ struct ArticleView: View {
 
         }
         .ignoresSafeArea(edges: ignoresTopSafeArea ? .top : [])
-        .overlay(alignment: .topTrailing) {
-            pinToast
-        }
         // Hide the nav bar only for a *root* link fil (it has its own open + swipe-to-dismiss). A
         // link fil pushed inside the filament stack keeps its bar, so there's a back button.
         .toolbar(note.isLinkFil && filSheetPath.isEmpty ? .hidden : .automatic, for: .navigationBar)
@@ -177,42 +166,31 @@ struct ArticleView: View {
         .toolbar {
             if showsCloseButton && !note.isLinkFil {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                    }
-                    .accessibilityLabel("Close thought")
+                    Button { dismiss() } label: { closeBlob }
+                        .accessibilityLabel("Close thought")
                 }
             }
 
             if !note.isLinkFil {
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    // Info: the fil's metadata (all that's left of the old ⋯ menu).
                     Menu {
-                        Button {
-                            togglePinnedFil()
-                        } label: {
-                            Label(isCurrentFilPinned ? "Unpin from lock screen" : "Pin to lock screen",
-                                  systemImage: isCurrentFilPinned ? "pin.slash" : "pin")
-                        }
-
-                        ShareLink(item: filShareCard, preview: SharePreview("A thought from Fil")) {
-                            Label("Share", systemImage: "square.and.arrow.up")
-                        }
-
-                        Button(role: .destructive) {
-                            showLandfilConfirmation = true
-                        } label: {
-                            Label("Landfil", systemImage: "trash")
-                        }
-
                         Section("Created") {
                             Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
+                        Image(systemName: "info.circle")
                     }
-                    .accessibilityLabel("More")
+                    .accessibilityLabel("Info")
+
+                    // Landfil, promoted out of the menu — sits red next to Edit.
+                    Button(role: .destructive) {
+                        showLandfilConfirmation = true
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .tint(.red)
+                    .accessibilityLabel("Landfil")
 
                     Button {
                         toggleEditing()
@@ -264,25 +242,17 @@ struct ArticleView: View {
         return nil
     }
 
-    @ViewBuilder
-    private var pinToast: some View {
-        if let pinToastMessage {
-            HStack(spacing: 8) {
-                Image(systemName: "pin.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Theme.secondaryText)
-                Text(pinToastMessage)
-                    .font(Theme.dmSans(12, weight: .medium))
-                    .foregroundStyle(Theme.secondaryText)
+    /// The fil's own blob, used as the close control (tap to dismiss) in place of an ✕.
+    private var closeBlob: some View {
+        Group {
+            if note.isImageFil || !note.audioFilePath.isEmpty {
+                NoteCardView(note: note, cardHeight: 28)
+            } else {
+                NoteBlobShape(seed: note.blobShapeSeed)
+                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
             }
-            .padding(.horizontal, 14)
-            .frame(height: 36)
-            .glassEffect(.regular, in: .capsule)
-            .contentShape(Capsule())
-            .padding(.top, 8)
-            .padding(.trailing, 16)
-            .transition(.move(edge: .top).combined(with: .opacity))
         }
+        .frame(width: 28, height: 28)
     }
 
     private var heroImage: some View {
@@ -652,57 +622,6 @@ struct ArticleView: View {
             transcriptDraftBaseline = note.transcript
             withAnimation(.snappy(duration: 0.18)) {
                 isEditingTranscript = true
-            }
-        }
-    }
-
-    /// The fil rendered as a shareable branded card. Cheap to build (value copy); the bitmap is
-    /// only produced when the user actually picks a share destination.
-    private var filShareCard: FilShareCardData {
-        let title = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let transcript = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        return FilShareCardData(
-            title: title.isEmpty ? "Thought" : title,
-            excerpt: String(transcript.prefix(160)),
-            startHex: note.gradientStartHex,
-            endHex: note.gradientEndHex,
-            seed: note.blobShapeSeed
-        )
-    }
-
-    private func togglePinnedFil() {
-        SoundscapeManager.shared.playTabSound()
-
-        let willPin = !isCurrentFilPinned
-        if isCurrentFilPinned {
-            pinnedFilStore.unpin()
-            Task {
-                await PinnedFilLiveActivityController.unpin()
-            }
-        } else {
-            let snapshot = pinnedFilStore.pin(note)
-            Task {
-                await PinnedFilLiveActivityController.pin(snapshot)
-            }
-        }
-
-        withAnimation(.snappy(duration: 0.18)) {
-            pinnedFil = pinnedFilStore.pinnedFil
-        }
-
-        showPinToast(willPin ? "Pinned to live activity" : "Unpinned from live activity")
-    }
-
-    private func showPinToast(_ message: String) {
-        pinToastDismissTask?.cancel()
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-            pinToastMessage = message
-        }
-        pinToastDismissTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) {
-                pinToastMessage = nil
             }
         }
     }

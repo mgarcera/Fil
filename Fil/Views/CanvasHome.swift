@@ -789,32 +789,13 @@ struct CanvasHome: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Long-press menu on a surfaced fil: pin to the lock screen, or landfil it (confirmed).
+    /// Long-press menu on a surfaced fil: landfil it (confirmed). (Pinning is being reworked.)
     @ViewBuilder
     private func filContextMenu(_ note: Note) -> some View {
-        Button {
-            togglePin(note)
-        } label: {
-            let pinned = PinnedFilStore.shared.isPinned(note)
-            Label(pinned ? "Unpin from lock screen" : "Pin to lock screen",
-                  systemImage: pinned ? "pin.slash" : "pin")
-        }
         Button(role: .destructive) {
             pendingLandfilNote = note
         } label: {
             Label("Landfil", systemImage: "trash")
-        }
-    }
-
-    /// Mirrors ArticleView.togglePinnedFil (store + Live Activity).
-    private func togglePin(_ note: Note) {
-        SoundscapeManager.shared.playTabSound()
-        if PinnedFilStore.shared.isPinned(note) {
-            PinnedFilStore.shared.unpin()
-            Task { await PinnedFilLiveActivityController.unpin() }
-        } else {
-            let snapshot = PinnedFilStore.shared.pin(note)
-            Task { await PinnedFilLiveActivityController.pin(snapshot) }
         }
     }
 
