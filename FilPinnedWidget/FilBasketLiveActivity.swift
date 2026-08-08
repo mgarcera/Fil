@@ -16,13 +16,15 @@ struct FilBasketLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: FilBasketLiveActivityAttributes.self) { context in
             FilBasketLockScreenView(state: context.state)
-                .activityBackgroundTint(Color(red: 0.05, green: 0.05, blue: 0.06))
+                .activityBackgroundTint(nil)   // system default (adaptive/translucent) rather than a solid fill
                 .activitySystemActionForegroundColor(.white)
                 .widgetURL(URL(string: "fil://basket"))
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    BinMark(size: 24)
+                    Text("Bin")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text("\(context.state.count)")
@@ -36,13 +38,17 @@ struct FilBasketLiveActivity: Widget {
                         .padding(.bottom, 12)
                 }
             } compactLeading: {
-                BinMark(size: 18)
+                Text("Bin")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(.white)
             } compactTrailing: {
                 Text("\(context.state.count)")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
             } minimal: {
-                BinMark(size: 16)
+                Text("Bin")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
             }
             .widgetURL(URL(string: "fil://basket"))
             .keylineTint(Color(red: 0.2, green: 0.75, blue: 0.6))

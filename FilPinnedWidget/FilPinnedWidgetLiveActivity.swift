@@ -21,7 +21,7 @@ struct FilPinnedWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PinnedFolderLiveActivityAttributes.self) { context in
             PinnedFolderLockScreenView(state: context.state)
-                .activityBackgroundTint(Color(red: 0.05, green: 0.05, blue: 0.06))
+                .activityBackgroundTint(nil)   // system default (adaptive/translucent) rather than a solid fill
                 .activitySystemActionForegroundColor(.white)
                 .widgetURL(URL(string: "fil://folder?id=\(context.attributes.folderID.uuidString)"))
         } dynamicIsland: { context in
@@ -206,64 +206,9 @@ struct FolderMark: View {
     }
 }
 
-/// A bespoke Bin silhouette — a rounded lip over a gently tapering tub — built in the same spirit as
-/// `FolderShape`. Used as the Bin island glyph.
-struct BinShape: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let w = rect.width
-        let h = rect.height
-        let r = w * 0.16
-
-        // Lip across the top.
-        let lipHeight = h * 0.2
-        let lip = CGRect(x: rect.minX, y: rect.minY, width: w, height: lipHeight + r)
-        path.addRoundedRect(in: lip, cornerSize: CGSize(width: r, height: r))
-
-        // Tub below the lip, tapering slightly inward toward the base with rounded bottom corners.
-        let tubTop = rect.minY + lipHeight + h * 0.08
-        let topInset = w * 0.12
-        let bottomInset = w * 0.22
-        var tub = Path()
-        tub.move(to: CGPoint(x: rect.minX + topInset, y: tubTop))
-        tub.addLine(to: CGPoint(x: rect.maxX - topInset, y: tubTop))
-        tub.addLine(to: CGPoint(x: rect.maxX - bottomInset, y: rect.maxY - r))
-        tub.addQuadCurve(
-            to: CGPoint(x: rect.maxX - bottomInset - r, y: rect.maxY),
-            control: CGPoint(x: rect.maxX - bottomInset, y: rect.maxY)
-        )
-        tub.addLine(to: CGPoint(x: rect.minX + bottomInset + r, y: rect.maxY))
-        tub.addQuadCurve(
-            to: CGPoint(x: rect.minX + bottomInset, y: rect.maxY - r),
-            control: CGPoint(x: rect.minX + bottomInset, y: rect.maxY)
-        )
-        tub.closeSubpath()
-        path.addPath(tub)
-
-        return path
-    }
-}
-
-/// Fixed Bin gradient (teal → blue), echoing the capture accent.
+/// Fixed Bin gradient (teal → blue), echoing the capture accent. Used by the Bin card's bottom glow.
 let binStartHex = "#33BF99"
 let binEndHex = "#408CD9"
-
-struct BinMark: View {
-    let size: CGFloat
-
-    var body: some View {
-        BinShape()
-            .fill(
-                LinearGradient(
-                    colors: [Color(hex: binStartHex), Color(hex: binEndHex)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .frame(width: size, height: size)
-            .accessibilityHidden(true)
-    }
-}
 
 /// A soft gradient glow pooled at the bottom of the card, echoing the article view.
 /// Fills whatever space it's given; the glow circles are centered just below the bottom
