@@ -178,16 +178,6 @@ struct ArticleView: View {
         .toolbar {
             if !note.isLinkFil {
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    // Info: the fil's metadata (all that's left of the old ⋯ menu).
-                    Menu {
-                        Section("Created") {
-                            Text(note.timestamp, format: .dateTime.weekday(.wide).month(.wide).day().year().hour().minute())
-                        }
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
-                    .accessibilityLabel("Info")
-
                     // Landfil, promoted out of the menu — sits red next to Edit.
                     Button(role: .destructive) {
                         showLandfilConfirmation = true
