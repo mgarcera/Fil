@@ -36,11 +36,14 @@ struct SelectableTextView: UIViewRepresentable {
     }
 
     /// Body-relative Dynamic Type fonts so the selectable transcript scales like the rest of the app.
+    /// Fredoka (matching the fil card), with a system fallback if the bundled font isn't registered.
     private var bodyFont: UIFont {
-        UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 16))
+        let base = UIFont(name: "Fredoka-Regular", size: 16) ?? .systemFont(ofSize: 16)
+        return UIFontMetrics(forTextStyle: .body).scaledFont(for: base)
     }
     private var boldBodyFont: UIFont {
-        UIFontMetrics(forTextStyle: .body).scaledFont(for: .boldSystemFont(ofSize: 16))
+        let base = UIFont(name: "Fredoka-Medium", size: 16) ?? .boldSystemFont(ofSize: 16)
+        return UIFontMetrics(forTextStyle: .body).scaledFont(for: base)
     }
 
     func updateUIView(_ textView: UITextView, context: Context) {
@@ -135,7 +138,7 @@ struct SelectableTextView: UIViewRepresentable {
                 textView.selectedTextRange = nil
             }
 
-            let todoAction = UIAction(title: "Add to do", image: UIImage(systemName: "checkmark.circle")) { [weak self] _ in
+            let todoAction = UIAction(title: "Add to-do", image: UIImage(systemName: "checkmark.circle")) { [weak self] _ in
                 guard let self else { return }
                 let selectedText = (textView.text as NSString).substring(with: range)
                 guard !selectedText.isEmpty else { return }

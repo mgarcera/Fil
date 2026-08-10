@@ -1,0 +1,440 @@
+import SwiftUI
+import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
+
+/// A full-screen "player" for a single fil, swipeable like a deck of tracks (up/down = prev/next fil).
+/// The fil's own gooey blob moves up top, with its title, meta, and to-dos below and a transport bar
+/// that adapts: voice fils get real play/scrub (the blob pulses while playing); other types get
+/// prev/next. Links are excluded upstream. Background is a static blurred wash (kind to the battery
+/// for a screen meant to be left open).
+struct FilFullScreenPlayer: View {
+    let notes: [Note]
+    let startID: UUID
+    var onClose: () -> Void = {}
+
+    @Environment(\.modelContext) private var context
+    @AppStorage("prefersLowercase") private var prefersLowercase = false
+
+    @State private var index: Int
+    @State private var navForward = true       // last nav direction, drives the slide transition
+    @State private var noteHeight: CGFloat = 0  // measured note-body height, capped at noteMaxHeight
+    @State private var audio = AudioPlayerViewModel()
+    @State private var showLandfil = false
+    @State private var showAddTodo = false
+    @State private var newTodoText = ""
+    @State private var editing = false          // expand-focused note editor
+    @State private var draft = ""               // editor buffer; committed to note.transcript on Done
+    @FocusState private var editorFocused: Bool
+
+    private let noteMaxHeight: CGFloat = 200
+
+    init(notes: [Note], startID: UUID, onClose: @escaping () -> Void = {}) {
+        self.notes = notes
+        self.startID = startID
+        self.onClose = onClose
+        _index = State(initialValue: max(0, notes.firstIndex { $0.uuid == startID } ?? 0))
+    }
+
+    private var note: Note { notes[min(index, notes.count - 1)] }
+    private var colors: [Color] { [Color(hex: note.gradientStartHex), Color(hex: note.gradientEndHex)] }
+    private var isVoice: Bool { !note.audioFilePath.isEmpty }
+
+    private func cased(_ s: String) -> String { prefersLowercase ? s.lowercased() : s }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            topBar
+            // The per-fil content slides on button navigation (no swipe).
+            ZStack {
+                filContent
+                    .id(note.uuid)
+                    .transition(.asymmetric(
+                        insertion: .move(edge: navForward ? .trailing : .leading).combined(with: .opacity),
+                        removal: .move(edge: navForward ? .leading : .trailing).combined(with: .opacity)))
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .simultaneousGesture(navSwipe)
+            if !editing { transport }
+        }
+        .padding(.horizontal, 26)
+        .padding(.top, 16)
+        .padding(.bottom, 28)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .foregroundStyle(.white)
+        // A tall sheet: the blurred gradient IS the sheet's background, native swipe-down reveals the
+        // dimmed page behind. No custom drag needed.
+        .presentationBackground { BlurredFilBackground(colors: colors) }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.hidden)
+        .task(id: note.uuid) { loadAudio() }
+        .alert("Landfil this fil?", isPresented: $showLandfil) {
+            Button("Landfil", role: .destructive) { landfil() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This thought will be deleted. This cannot be undone.")
+        }
+        .alert("Add to-do", isPresented: $showAddTodo) {
+            TextField("New to-do", text: $newTodoText)
+            Button("Add") { addTodo() }
+            Button("Cancel", role: .cancel) { newTodoText = "" }
+        }
+        #if canImport(UIKit)
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false; audio.stop() }
+        #else
+        .onDisappear { audio.stop() }
+        #endif
+    }
+
+    // MARK: - Deck
+
+    /// Horizontal swipe pages between fils (mirrors the ◀ ▶ buttons). Only fires on a clearly
+    /// horizontal drag, so the sheet's vertical swipe-down and the note's scroll are unaffected.
+    private var navSwipe: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onEnded { value in
+                guard !editing else { return }
+                guard abs(value.translation.width) > abs(value.translation.height),
+                      abs(value.translation.width) > 60 else { return }
+                advance(value.translation.width < 0 ? 1 : -1)
+            }
+    }
+
+    private func advance(_ delta: Int) {
+        let next = index + delta
+        guard notes.indices.contains(next) else { return }
+        audio.stop()
+        navForward = delta > 0
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+            index = next
+        }
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        #endif
+    }
+
+    private func loadAudio() {
+        audio.stop()
+        guard isVoice else { return }
+        audio.load(path: note.audioFilePath)
+    }
+
+    // MARK: - Actions
+
+    /// Append a to-do to the current fil (mutates in place — the deck array holds live objects).
+    private func addTodo() {
+        let text = newTodoText.trimmingCharacters(in: .whitespacesAndNewlines)
+        newTodoText = ""
+        guard !text.isEmpty else { return }
+        withAnimation(.snappy) { note.addTodo(text) }
+        try? context.save()
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
+    }
+
+    /// Delete the current fil. The deck array is a snapshot holding this (soon-deleted) object, so we
+    /// dismiss FIRST, then delete once the sheet is gone — never rendering a deleted model.
+    private func landfil() {
+        let target = note
+        audio.stop()
+        onClose()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            FilLandfil.cleanUpResources(for: target)
+            context.delete(target)
+            try? context.save()
+        }
+    }
+
+    // MARK: - Edit (expand-focused)
+
+    private func enterEdit() {
+        draft = note.transcript
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { editing = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { editorFocused = true }
+    }
+
+    private func finishEdit() {
+        note.transcript = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        try? context.save()
+        editorFocused = false
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { editing = false }
+    }
+
+    private func cancelEdit() {
+        editorFocused = false
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { editing = false }
+    }
+
+    // MARK: - Pieces
+
+    private var topBar: some View {
+        HStack {
+            if editing {
+                Button("Cancel") { cancelEdit() }.font(Theme.fredoka(13, weight: .medium))
+            } else {
+                Button(action: onClose) {
+                    Image(systemName: "chevron.down").font(.system(size: 17, weight: .semibold))
+                }
+            }
+            Spacer()
+            Text(editing ? "editing" : "\(cased(typeLabel))  ·  \(index + 1) / \(notes.count)")
+                .font(Theme.fredoka(12, weight: .medium)).monospacedDigit().opacity(0.7)
+            Spacer()
+            if editing {
+                Button("Done") { finishEdit() }.font(Theme.fredoka(13, weight: .semibold))
+            } else {
+                Menu {
+                    Button { enterEdit() } label: { Label("Edit note", systemImage: "pencil") }
+                    Button { newTodoText = ""; showAddTodo = true } label: { Label("Add to-do", systemImage: "checklist") }
+                    Button(role: .destructive) { showLandfil = true } label: { Label("Landfil", systemImage: "trash") }
+                } label: {
+                    Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold))
+                }
+            }
+        }
+        .foregroundStyle(.white.opacity(0.9))
+    }
+
+    private var blob: some View {
+        // While a voice fil is playing, breathe the blob (stand-in for real amplitude — metering is a
+        // follow-up). Otherwise it just wobbles.
+        TimelineView(.animation) { timeline in
+            let t = timeline.date.timeIntervalSinceReferenceDate
+            let amp: CGFloat = (isVoice && audio.isPlaying) ? CGFloat(0.5 + 0.5 * sin(t * 6)) : 0
+            FilPlayerBlob(colors: colors, seed: note.blobShapeSeed, amplitude: amp)
+                .frame(height: editing ? 90 : 260)
+                .shadow(color: .black.opacity(0.3), radius: 30, y: 18)
+        }
+    }
+
+    /// The per-fil block that slides on navigation: blob + title/meta/note/to-dos.
+    private var filContent: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 8)
+            blob
+            Spacer(minLength: 8)
+            info
+            if !editing { Spacer(minLength: 12) }
+        }
+    }
+
+    private var info: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(cased(displayTitle))
+                .font(Theme.instrumentSerif(editing ? 22 : 30))
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if editing {
+                TextEditor(text: $draft)
+                    .font(Theme.fredoka(16, weight: .regular))
+                    .foregroundStyle(.white)
+                    .tint(.white)
+                    .scrollContentBackground(.hidden)
+                    .focused($editorFocused)
+                    .frame(maxHeight: .infinity)
+            } else {
+                noteBody
+                todosBlock
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: editing ? .infinity : nil, alignment: .leading)
+    }
+
+    /// The fil's own text — fully open, but sized to its content: short notes shrink so the to-dos sit
+    /// right beneath them; long notes cap at `noteMaxHeight` and scroll (with a bottom fade).
+    @ViewBuilder private var noteBody: some View {
+        let text = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !text.isEmpty {
+            let capped = noteHeight > noteMaxHeight
+            ScrollView {
+                Text(cased(text))
+                    .font(Theme.fredoka(16, weight: .regular)).lineSpacing(5).opacity(0.92)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(GeometryReader { g in
+                        Color.clear.preference(key: NoteHeightKey.self, value: g.size.height)
+                    })
+            }
+            .scrollIndicators(.hidden)
+            .scrollDisabled(!capped)
+            .frame(height: noteHeight == 0 ? nil : min(noteHeight, noteMaxHeight))
+            .onPreferenceChange(NoteHeightKey.self) { noteHeight = $0 }
+            .mask(capped
+                  ? AnyView(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.9),
+                                                   .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+                  : AnyView(Color.black))
+            .padding(.top, 2)
+        }
+    }
+
+    @ViewBuilder private var todosBlock: some View {
+        let todos = note.todoRowItems
+        if !todos.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(todos) { item in
+                    HStack(spacing: 12) {
+                        playerCheckbox(done: item.done)
+                        Text(cased(item.text))
+                            .font(Theme.fredoka(16, weight: .light))
+                            .strikethrough(item.done, color: .white.opacity(0.6))
+                            .opacity(item.done ? 0.55 : 1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { toggleTodo(item) }
+                }
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    @ViewBuilder private var transport: some View {
+        if isVoice {
+            VStack(spacing: 16) {
+                scrubber
+                HStack(spacing: 44) {
+                    Button { advance(-1) } label: { Image(systemName: "backward.fill").font(.system(size: 22)) }
+                        .disabled(index == 0).opacity(index == 0 ? 0.3 : 1)
+                    Button { audio.togglePlayback() } label: {
+                        Image(systemName: audio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 58))
+                    }
+                    Button { advance(1) } label: { Image(systemName: "forward.fill").font(.system(size: 22)) }
+                        .disabled(index == notes.count - 1).opacity(index == notes.count - 1 ? 0.3 : 1)
+                }
+                .foregroundStyle(.white)
+            }
+        } else {
+            HStack(spacing: 80) {
+                Button { advance(-1) } label: { Image(systemName: "chevron.left").font(.system(size: 22)) }
+                    .disabled(index == 0).opacity(index == 0 ? 0.3 : 1)
+                Button { advance(1) } label: { Image(systemName: "chevron.right").font(.system(size: 22)) }
+                    .disabled(index == notes.count - 1).opacity(index == notes.count - 1 ? 0.3 : 1)
+            }
+            .foregroundStyle(.white)
+        }
+    }
+
+    private var scrubber: some View {
+        VStack(spacing: 6) {
+            GeometryReader { geo in
+                let w = geo.size.width
+                let progress = CGFloat(audio.progress)
+                Capsule().fill(.white.opacity(0.25))
+                    .overlay(alignment: .leading) {
+                        Capsule().fill(.white).frame(width: max(4, w * progress))
+                    }
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { audio.seek(to: Double(max(0, min(1, $0.location.x / w)))) }
+                    )
+            }
+            .frame(height: 5)
+
+            HStack {
+                Text(timeString(audio.currentTime)).font(Theme.fredoka(11, weight: .regular)).opacity(0.6)
+                Spacer()
+                Text(timeString(audio.duration)).font(Theme.fredoka(11, weight: .regular)).opacity(0.6)
+            }
+        }
+    }
+
+    // MARK: - To-dos
+
+    /// A bordered 22pt chip mirroring the app's `TodoStatusCircle`, tinted for the dark player.
+    private func playerCheckbox(done: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 11, style: .continuous)
+            .fill(done ? Color.white.opacity(0.9) : Color.white.opacity(0.06))
+            .overlay {
+                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .stroke(.white.opacity(done ? 0 : 0.5), lineWidth: 1.5)
+            }
+            .overlay {
+                if done {
+                    Image(systemName: "checkmark").font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.black.opacity(0.7))
+                }
+            }
+            .frame(width: 22, height: 22)
+    }
+
+    private func toggleTodo(_ item: FilTodoItem) {
+        note.normalizeCompletedTodos()
+        guard note.completedTodos.indices.contains(item.index) else { return }
+        withAnimation(.snappy) { note.completedTodos[item.index].toggle() }
+        try? context.save()
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        #endif
+    }
+
+    // MARK: - Text
+
+    private var displayTitle: String {
+        let t = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? note.displayBadgeText : t
+    }
+
+    private var typeLabel: String {
+        if note.isImageFil { return "photo" }
+        if isVoice { return "voice" }
+        return "note"
+    }
+
+    private func timeString(_ t: TimeInterval) -> String {
+        guard t.isFinite, t >= 0 else { return "0:00" }
+        let s = Int(t.rounded())
+        return String(format: "%d:%02d", s / 60, s % 60)
+    }
+}
+
+/// Reports the note body's natural height so the scroll can size to content (capped).
+private struct NoteHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+// MARK: - Background
+
+/// The fil gradient scaled up, heavily blurred and darkened — the soft wash behind the player. As a
+/// sheet's `presentationBackground` it's static (no bloom, since the sheet slides rather than
+/// opacity-crossfading a blurred layer).
+private struct BlurredFilBackground: View {
+    let colors: [Color]
+    var body: some View {
+        LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+            .scaleEffect(1.6)
+            .blur(radius: 90)
+            .overlay(Color.black.opacity(0.34))
+            .ignoresSafeArea()
+    }
+}
+
+// MARK: - The moving fil blob
+
+/// The gooey animated blob (same look as fil creation) tinted to this fil and seeded so each fil
+/// wobbles differently; `amplitude` (0…1) drives a gentle pulse during voice playback.
+private struct FilPlayerBlob: View {
+    let colors: [Color]
+    var seed: Double = 0
+    var amplitude: CGFloat = 0
+
+    var body: some View {
+        TimelineView(.animation) { timeline in
+            let time = CGFloat(timeline.date.timeIntervalSinceReferenceDate) * 0.9 + CGFloat(seed) * 12
+            GeometryReader { proxy in
+                let side = min(proxy.size.width, proxy.size.height)
+                BlobShape(points: 5, amplitude: max(2, side * 0.03), time: time)
+                    .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: side, height: side)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .scaleEffect(1 + amplitude * 0.06)
+            }
+        }
+    }
+}

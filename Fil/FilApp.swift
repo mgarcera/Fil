@@ -54,7 +54,8 @@ private extension FilApp {
     static func registerBundledFonts() {
         let names = [
             "InstrumentSerif-Regular",
-            "Fredoka-Light", "Fredoka-Regular", "Fredoka-Medium", "Fredoka-SemiBold", "Fredoka-Bold"
+            "Fredoka-Light", "Fredoka-Regular", "Fredoka-Medium", "Fredoka-SemiBold", "Fredoka-Bold",
+            "Caveat-Regular", "Caveat-Medium", "Caveat-SemiBold", "Caveat-Bold"
         ]
         for name in names {
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }

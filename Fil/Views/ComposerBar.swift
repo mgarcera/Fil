@@ -45,8 +45,12 @@ struct ComposerBar: View {
     private var trimmedText: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var hasText: Bool { !trimmedText.isEmpty }
     private var hasTodoContent: Bool { todos.contains { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } }
-    private var canSend: Bool { hasText || !stagedImageData.isEmpty }
-    private var isComposing: Bool { canSend || hasTodoContent }
+    /// A photo must carry a note — a captionless photo can't be sent, the same way an empty to-do
+    /// row doesn't count. Text is always what unlocks send.
+    private var canSend: Bool { hasText }
+    /// Staged photos (or to-dos) keep the composer "composing" so the send button stays visible
+    /// (dimmed) while the user types the required note, rather than falling back to the search glyph.
+    private var isComposing: Bool { hasText || !stagedImageData.isEmpty || hasTodoContent }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -69,6 +73,7 @@ struct ComposerBar: View {
                             .frame(width: 56, height: 56).contentShape(Circle())
                     }
                     .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
+                    .transition(.scale.combined(with: .opacity))
 
                     // Voice — a bare mic (no filled circle), between to-do and photo.
                     Button(action: onRecordVoice) {
@@ -79,6 +84,7 @@ struct ComposerBar: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("record voice note").accessibilityAddTraits(.startsMediaSession)
+                    .transition(.scale.combined(with: .opacity))
 
                     PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 8, matching: .images) {
                         Image(systemName: "photo.on.rectangle.angled")
@@ -88,19 +94,24 @@ struct ComposerBar: View {
                     }
                     .disabled(isProcessing)
                     .accessibilityLabel("add photos")
+                    .transition(.scale.combined(with: .opacity))
                 }
 
                 Spacer(minLength: 0)
 
-                // A manual keyboard dismiss, shown only while the composer is focused.
-                if focus.wrappedValue {
-                    Button { focus.wrappedValue = false } label: {
+                // A manual keyboard dismiss, shown while the composer OR a to-do field is focused.
+                if focus.wrappedValue || focusedTodoID != nil {
+                    Button {
+                        focus.wrappedValue = false
+                        focusedTodoID = nil
+                    } label: {
                         Image(systemName: "keyboard.chevron.compact.down")
                             .font(.system(size: 22, weight: .semibold))
                             .foregroundStyle(Theme.secondaryText)
                             .frame(width: 56, height: 56).contentShape(Circle())
                     }
                     .buttonStyle(.plain).accessibilityLabel("dismiss keyboard")
+                    .transition(.scale.combined(with: .opacity))
                 }
 
                 trailingButton
@@ -110,6 +121,9 @@ struct ComposerBar: View {
         .contentShape(Rectangle())
         .onTapGesture { focus.wrappedValue = true }
         .animation(.spring(response: 0.35, dampingFraction: 0.85), value: todos)
+        .animation(.snappy(duration: 0.2), value: searchMode)
+        .animation(.snappy(duration: 0.2), value: focus.wrappedValue)
+        .animation(.snappy(duration: 0.2), value: focusedTodoID)
         .onChange(of: focusedTodoID) { oldValue, _ in removeRowIfEmpty(oldValue) }
     }
 
@@ -274,33 +288,40 @@ struct ComposerBar: View {
     private func beamedCircle(symbol: String, weight: Font.Weight) -> some View {
         Image(systemName: symbol).font(.system(size: 20, weight: weight)).foregroundStyle(Theme.background)
             .frame(width: 56, height: 56)
-            .borderBeam(border: Theme.primaryText, beam: Theme.accentGradientColors, beamBlur: 6, cornerRadius: 28, isEnabled: true)
             .background(Theme.primaryText, in: Circle())
     }
 
     private var stagedImageRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(Array(stagedImageData.enumerated()), id: \.offset) { index, data in
+            HStack(spacing: 10) {
+                // Key on the image data (stable per photo), not the index — otherwise removing one
+                // shifts every later index and SwiftUI fades the last cell instead of scaling out
+                // the one actually removed.
+                ForEach(Array(stagedImageData.enumerated()), id: \.element) { index, data in
                     stagedImageThumbnail(data: data, index: index)
+                        .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(.horizontal, 4)
+            // Padding so the (x) badge, which sits just outside each thumbnail's top-right corner,
+            // isn't clipped by the ScrollView's bounds.
+            .padding(.top, 8)
+            .padding(.horizontal, 8)
         }
+        .animation(.snappy(duration: 0.2), value: stagedImageData.count)
     }
 
     @ViewBuilder private func stagedImageThumbnail(data: Data, index: Int) -> some View {
         if let image = Image(data: data) {
             image.resizable().scaledToFill()
-                .frame(width: 36, height: 36)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: 56, height: 56)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     Button { onRemoveStagedImage(index) } label: {
-                        Image(systemName: "xmark").font(.system(size: 8, weight: .bold)).foregroundStyle(.black)
-                            .frame(width: 14, height: 14).background(.white, in: Circle())
+                        Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(.black)
+                            .frame(width: 18, height: 18).background(.white, in: Circle())
                             .shadow(color: .black.opacity(0.35), radius: 3, y: 1)
                     }
-                    .buttonStyle(.plain).offset(x: 5, y: -5).accessibilityLabel("remove photo")
+                    .buttonStyle(.plain).offset(x: 6, y: -6).accessibilityLabel("remove photo")
                 }
         }
     }

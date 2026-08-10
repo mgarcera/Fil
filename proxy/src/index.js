@@ -119,6 +119,16 @@ ${VOICE_RULES}
 Respond with ONLY a JSON object, no prose or code fences:
 {"groups": [{"name": "Folder Name", "description": "...", "fils": [note numbers]}]}`;
 
+// Snippets mode: the notes below all live in one folder; capture what's in it as a few short
+// fragments (like quick handwritten labels on scraps of paper), not sentences.
+const SNIPPETS_PROMPT = `You help someone explore their own private notes (they call each one a "fil"). The notes below all live in ONE folder. Capture what the folder holds as 2 to 4 SHORT fragments, each just a few words (aim for 3 to 6 words, never a full sentence), like quick handwritten labels on scraps of paper. Each fragment names a distinct thread, kind, or recurring thing in the folder. Order them most prominent first.
+
+${VOICE_RULES}
+- Fragments, not sentences: no ending punctuation, no "you have", no "notes about". Just the thing itself (e.g. "weekend recipes", "pantry staples", "a receipt photo").
+
+Respond with ONLY a JSON object, no prose or code fences:
+{"parts": ["fragment", "fragment", "fragment"]}`;
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method !== "POST") return json({ error: "Use POST." }, 405);
@@ -165,7 +175,9 @@ export default {
     const query = typeof body.query === "string" ? body.query.trim() : "";
     const fils = Array.isArray(body.fils) ? body.fils : null;
     const organize = body.organize === true;
-    if (!fils || (!organize && !query)) return json({ error: "Expected { query, fils: [...] }." }, 400);
+    // Snippets mode: reflect a folder's contents as a few short fragments (for the home hero stamps).
+    const snippets = body.snippets === true;
+    if (!fils || (!organize && !snippets && !query)) return json({ error: "Expected { query, fils: [...] }." }, 400);
 
     // Summarize-only mode: the app supplies the notes it already chose (a keyword match) and just wants
     // a reflection — no selection. Returns { summary } and never touches `relevant`.
@@ -181,14 +193,15 @@ export default {
       })
       .join("\n");
 
+    const noQuery = organize || snippets;   // these modes reflect the whole list, no query
     const anthropicBody = {
       model: MODEL,
-      max_tokens: organize ? ORGANIZE_MAX_TOKENS : MAX_TOKENS,
-      system: organize ? ORGANIZE_PROMPT : (summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT),
+      max_tokens: organize ? ORGANIZE_MAX_TOKENS : (snippets ? 300 : MAX_TOKENS),
+      system: organize ? ORGANIZE_PROMPT : snippets ? SNIPPETS_PROMPT : (summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT),
       messages: [
         {
           role: "user",
-          content: organize
+          content: noQuery
             ? [{ type: "text", text: `Notes:\n${numbered}` }]
             : [
                 { type: "text", text: `Notes:\n${numbered}`, cache_control: { type: "ephemeral" } },
@@ -235,6 +248,13 @@ export default {
     if (summarizeOnly) {
       console.log(`summarize "${query}": ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
       return json({ summary: text.trim(), relevant: [] }, 200);
+    }
+
+    if (snippets) {
+      const parts = parseParts(text);
+      if (!parts) return json({ error: "Couldn't read the model's response." }, 502);
+      console.log(`snippets: ${fils.length} fils -> ${parts.length} parts | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
+      return json({ parts }, 200);
     }
 
     const parsed = parseSurfacing(text);
@@ -399,6 +419,24 @@ function parseGroups(text) {
         fils: Array.isArray(g.fils) ? g.fils.filter((n) => Number.isInteger(n)) : [],
       }))
       .filter((g) => g.name && g.fils.length);
+  } catch {
+    return null;
+  }
+}
+
+/** Parse the snippets-mode response: {"parts":["...", "..."]} → up to 4 trimmed fragments. */
+function parseParts(text) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return null;
+  try {
+    const obj = JSON.parse(text.slice(start, end + 1));
+    if (!Array.isArray(obj.parts)) return null;
+    return obj.parts
+      .filter((p) => typeof p === "string")
+      .map((p) => p.trim().replace(/[.!?]+$/, ""))
+      .filter((p) => p.length)
+      .slice(0, 4);
   } catch {
     return null;
   }

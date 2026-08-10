@@ -25,6 +25,9 @@ struct CanvasHome: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.colorScheme) private var colorScheme
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
+    // Match the home folder list's order exactly (sortIndex, then newest-first tiebreak) so the
+    // composer's folder switcher lists them in the same order as the folders on the home page.
+    @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
     @AppStorage("prefersLowercase") private var prefersLowercase = false
 
     // First-run onboarding, re-homed here because creation now happens on the canvas (not through
@@ -146,6 +149,13 @@ struct CanvasHome: View {
         Dictionary(uniqueKeysWithValues: notes.map { ($0.uuid, $0) })
     }
 
+    /// Folders you can jump to from inside a nested folder — everything except the one you're in.
+    /// Reversed: the switcher Menu is bottom-anchored, so iOS renders it bottom-to-top. Reversing the
+    /// home order here makes the menu read top-to-bottom the same as the folders on the home page.
+    private var switchableFolders: [Folder] {
+        Array(folders.filter { $0.id != contextFolder?.id }.reversed())
+    }
+
     /// Search mode: the composer is the query input and the results (or a blank canvas) sit behind it.
     private var isSearching: Bool { phase == .querying || phase == .results }
 
@@ -208,15 +218,35 @@ struct CanvasHome: View {
                                 }
                                 .buttonStyle(.plain).accessibilityLabel("Settings")
 
-                                Button { newFolderRequest = true } label: {
-                                    Image(systemName: "folder.badge.plus")
-                                        .font(.system(size: 20, weight: .semibold))
-                                        .foregroundStyle(Theme.primaryText)
-                                        .frame(width: 56, height: 56)
-                                        .glassEffect(.regular.interactive(), in: .circle)
-                                        .contentShape(Circle())
+                                // Inside a folder with siblings, this slot becomes a folder switcher;
+                                // otherwise it's the new-folder button.
+                                if folderInteriorOpen && !switchableFolders.isEmpty {
+                                    Menu {
+                                        ForEach(switchableFolders) { f in
+                                            Button(prefersLowercase ? f.name.lowercased() : f.name) {
+                                                deepLink = .folder(f.id)
+                                            }
+                                        }
+                                    } label: {
+                                        Image(systemName: "arrow.left.arrow.right")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(Theme.primaryText)
+                                            .frame(width: 56, height: 56)
+                                            .glassEffect(.regular.interactive(), in: .circle)
+                                            .contentShape(Circle())
+                                    }
+                                    .buttonStyle(.plain).accessibilityLabel("jump to another folder")
+                                } else {
+                                    Button { newFolderRequest = true } label: {
+                                        Image(systemName: "folder.badge.plus")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(Theme.primaryText)
+                                            .frame(width: 56, height: 56)
+                                            .glassEffect(.regular.interactive(), in: .circle)
+                                            .contentShape(Circle())
+                                    }
+                                    .buttonStyle(.plain).accessibilityLabel("new folder")
                                 }
-                                .buttonStyle(.plain).accessibilityLabel("new folder")
                             }
                             .frame(maxWidth: .infinity, alignment: .trailing)
                             .padding(.trailing, 14)   // line up with the composer's trailing icon
@@ -228,7 +258,10 @@ struct CanvasHome: View {
                         // Above the composer: recent-search chips in search (when the query's empty),
                         // else the Bin / selection baskets.
                         if isSearching {
-                            if query.isEmpty && !recentSearches.isEmpty { recentChipsRow }
+                            if query.isEmpty && !recentSearches.isEmpty {
+                                recentChipsRow
+                                    .transition(.scale.combined(with: .opacity))
+                            }
                         } else {
                             HomeBasket(
                                 onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
@@ -238,6 +271,9 @@ struct CanvasHome: View {
                         composerBar
                     }
                     .padding(14)
+                    // Recent-search capsules scale in/out as the query empties/fills and on exit.
+                    .animation(.snappy(duration: 0.2), value: query.isEmpty)
+                    .animation(.snappy(duration: 0.2), value: isSearching)
                     .glassEffect(.regular, in: .rect(cornerRadius: 30))
                 }
                 .padding(.horizontal, 12)
@@ -272,12 +308,17 @@ struct CanvasHome: View {
                         filSheetDestination(route)
                     }
             }
-            // Link fils stay at the medium detent (no expand-to-full); other fils can go large.
-            .presentationDetents(note.isLinkFil ? [.fraction(0.6)] : [.fraction(0.6), .large], selection: $filSheetDetent)
-            .presentationBackground(Theme.background)
+            // Link fils stay at the medium detent (no expand-to-full); photos open taller (0.8);
+            // other fils rest at 0.6. All non-link fils can expand to full.
+            .presentationDetents(note.isLinkFil ? [.fraction(0.6)] : note.isImageFil ? [.fraction(0.8), .large] : [.fraction(0.6), .large], selection: $filSheetDetent)
+            .presentationBackground { FolderBrowserBackground() }
         }
         .sheet(item: $basketPager) { sel in
             BrowserFilPager(notes: sel.notes, startID: sel.startID)
+        }
+        // Photos open taller (0.8); everything else rests at 0.6. Set before the sheet reads it.
+        .onChange(of: selectedNote) { _, note in
+            filSheetDetent = (note?.isImageFil ?? false) ? .fraction(0.8) : .fraction(0.6)
         }
         // If an open fil gets landfil'd (from within its own modal or elsewhere), close the modal —
         // a nested pager/sheet can otherwise linger showing a deleted fil.
@@ -548,6 +589,7 @@ struct CanvasHome: View {
                             .background(Capsule().fill(Theme.primaryText.opacity(0.06)))
                     }
                     .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
                 }
             }
         }
@@ -1002,12 +1044,13 @@ struct CanvasHome: View {
         text = ""
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos = [] }
 
-        let title = await ArticleGenerationService.shared.generateTitle(from: caption)
+        // Photos carry no generated title — the caption words (if any) are their only text, and the
+        // search-grid label falls back to them (or blank when there's no caption).
         let gradient = Theme.randomGradientPair()
         let note = Note(
-            title: title,
+            title: caption,
             transcript: caption,
-            keyword: title,
+            keyword: caption,
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )

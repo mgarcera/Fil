@@ -55,7 +55,8 @@ struct HomeBasket: View {
                 Button { pendingBulkLandfil = BulkLandfilRequest() } label: { iconLabel("trash") }
                     .foregroundStyle(.red)
                 Menu {
-                    ForEach(selection.folders()) { folder in
+                    // Bottom-anchored menu renders bottom-to-top; reverse so it reads in home order.
+                    ForEach(Array(selection.folders().reversed())) { folder in
                         Button(folder.name) { withAnimation(.snappy) { selection.moveSelected(to: folder) } }
                     }
                 } label: { iconLabel("folder") }

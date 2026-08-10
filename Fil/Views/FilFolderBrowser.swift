@@ -48,6 +48,7 @@ struct FoldersHomeSection: View {
 
     @State private var path: [Route] = []
     @State private var pagerSelection: FilPagerSelection?
+    @State private var isSummarizing = false   // a pinned-folder summary is being generated (drives the skeleton)
     @State private var showNewFolder = false
     @State private var newFolderName = ""
     @State private var newFolderCaption = ""
@@ -79,6 +80,18 @@ struct FoldersHomeSection: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
+                Section {
+                    // Home hero: the pinned folder as a 3D object (scrolls with the list). A soft
+                    // placeholder invites pinning when nothing is featured yet.
+                    PinnedFolderHero(model: pinnedHeroModel,
+                                     placeholderText: cased("Pin a folder to feature it here")) {
+                        if let folder = pinnedFolder { path.append(.folder(folder)) }
+                    }
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 24, trailing: 20))
+                }
+
                 Section {
                     if folders.isEmpty {
                         Text("No folders yet. Tap ＋ to make one.")
@@ -137,6 +150,7 @@ struct FoldersHomeSection: View {
                 else { onContextFolderChange(nil) }
             }
             .onAppear { normalizeFolderOrder(); applyDeepLink() }
+            .task(id: pinnedSummaryTaskID) { await refreshPinnedSummaryIfNeeded() }
             .onChange(of: newFolderRequest) { _, req in
                 if req { pendingMoveNote = nil; showNewFolder = true; newFolderRequest = false }
             }
@@ -364,6 +378,80 @@ struct FoldersHomeSection: View {
         return Double(hash % 10_000) / 10_000
     }
 
+    /// The currently-pinned folder resolved from the live query (reactive via @Observable store).
+    private var pinnedFolder: Folder? {
+        guard let id = PinnedFolderStore.shared.pinnedFolderID else { return nil }
+        return folders.first { $0.id == id }
+    }
+
+    /// Display model for the hero (nil → the placeholder state).
+    private var pinnedHeroModel: PinnedFolderHero.Model? {
+        guard let folder = pinnedFolder else { return nil }
+        let fils = folder.notes.prefix(6).map {
+            HeroFil(start: $0.gradientStartHex, end: $0.gradientEndHex, seed: $0.blobShapeSeed)
+        }
+        return .init(title: cased(folder.name), start: folder.gradientStartHex,
+                     end: folder.gradientEndHex, seed: seed(for: folder), count: folder.notes.count,
+                     parts: heroParts(folder), loadingSummary: isSummarizing, fils: fils)
+    }
+
+    /// Stamp snippets for the hero: the Pro-generated parts, or — free tier / before generation —
+    /// the organize caption split into a couple of short fragments (no API).
+    private func heroParts(_ folder: Folder) -> [String] {
+        if !folder.summaryParts.isEmpty { return folder.summaryParts.map(cased) }
+        let caption = folder.summary.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !caption.isEmpty else { return [] }
+        let sentences = caption
+            .replacingOccurrences(of: ". ", with: ".\n")
+            .split(separator: "\n")
+            .map { cased($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { !$0.isEmpty }
+        return Array(sentences.prefix(3))
+    }
+
+    /// The pinned folder's content state — fil count + newest timestamp. Changes when a fil is
+    /// added/removed/refiled, which is when the summary is worth regenerating.
+    private func contentSignature(_ folder: Folder) -> String {
+        let newest = folder.notes.map(\.timestamp).max() ?? .distantPast
+        return "\(folder.notes.count)|\(newest.timeIntervalSince1970)"
+    }
+
+    /// Re-runs the summary generation when the pinned folder (or its contents) changes.
+    private var pinnedSummaryTaskID: String {
+        guard let folder = pinnedFolder else { return "none" }
+        return "\(folder.id.uuidString)|\(contentSignature(folder))"
+    }
+
+    /// Regenerate the featured folder's summary — Pro only, and only when the cached signature is
+    /// stale, so it's one call per meaningful change. Free tier keeps whatever caption it already has.
+    private func refreshPinnedSummaryIfNeeded() async {
+        guard StoreManager.shared.isPro,
+              let folder = pinnedFolder,
+              !folder.notes.isEmpty else { return }
+        let signature = contentSignature(folder)
+        // Regenerate when the contents changed OR when we don't yet have snippet parts (e.g. a folder
+        // summarized before parts existed). Once parts are written for the current signature, both fail.
+        guard folder.summaryParts.isEmpty || signature != folder.summarySignature else { return }
+
+        isSummarizing = true
+        defer { isSummarizing = false }
+
+        let inputs = folder.notes.map { note in
+            FilClusterInput(
+                id: note.uuid,
+                text: String((note.transcript.isEmpty ? note.title : note.transcript).prefix(240)),
+                keyword: note.displayBadgeText
+            )
+        }
+        let txn = StoreManager.shared.proTransactionID ?? ""
+        guard let parts = try? await ClaudeSurfacingService.shared.folderSnippets(fils: inputs, transactionID: txn),
+              !parts.isEmpty else { return }
+
+        folder.summaryParts = parts
+        folder.summarySignature = signature
+        try? context.save()
+    }
+
     // MARK: - Smart organize (Pro)
 
     private func organize() {
@@ -445,7 +533,7 @@ struct FolderInteriorView: View {
 
     @State private var moveTargetNote: Note?
     @State private var pendingLandfilNote: Note?
-    @State private var headerHeight: CGFloat = 0   // measured, so list content clears the overlaid header
+    @State private var playerSelection: FilPagerSelection?
 
 
     // Typed containers. To-dos are claimed first (any fil with a to-do lives there and nowhere else);
@@ -458,6 +546,8 @@ struct FolderInteriorView: View {
 
     private var todoNotes: [Note] { notes.filter(hasTodos).sorted(by: inFolderOrder) }
     private var rest: [Note] { notes.filter { !hasTodos($0) } }
+    /// The Full Screen player deck: every non-link fil, in the order the sections read top-to-bottom.
+    private var playerDeck: [Note] { todoNotes + photoNotes + plainNotes + voiceNotes }
     private var photoNotes: [Note] { rest.filter { $0.isImageFil }.sorted(by: inFolderOrder) }
     private var linkNotes: [Note] { rest.filter { $0.isLinkFil }.sorted(by: inFolderOrder) }
     private var voiceNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && !$0.audioFilePath.isEmpty }.sorted(by: inFolderOrder) }
@@ -478,19 +568,20 @@ struct FolderInteriorView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .scrollIndicators(.hidden)
-        .contentMargins(.top, headerHeight, for: .scrollContent)     // clear the overlaid folder header
         .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
         .background(FolderBrowserBackground())
-        // The folder identity header floats over the list as a translucent material bar; cards scroll
-        // under it (the native section-header treatment). Its height is measured so content clears it.
-        .overlay(alignment: .top) {
-            folderHeader
-                .background(.ultraThinMaterial)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+        // Native large-title collapse: the expanded identity (blob + Instrument Serif title + count)
+        // sits below the bar with the caption; on scroll it collapses to the compact inline identity.
+        // `.toolbarTitleDisplayMode(.large)` is what drives the collapse (and stops the large + inline
+        // titles rendering at once). The folders root hides its bar, so force it visible here.
+        .navigationTitle(cased(title))
+        .toolbarTitleDisplayMode(.large)
+        .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .largeTitle) { folderIdentity }
         }
-        .navigationBarTitleDisplayMode(.inline)
         // Creating a fil here happens through the contextual composer bar ("add to {folder}"), not a
-        // per-folder ＋.
+        // per-folder ＋. The folder switcher lives in the composer's FAB slot (replaces new-folder).
         .confirmationDialog("Move to a folder", isPresented: .init(
             get: { moveTargetNote != nil },
             set: { if !$0 { moveTargetNote = nil } }
@@ -511,15 +602,23 @@ struct FolderInteriorView: View {
             context.delete(note)
             try? context.save()
         })
+        .sheet(item: $playerSelection) { sel in
+            FilFullScreenPlayer(notes: sel.notes, startID: sel.startID) { playerSelection = nil }
+        }
     }
 
-    /// The folder identity header (blob + title + count badge + caption), overlaid on the list.
-    private var folderHeader: some View {
+    /// The folder identity for the large-title slot — mirrors the original header layout: blob on the
+    /// left; title + count on line one and the caption on line two, stacked to the right of the blob so
+    /// the caption's left edge lines up with the title. Collapses to the native inline title on scroll.
+    private var folderIdentity: some View {
         HStack(spacing: 14) {
-            FolderMark(seed: seed, start: start, end: end, glyph: glyph, size: 44)
+            FolderMark(seed: seed, start: start, end: end, glyph: glyph, size: 40)
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Text(cased(title)).font(Theme.instrumentSerif(26)).foregroundStyle(Theme.primaryText)
+                HStack(alignment: .center, spacing: 8) {
+                    Text(cased(title))
+                        .font(Theme.instrumentSerif(28))
+                        .foregroundStyle(Theme.primaryText)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("\(notes.count)")
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
                         .padding(.horizontal, 7).padding(.vertical, 2)
@@ -532,12 +631,10 @@ struct FolderInteriorView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-        .padding(.bottom, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 30)   // separate the identity from the nav bar
     }
 
     // MARK: - Containers
@@ -562,12 +659,17 @@ struct FolderInteriorView: View {
     @ViewBuilder private func filSection(_ label: String, _ icon: String, _ items: [Note]) -> some View {
         if !items.isEmpty {
             Section {
+                // Header as a scrolling row (not the pinning `header:` slot) so it doesn't stick to the
+                // nav bar on scroll.
+                containerHeader(label, icon, items.count)
+                    .textCase(nil)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 4, trailing: 20))
                 ForEach(items, id: \.uuid) { note in
                     cardRow(filRow(note), note: note, container: items)
                 }
                 .onMove { reorder(items, from: $0, to: $1) }
-            } header: {
-                sectionHeader(label, icon, items.count)
             }
         }
     }
@@ -586,13 +688,20 @@ struct FolderInteriorView: View {
             .opacity(isSelected(note) ? 0.6 : 1)
             .contentShape(Rectangle())
             .onTapGesture { onOpen(note, container) }
-            // Swipe left: Select (full swipe selects), then Move / Landfil.
+            // Swipe left: Select (full swipe selects), then Full Screen / Move / Landfil.
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button { toggleSelect(note) } label: {
                     Label(isSelected(note) ? "Deselect" : "Select",
                           systemImage: isSelected(note) ? "checkmark.circle.fill" : "checkmark")
                 }
                 .tint(.green)
+                // Full Screen "player" — every fil type except links.
+                if !note.isLinkFil {
+                    Button { playerSelection = FilPagerSelection(notes: playerDeck, startID: note.uuid) } label: {
+                        Label("Full Screen", systemImage: "arrow.up.left.and.arrow.down.right")
+                    }
+                    .tint(.purple)
+                }
                 Button { moveTargetNote = note } label: { Label("Move", systemImage: "folder") }.tint(.indigo)
                 // Not role:.destructive — that plays the row-removal animation on swipe, before the
                 // user confirms. Plain red button so the card only animates out on the real delete.
@@ -601,15 +710,7 @@ struct FolderInteriorView: View {
             }
             .listRowSeparator(.hidden)
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
-    }
-
-    private func sectionHeader(_ label: String, _ icon: String, _ count: Int) -> some View {
-        // Match the home's "Folders" header exactly: no listRowInsets / listRowBackground override, so
-        // it keeps the native plain-List section-header material (semi-transparent, pins on scroll).
-        // Setting custom insets strips that default chrome and drops it onto the opaque list background.
-        containerHeader(label, icon, count)
-            .textCase(nil)
+            .listRowInsets(EdgeInsets(top: 5, leading: 20, bottom: 5, trailing: 16))
     }
 
     /// Persist a drag-reorder: rewrite the section's `sortIndex` to its new order (0…n).
@@ -631,23 +732,37 @@ struct FolderInteriorView: View {
         #endif
     }
 
+    /// The Full Screen player's exact wash: a plain diagonal 2-color gradient, zoomed and blurred into
+    /// a soft low-contrast field, darkened. Clipped to the card by the row's `clipShape`.
+    private func filWash(_ note: Note) -> some View {
+        LinearGradient(colors: [Color(hex: note.gradientStartHex), Color(hex: note.gradientEndHex)],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
+            .scaleEffect(3.5)
+            .overlay(Color.black.opacity(0.44))
+    }
+
     /// A full-width card row: the rich component (photo thumb / fil blob) on the left, light text right.
     private func filRow(_ note: Note) -> some View {
         let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
+        // Plain notes and photos caption their date; typed fils keep their identity caption.
+        let showsDate = isPlainNote || note.isImageFil
+        let main = cased(cardContent(note))
         return HStack(alignment: .top, spacing: 14) {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
-                Text(cased(cardContent(note)))
-                    .font(Theme.fredoka(15, weight: .regular))
-                    .foregroundStyle(Theme.primaryText)
-                    .lineLimit(30)
-                    .fixedSize(horizontal: false, vertical: true)
-                // Plain notes caption their date; typed fils keep their identity caption (domain/duration).
-                let caption = isPlainNote
+                // A captionless photo has no words — show only its date below the thumbnail.
+                if !main.isEmpty {
+                    Text(highlightedCardText(note, base: main))
+                        .font(Theme.fredoka(15, weight: .regular))
+                        .foregroundStyle(.white)
+                        .lineLimit(30)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                let caption = showsDate
                     ? cased(note.timestamp.formatted(date: .abbreviated, time: .omitted))
                     : cased(captionText(note))
                 if !caption.isEmpty {
-                    Text(caption).font(.system(size: 12, weight: .light)).foregroundStyle(Theme.secondaryText).lineLimit(1)
+                    Text(caption).font(.system(size: 12, weight: .light)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
@@ -657,15 +772,9 @@ struct FolderInteriorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         // A dark card tinted with the fil's gradient — enough color to feel like the fil, but kept
         // low so light text stays legible.
-        .background {
-            ZStack {
-                Theme.cardBackground
-                Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed)
-                    .opacity(0.14)
-            }
-        }
+        .background { filWash(note) }
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
     }
 
     /// The row's leading rich component. Photo thumbnails stretch to the card's height; the fil blob
@@ -689,9 +798,12 @@ struct FolderInteriorView: View {
         }
     }
 
-    /// A card's main text: plain notes show their contents; typed fils show their identity.
+    /// A card's main text: plain notes and photos show their own words (no generated title); other
+    /// typed fils (links, voice) show their identity.
     private func cardContent(_ note: Note) -> String {
-        if note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty { return displayTitle(note) }
+        // Photos read like notes: their caption words on top, no title. Empty if the photo has none.
+        if note.isImageFil { return note.transcript.trimmingCharacters(in: .whitespacesAndNewlines) }
+        if note.isLinkFil || !note.audioFilePath.isEmpty { return displayTitle(note) }
         let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         return body.isEmpty ? displayTitle(note) : body
     }
@@ -714,12 +826,16 @@ struct FolderInteriorView: View {
     @ViewBuilder private var todoSection: some View {
         if !todoNotes.isEmpty {
             Section {
+                // Header as a scrolling row so it doesn't pin to the nav bar on scroll.
+                containerHeader("To-dos", "checklist", todoNotes.reduce(0) { $0 + $1.todoRowItems.count })
+                    .textCase(nil)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 4, trailing: 20))
                 ForEach(todoNotes, id: \.uuid) { note in
                     cardRow(todoCard(note), note: note, container: todoNotes)
                 }
                 .onMove { reorder(todoNotes, from: $0, to: $1) }
-            } header: {
-                sectionHeader("To-dos", "checklist", todoNotes.reduce(0) { $0 + $1.todoRowItems.count })
             }
         }
     }
@@ -728,14 +844,15 @@ struct FolderInteriorView: View {
     /// light text row on the right.
     private func todoCard(_ note: Note) -> some View {
         HStack(alignment: .top, spacing: 14) {
-            filMarker(note, size: 48)
+            // Photos lead with their thumbnail (like the note cards); other fils show their blob.
+            rowRich(note)
             VStack(alignment: .leading, spacing: 8) {
                 // The fil's own thought, so the user sees what they typed above its to-dos.
                 let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !body.isEmpty {
                     Text(cased(body))
                         .font(Theme.fredoka(15, weight: .regular))
-                        .foregroundStyle(Theme.primaryText)
+                        .foregroundStyle(.white)
                         .lineLimit(30)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -746,8 +863,8 @@ struct FolderInteriorView: View {
                             TodoStatusCircle(isCompleted: item.done)
                             Text(cased(item.text))
                                 .font(Theme.fredoka(15, weight: .light))
-                                .foregroundStyle(Theme.primaryText)
-                                .strikethrough(item.done, color: Theme.tertiaryText)
+                                .foregroundStyle(.white)
+                                .strikethrough(item.done, color: .white.opacity(0.5))
                                 .opacity(item.done ? 0.6 : 1)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -762,15 +879,9 @@ struct FolderInteriorView: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background {
-            ZStack {
-                Theme.cardBackground
-                Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed)
-                    .opacity(0.14)
-            }
-        }
+        .background { filWash(note) }
         .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(Theme.primaryText.opacity(0.08), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
     }
 
     /// Toggle a to-do's completion, keeping `completedTodos` aligned with `todos` (mirrors ArticleView).
@@ -791,6 +902,33 @@ struct FolderInteriorView: View {
     private func displayTitle(_ note: Note) -> String {
         let trimmed = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? note.displayBadgeText : trimmed
+    }
+
+    /// The card's main text with its filament keywords lit — same treatment as the reading view
+    /// (Fredoka medium in the fil's lighter gradient color), so highlights read on the card too.
+    private func highlightedCardText(_ note: Note, base: String) -> AttributedString {
+        var attributed = AttributedString(base)
+        let keywords = note.attachments.map(\.keyword)
+            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        guard !keywords.isEmpty else { return attributed }
+
+        let color = Color(hex: lighterHex(note))
+        for keyword in keywords {
+            var start = attributed.startIndex
+            while start < attributed.endIndex,
+                  let range = attributed[start...].range(of: keyword, options: .caseInsensitive) {
+                attributed[range].font = Theme.fredoka(15, weight: .medium)
+                attributed[range].foregroundColor = color
+                start = range.upperBound
+            }
+        }
+        return attributed
+    }
+
+    /// The lighter of the fil's two gradient endpoints — the highlight tint (matches SelectableTextView).
+    private func lighterHex(_ note: Note) -> String {
+        Color(hex: note.gradientStartHex).luminance > Color(hex: note.gradientEndHex).luminance
+            ? note.gradientStartHex : note.gradientEndHex
     }
 
     /// The caption line: a link's domain, a voice fil's duration, or — for a plain note — a preview
@@ -832,6 +970,196 @@ private struct FolderMark: View {
             }
         }
         .frame(width: size, height: size)
+    }
+}
+
+/// The home hero: the pinned folder as a dimensional object, built on the same `FolderShape` +
+/// gradient the folder blobs use (so it reads as the same folder, extruded and lit). Falls back to a
+/// soft "pin a folder" placeholder when nothing is pinned.
+/// One fil's look, for the little blobs that spill out of the folder when it opens.
+struct HeroFil { let start: String; let end: String; let seed: Double }
+
+/// A blob's animatable state as it spills out (no opacity — the cover hides it at rest).
+private struct HeroBlobAnim { var x: CGFloat = 0; var y: CGFloat = 0; var scale: CGFloat = 0.3 }
+
+/// Flight slots for the spilled fils (tuned for the 100pt hero folder). Each starts near the top-edge
+/// extrusion (sx/sy — different spots along the lip, not one center) and bursts out to a wide,
+/// uneven endpoint (dx/dy) so the spill reads scattered rather than symmetric.
+private let heroBlobSlots: [(sx: CGFloat, sy: CGFloat, dx: CGFloat, dy: CGFloat, size: CGFloat, delay: Double)] = [
+    (-28, -34, -92, -102, 50, 0.010),
+    (  4, -46, -34, -156, 54, 0.034),
+    (-10, -40,  40, -122, 46, 0.018),
+    ( 24, -32,  94, -108, 40, 0.048),
+]
+
+struct PinnedFolderHero: View {
+    struct Model {
+        let title: String
+        let start: String
+        let end: String
+        let seed: Double
+        let count: Int
+        /// Short summary fragments → the scattered stamp snippets. Empty shows nothing (or the loader).
+        var parts: [String] = []
+        /// True while the summary is being generated and no parts exist yet → show the skeleton loader.
+        var loadingSummary: Bool = false
+        /// The folder's own fils (colors + seeds) that spill out of the folder when it opens.
+        var fils: [HeroFil] = []
+    }
+
+    let model: Model?
+    var placeholderText: String = "Pin a folder to feature it here"
+    var onOpen: () -> Void = {}
+
+    @State private var bob = false
+    @State private var lid: Double = 0        // the front cover's open angle (hinged at the base)
+    @State private var blobTrigger = 0        // fires the fil-blob burst
+    @State private var retract = false        // scales the spilled fils back out as the folder closes
+    private let depth = 10
+    private let size: CGFloat = 150
+
+    var body: some View {
+        Group {
+            if let model { pinned(model) } else { placeholder }
+        }
+        .frame(maxWidth: .infinity)
+        .onAppear { bob = true }
+    }
+
+    private func pinned(_ m: Model) -> some View {
+        let points = Theme.gradientUnitPoints(seed: m.seed)
+        let gradient = LinearGradient(colors: [Color(hex: m.start), Color(hex: m.end)],
+                                      startPoint: points.start, endPoint: points.end)
+        // No Button wrapper — the deck needs its own drag gesture. Tap the folder/title to open.
+        return VStack(alignment: .center, spacing: 14) {
+            // Title atop.
+            HStack(alignment: .center, spacing: 8) {
+                Text(m.title).font(Theme.instrumentSerif(26)).foregroundStyle(Theme.primaryText)
+                Text("\(m.count)")
+                    .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
+                    .padding(.horizontal, 7).padding(.vertical, 2)
+                    .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { openFolder() }
+
+            // Folder + stamps aligned in one centered row.
+            HStack(alignment: .center, spacing: 18) {
+                folder(gradient, lidAngle: lid, fils: m.fils, blobTrigger: blobTrigger, retract: retract)
+                    .frame(width: 100, height: 100)
+                    .rotation3DEffect(.degrees(14), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+                    .rotation3DEffect(.degrees(-6), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                    .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: 16)
+                    .offset(y: bob ? -4 : 4)
+                    .animation(.easeInOut(duration: 2.8).repeatForever(autoreverses: true), value: bob)
+                    .contentShape(Rectangle())
+                    .onTapGesture { openFolder() }
+
+                if !m.parts.isEmpty {
+                    StampDeck(parts: m.parts, start: m.start, end: m.end, seed: m.seed)
+                } else if m.loadingSummary {
+                    summarySkeleton
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// Two shimmering lines standing in for the summary while it generates.
+    private var summarySkeleton: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SkeletonView(Capsule()).frame(height: 10)
+            SkeletonView(Capsule()).frame(width: 120, height: 10)
+        }
+        .padding(.top, 2)
+    }
+
+    private func folder(_ gradient: LinearGradient, lidAngle: Double = 0,
+                        fils: [HeroFil] = [], blobTrigger: Int = 0, retract: Bool = false) -> some View {
+        ZStack {
+            FolderShape().fill(Color(white: 0.97))   // inner paper, revealed as the lid lifts
+            // Extruded thickness reads at the TOP edge (offsets up), so the front & back bottoms
+            // coincide at the base and the lid hinges cleanly there.
+            ForEach(0..<depth, id: \.self) { i in
+                FolderShape().fill(gradient).brightness(-0.18).offset(y: -CGFloat(depth - i))
+            }
+            // The folder's fils sit inside, in front of the paper but BEHIND the cover, so they're
+            // concealed at rest and spill up out of the folder when it opens.
+            blobLayer(fils, trigger: blobTrigger, retract: retract)
+            // Front cover — swings open from its BOTTOM edge (the top folds back).
+            FolderShape()
+                .fill(gradient)
+                .overlay(
+                    FolderShape().fill(LinearGradient(colors: [.white.opacity(0.35), .clear],
+                                                      startPoint: .top, endPoint: .center))
+                )
+                .rotation3DEffect(.degrees(lidAngle), axis: (x: 1, y: 0, z: 0),
+                                  anchor: .bottom, perspective: 0.55)
+        }
+    }
+
+    /// The spilled fils — real `NoteBlobShape` blobs in each fil's colors, bursting out on a snappy
+    /// ease-in curve and scaling back away as the folder closes.
+    private func blobLayer(_ fils: [HeroFil], trigger: Int, retract: Bool) -> some View {
+        ForEach(Array(fils.prefix(heroBlobSlots.count).enumerated()), id: \.offset) { i, fil in
+            let slot = heroBlobSlots[i]
+            NoteBlobShape(seed: fil.seed)
+                .fill(Theme.gradient(startHex: fil.start, endHex: fil.end, seed: fil.seed))
+                .frame(width: slot.size, height: slot.size)
+                // Starts at the top-edge extrusion (sx/sy), bursts out to a wide endpoint (dx/dy).
+                .keyframeAnimator(initialValue: HeroBlobAnim(x: slot.sx, y: slot.sy), trigger: trigger) { content, v in
+                    content.offset(x: v.x, y: v.y).scaleEffect(v.scale)
+                } keyframes: { _ in
+                    KeyframeTrack(\.scale) {
+                        LinearKeyframe(0.3, duration: slot.delay)   // delays are all > 0 (no zero-duration keyframe)
+                        SpringKeyframe(1.0, duration: 0.09)
+                    }
+                    KeyframeTrack(\.y) {
+                        LinearKeyframe(slot.sy, duration: slot.delay)                          // hold at the lip
+                        CubicKeyframe(slot.sy + (slot.dy - slot.sy) * 0.12, duration: 0.05)    // slow start
+                        CubicKeyframe(slot.dy, duration: 0.13)                                 // shoot out
+                    }
+                    KeyframeTrack(\.x) {
+                        LinearKeyframe(slot.sx, duration: slot.delay)
+                        CubicKeyframe(slot.sx + (slot.dx - slot.sx) * 0.12, duration: 0.05)
+                        CubicKeyframe(slot.dx, duration: 0.13)
+                    }
+                }
+                .scaleEffect(retract ? 0 : 1)   // shrink away as the folder closes
+        }
+    }
+
+    /// Lifts the cover open, spilling the folder's fils out, then navigates in. The close + retract
+    /// happen off-screen so the hero is shut with its fils tucked away when we return.
+    private func openFolder() {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        #endif
+        retract = false
+        blobTrigger += 1                                                          // spill the fils
+        withAnimation(.spring(response: 0.26, dampingFraction: 0.72)) { lid = 82 } // lid lifts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { onOpen() }         // burst shown, then navigate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {                    // off-screen reset
+            lid = 0
+            retract = true
+        }
+    }
+
+    private var placeholder: some View {
+        // A ghosted version of the same 3D folder (band-free), so it previews what a pin will look like.
+        let gray = LinearGradient(colors: [Theme.primaryText.opacity(0.16), Theme.primaryText.opacity(0.07)],
+                                  startPoint: .top, endPoint: .bottom)
+        return VStack(spacing: 16) {
+            folder(gray)
+                .frame(width: 110, height: 110)
+                .rotation3DEffect(.degrees(14), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+                .rotation3DEffect(.degrees(-6), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                .opacity(0.85)
+            Text(placeholderText)
+                .font(Theme.fredoka(13, weight: .regular))
+                .foregroundStyle(Theme.secondaryText)
+        }
+        .padding(.vertical, 8)
     }
 }
 
@@ -887,15 +1215,19 @@ struct BrowserFilPager: View {
     init(notes: [Note], startID: UUID) {
         self.notes = notes
         _selection = State(initialValue: startID)
-        _detent = State(initialValue: .fraction(0.6))
+        // Photos open taller (0.8); everything else rests at 0.6.
+        let start = notes.first { $0.uuid == startID }
+        _detent = State(initialValue: (start?.isImageFil ?? false) ? .fraction(0.8) : .fraction(0.6))
     }
 
     private var currentNote: Note? { notes.first { $0.uuid == selection } }
 
-    // All types share the 0.6 base size (so a mixed container like the Bin doesn't jump), but only
-    // non-link fils can expand to .large — links cap at 0.6.
+    // Links cap at 0.6; photos rest at 0.8 (roomier for the image); everything else at 0.6. All
+    // non-link fils can expand to .large.
     private var detents: Set<PresentationDetent> {
-        (currentNote?.isLinkFil ?? false) ? [.fraction(0.6)] : [.fraction(0.6), .large]
+        if currentNote?.isLinkFil ?? false { return [.fraction(0.6)] }
+        if currentNote?.isImageFil ?? false { return [.fraction(0.8), .large] }
+        return [.fraction(0.6), .large]
     }
 
     var body: some View {
@@ -907,11 +1239,16 @@ struct BrowserFilPager: View {
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .presentationDetents(detents, selection: $detent)
-        .presentationBackground(Theme.background)
+        .presentationBackground { FolderBrowserBackground() }
         .onChange(of: selection) { _, _ in
-            // Swiping from an expanded note onto a link snaps back down to the link's 0.6 cap.
-            if (currentNote?.isLinkFil ?? false), detent == .large {
-                detent = .fraction(0.6)
+            // Keep the resting detent valid for the fil just swiped to (types have different bases).
+            guard let note = currentNote else { return }
+            if note.isLinkFil, detent == .large {
+                detent = .fraction(0.6)                     // links cap at 0.6
+            } else if note.isImageFil, detent == .fraction(0.6) {
+                detent = .fraction(0.8)                     // photos rest taller
+            } else if !note.isImageFil, !note.isLinkFil, detent == .fraction(0.8) {
+                detent = .fraction(0.6)                     // leaving a photo drops back to 0.6
             }
         }
     }
@@ -923,6 +1260,7 @@ private struct BrowserFilPage: View {
     let note: Note
     @Binding var detent: PresentationDetent
     @State private var path: [FilSheetRoute] = []
+    @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -933,6 +1271,30 @@ private struct BrowserFilPage: View {
                 filSheetPath: $path,
                 selectedPresentationDetent: $detent
             )
+            // Without this, tapping a filament pushed a route with no destination — the fil sheet
+            // opened from a folder/Bin showed a caution glyph and nothing else. Mirror CanvasHome.
+            .navigationDestination(for: FilSheetRoute.self) { route in
+                filSheetDestination(route)
+            }
+        }
+    }
+
+    /// Destinations pushed inside the fil sheet: a filament (keyword) popup, or a linked fil.
+    @ViewBuilder
+    private func filSheetDestination(_ route: FilSheetRoute) -> some View {
+        switch route {
+        case .keyword(let noteID, let keyword):
+            if let routeNote = allNotes.first(where: { $0.uuid == noteID }) {
+                KeywordPopup(note: routeNote, keyword: keyword)
+            } else {
+                MissingLinkedFilView()
+            }
+        case .linkedNote(let linkedNoteID):
+            if let linkedNote = allNotes.first(where: { $0.uuid == linkedNoteID }) {
+                ArticleView(note: linkedNote, showsThreadedFilRows: false, ignoresTopSafeArea: false, filSheetPath: $path, selectedPresentationDetent: $detent)
+            } else {
+                MissingLinkedFilView()
+            }
         }
     }
 }

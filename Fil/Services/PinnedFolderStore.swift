@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import WidgetKit
 
 /// The App Group snapshot of the pinned folder — the shape both the Live Activity and the
@@ -35,6 +36,7 @@ struct PinnedFolderSnapshot: Codable, Equatable, Identifiable {
 /// Persists which folder is pinned to the Lock Screen / home-screen widget. Like `PinnedFilStore`
 /// before it, the snapshot is a file (not UserDefaults) in the shared App Group container so a warm
 /// widget process always reads the current pin rather than a cached stale one.
+@Observable
 final class PinnedFolderStore {
     static let shared = PinnedFolderStore()
 

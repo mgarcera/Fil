@@ -29,6 +29,8 @@ struct ArticleView: View {
     @State private var player = AudioPlayerViewModel()
     @State private var linkBrowserURL: URL?
     @State private var showLandfilConfirmation = false
+    /// Finishing an edit that emptied a plain note prompts this — saving nothing would leave a blank fil.
+    @State private var showEmptyNoteConfirmation = false
     @State private var pendingLandfilTodo: ArticleTodoLandfil?
     @State private var backlinkSheetDetent = PresentationDetent.fraction(0.6)
     @State private var backlinkNoteToOpen: Note?
@@ -40,6 +42,7 @@ struct ArticleView: View {
     @State private var isAddingTodo = false
     @State private var newTodoText = ""
     @FocusState private var isTodoFieldFocused: Bool
+    @FocusState private var isCaptionFieldFocused: Bool
     @State private var transcriptDraftBaseline = ""
     @State private var selectedImageFilIndex = 0
     @State private var imagePreviewURL: URL?
@@ -80,6 +83,11 @@ struct ArticleView: View {
         return originalTranscript != note.transcript
     }
 
+    /// A text-only fil (no photo, link, or audio) — its transcript is all it has.
+    private var isPlainNote: Bool {
+        !note.isImageFil && !note.isLinkFil && note.audioFilePath.isEmpty
+    }
+
     private var transcriptBinding: Binding<String> {
         Binding(
             get: { note.transcript },
@@ -97,8 +105,7 @@ struct ArticleView: View {
 
     var body: some View {
         ZStack {
-            Theme.background
-                .ignoresSafeArea()
+            FolderBrowserBackground()
 
             if note.isLinkFil {
                 linkFilContentView
@@ -192,6 +199,8 @@ struct ArticleView: View {
                     } label: {
                         Image(systemName: isEditingTranscript ? "checkmark" : "pencil")
                     }
+                    // A photo can't be saved with an empty caption — block the checkmark until typed.
+                    .disabled(isEditingTranscript && note.isImageFil && note.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityLabel(isEditingTranscript ? "Finish editing" : "Edit thought")
                 }
             }
@@ -202,6 +211,12 @@ struct ArticleView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This thought will be deleted. This cannot be undone.")
+        }
+        .alert("Remove this thought?", isPresented: $showEmptyNoteConfirmation) {
+            Button("Remove", role: .destructive) { landfilFil() }
+            Button("Keep editing", role: .cancel) {}
+        } message: {
+            Text("This thought is empty. Removing it can't be undone.")
         }
         .sheet(isPresented: Binding(
             get: { linkBrowserURL != nil },
@@ -217,7 +232,7 @@ struct ArticleView: View {
                 ArticleView(note: linkedParent)
             }
             .presentationDetents([.fraction(0.6)], selection: $backlinkSheetDetent)
-            .presentationBackground(Theme.background)
+            .presentationBackground { FolderBrowserBackground() }
         }
     }
 
@@ -290,20 +305,31 @@ struct ArticleView: View {
                 }
             }
 
-            // Caption sits directly under the photo(s), always visible (not gated on the detent).
-            let caption = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !caption.isEmpty {
-                Text(caption)
-                    .font(Theme.dmMono(13))
-                    .foregroundStyle(Theme.secondaryText)
+            // Caption sits directly under the photo(s), always visible. The Edit button turns it into
+            // an editable field; a photo must keep a note, so an empty caption can't be saved.
+            if isEditingTranscript {
+                TextField("write a note", text: transcriptBinding, axis: .vertical)
+                    .font(Theme.fredoka(13, weight: .regular))
+                    .foregroundStyle(Theme.primaryText)
                     .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .lineLimit(1...6)
+                    .focused($isCaptionFieldFocused)
+                    .frame(maxWidth: .infinity)
+            } else {
+                let caption = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !caption.isEmpty {
+                    Text(caption)
+                        .font(Theme.fredoka(13, weight: .regular))
+                        .foregroundStyle(Theme.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
 
-            // To-dos (and the add control) surface only at the full detent, so the compact
-            // image view stays clean.
-            if selectedPresentationDetent == .large {
+            // To-dos (and the add control) surface from the 0.8 resting detent up (photos open there),
+            // so a captioned photo shows its to-dos without needing to expand to full.
+            if selectedPresentationDetent != .fraction(0.6) {
                 if !note.todos.isEmpty {
                     todoQuoteList
                 }
@@ -392,7 +418,7 @@ struct ArticleView: View {
             HStack(spacing: 6) {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 12, weight: .semibold))
-                Text("Open")
+                Text("Tap or swipe to open")
                     .font(Theme.dmSans(15, weight: .semibold))
             }
             .foregroundStyle(Theme.primaryText)
@@ -512,9 +538,9 @@ struct ArticleView: View {
         Group {
             if isEditingTranscript {
                 // Match the reading view (SelectableTextView) exactly so text doesn't shift when
-                // toggling edit: system font, body-relative 16pt, label @0.85, 6pt line spacing.
+                // toggling edit: Fredoka regular 16pt, label @0.85, 6pt line spacing.
                 TextEditor(text: transcriptBinding)
-                    .font(Theme.dmSans(16))
+                    .font(Theme.fredoka(16, weight: .regular))
                     .foregroundStyle(Theme.primaryText.opacity(0.85))
                     .lineSpacing(6)
                     .scrollContentBackground(.hidden)
@@ -591,20 +617,30 @@ struct ArticleView: View {
     }
 
     private func toggleEditing() {
-        SoundscapeManager.shared.playTabSound()
         if isEditingTranscript {
+            // A photo must keep a note — don't save (finish editing) with an empty caption.
+            if note.isImageFil, note.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return }
+            // A plain note emptied to nothing: confirm removal rather than save a blank fil.
+            if isPlainNote, note.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                showEmptyNoteConfirmation = true
+                return
+            }
+            SoundscapeManager.shared.playTabSound()
             let shouldRefreshMetadata = note.transcript != transcriptDraftBaseline
             withAnimation(.snappy(duration: 0.18)) {
                 isEditingTranscript = false
             }
+            isCaptionFieldFocused = false
             if shouldRefreshMetadata {
                 Task { await refreshMetadataFromTranscript() }
             }
         } else {
+            SoundscapeManager.shared.playTabSound()
             transcriptDraftBaseline = note.transcript
             withAnimation(.snappy(duration: 0.18)) {
                 isEditingTranscript = true
             }
+            if note.isImageFil { isCaptionFieldFocused = true }
         }
     }
 
@@ -615,15 +651,22 @@ struct ArticleView: View {
                 // Stable identity (from Note.todoIDs) so removal animations track the right row.
                 // Long-press a to-do to landfil it.
                 ForEach(note.todoRowItems) { item in
-                    TodoRowContent(text: item.text, isCompleted: item.done) {
-                        toggleTodo(at: item.index)
-                    }
-                    .contextMenu {
-                        Button(role: .destructive) {
+                    HStack(spacing: 8) {
+                        TodoRowContent(text: item.text, isCompleted: item.done, font: Theme.fredoka(16, weight: .light)) {
+                            toggleTodo(at: item.index)
+                        }
+                        // A quiet trailing (x) removes the to-do (routes to the confirmation).
+                        Button {
                             pendingLandfilTodo = ArticleTodoLandfil(index: item.index, text: item.text)
                         } label: {
-                            Label("Landfil", systemImage: "trash")
+                            Image(systemName: "xmark")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.tertiaryText)
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Landfil to-do")
                     }
                 }
             }
@@ -648,7 +691,7 @@ struct ArticleView: View {
                     TodoStatusCircle(isCompleted: false)
 
                     TextField("To do", text: $newTodoText)
-                        .font(Theme.dmSans(16))
+                        .font(Theme.fredoka(16, weight: .light))
                         .foregroundStyle(Theme.secondaryText)
                         .focused($isTodoFieldFocused)
                         .submitLabel(.done)
@@ -668,7 +711,7 @@ struct ArticleView: View {
                         Image(systemName: "plus")
                             .font(.system(size: 13, weight: .semibold))
                         Text("To do")
-                            .font(Theme.dmSans(16))
+                            .font(Theme.fredoka(16, weight: .light))
                     }
                     .foregroundStyle(Theme.tertiaryText)
                     .contentShape(Rectangle())

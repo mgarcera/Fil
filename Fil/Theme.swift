@@ -74,6 +74,18 @@ enum Theme {
         return .custom(name, size: size, relativeTo: .body)
     }
 
+    /// Caveat — a handwritten script bundled at launch (OFL). Used for the stamp snippets' text.
+    static func caveat(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .medium:               name = "Caveat-Medium"
+        case .semibold:             name = "Caveat-SemiBold"
+        case .bold, .heavy, .black: name = "Caveat-Bold"
+        default:                    name = "Caveat-Regular"
+        }
+        return .custom(name, size: size, relativeTo: .body)
+    }
+
     private static let filGradientPalettes: [[String]] = [
         [
             "#F24D59",  // coral red

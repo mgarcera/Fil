@@ -62,7 +62,6 @@ struct KeywordPopup: View {
     @State private var dragSnapshot: [UUID] = []
     @State private var didCompleteDrop = false
     @State private var showNotePicker = false
-    @State private var showFilLinkPicker = false
     @State private var showCamera = false
     @State private var showPDFImporter = false
     @State private var recordingEntryID: UUID?
@@ -77,14 +76,11 @@ struct KeywordPopup: View {
 
     private let maxSlots = 32
     private let cornerRadius: CGFloat = 30
-    /// Matches CanvasHome.gridBlobSize so the link picker's blobs are the same size as search blobs.
-    private let linkPickerBlobSize: CGFloat = 150
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
 
     var body: some View {
         ZStack {
-            Theme.background
-                .ignoresSafeArea()
+            FolderBrowserBackground()
 
             ScrollView {
                 Color.clear
@@ -120,6 +116,18 @@ struct KeywordPopup: View {
             }
             .scrollIndicators(.hidden)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        // A thin gradient hairline lit across the top edge (the parent fil's colors), matching the
+        // reading view — clipped by the sheet's rounded corners so it reads as a lit line, not a border.
+        .overlay(alignment: .top) {
+            LinearGradient(
+                colors: [Color(hex: note.gradientStartHex), Color(hex: note.gradientEndHex)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(height: 2)
+            .allowsHitTesting(false)
+            .ignoresSafeArea()
         }
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -237,64 +245,6 @@ struct KeywordPopup: View {
                 }
             }
         }
-        .sheet(isPresented: $showFilLinkPicker) {
-            filLinkPickerSheet
-        }
-    }
-
-    /// "link a thought": pick another fil to link, shown as blobs (the same NoteCardView component
-    /// as the search grid) rather than a menu of titles.
-    private var filLinkPickerSheet: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)], spacing: 24) {
-                    ForEach(otherNotes) { otherNote in
-                        Button {
-                            appendLinkedNote(otherNote)
-                            showFilLinkPicker = false
-                        } label: {
-                            VStack(spacing: 10) {
-                                NoteCardView(note: otherNote, cardHeight: linkPickerBlobSize)
-                                    .frame(width: linkPickerBlobSize, height: linkPickerBlobSize)
-                                    .frame(maxWidth: .infinity)
-                                filLinkTitle(otherNote)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(20)
-            }
-            .scrollIndicators(.hidden)
-            .navigationTitle("Link a thought")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showFilLinkPicker = false }
-                }
-            }
-        }
-        .presentationDetents([.large, .fraction(0.6)])
-        .presentationBackground(Theme.background)
-    }
-
-    /// Fil title under a picker blob, styled like the search grid: a one-line title centers, a title
-    /// that wraps to 2+ lines left-aligns (ViewThatFits, no manual line counting).
-    private func filLinkTitle(_ note: Note) -> some View {
-        let trimmed = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
-        let label = trimmed.isEmpty ? "fil" : trimmed
-        return ViewThatFits(in: .horizontal) {
-            Text(label)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-            Text(label)
-                .multilineTextAlignment(.leading)
-                .frame(width: linkPickerBlobSize, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .font(Theme.dmSans(15, weight: .medium))
-        .foregroundStyle(Theme.primaryText)
-        .frame(width: linkPickerBlobSize)
     }
 
     // MARK: - Entry Views
@@ -466,15 +416,6 @@ struct KeywordPopup: View {
 
     private var addButton: some View {
         Menu {
-            if otherNotes.count > 0 {
-                Section {
-                    Button {
-                        showFilLinkPicker = true
-                    } label: {
-                        Label("Link a thought", systemImage: "link.circle")
-                    }
-                }
-            }
             Section {
                 Button {
                     let entry = AttachmentEntry.note()
@@ -733,10 +674,6 @@ struct KeywordPopup: View {
         return allNotes.first { $0.uuid == uuid }
     }
 
-    private var otherNotes: [Note] {
-        allNotes.filter { $0.uuid != note.uuid }
-    }
-
     private func findOrCreate() -> KeywordAttachment {
         if let existing = attachment { return existing }
         let new = KeywordAttachment(keyword: keyword, note: note)
@@ -751,12 +688,6 @@ struct KeywordPopup: View {
     private func appendEntry(_ entry: AttachmentEntry) {
         let attachment = findOrCreate()
         attachment.entries.append(entry)
-    }
-
-    private func appendLinkedNote(_ linkedNote: Note) {
-        // One-directional: the link lives only on this fil. The target gets no backlink.
-        appendEntry(.linkedNote(id: linkedNote.uuid, title: linkedNote.title))
-        modelContext.saveOrLog()
     }
 
     private func updateEntry(id: UUID, mutate: (inout AttachmentEntry) -> Void) {

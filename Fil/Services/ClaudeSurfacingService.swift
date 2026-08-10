@@ -106,6 +106,30 @@ actor ClaudeSurfacingService {
         return decoded.summary.withoutEmDashes
     }
 
+    /// Folder snippets: reflect one folder's contents as 2–4 short fragments (for the home hero stamps).
+    func folderSnippets(fils: [FilClusterInput], transactionID: String) async throws -> [String] {
+        guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
+
+        let payload = RequestBody(
+            query: "",
+            fils: fils.map { RequestFil(text: $0.text, metadata: $0.metadata) },
+            snippets: true
+        )
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue(transactionID, forHTTPHeaderField: "X-Fil-Transaction-Id")
+        request.httpBody = try JSONEncoder().encode(payload)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw SurfacingError.empty }
+        guard let decoded = try? JSONDecoder().decode(SnippetsResponse.self, from: data) else {
+            throw SurfacingError.badJSON
+        }
+        return decoded.parts.map { $0.withoutEmDashes }
+    }
+
     /// Pro "smart organize": send the fils and get back topical folder groupings from Claude.
     func organize(fils: [FilClusterInput], transactionID: String) async throws -> [OrganizedFolder] {
         guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
@@ -167,6 +191,10 @@ actor ClaudeSurfacingService {
         var summarize: Bool? = nil
         var window: String? = nil
         var organize: Bool? = nil
+        var snippets: Bool? = nil
+    }
+    private struct SnippetsResponse: Decodable {
+        let parts: [String]
     }
     private struct RequestFil: Encodable {
         let text: String
