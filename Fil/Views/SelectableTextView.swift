@@ -164,8 +164,6 @@ struct SelectableTextView: NSViewRepresentable {
     var onTapHighlight: ((String) -> Void)?
     var onMakeTodo: ((String) -> Void)?
     @Binding var height: CGFloat
-    /// Body text color; defaults to adaptive `.label`. The player passes white for its dark wash.
-    var textColor: UIColor? = nil
 
     private var lighterHex: String {
         let startLuminance = Color(hex: gradientStartHex).luminance

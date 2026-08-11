@@ -31,6 +31,7 @@ struct FilFullScreenPlayer: View {
     @State private var filamentKeyword: FilamentKeyword?   // presents the tapped/selected keyword's filament sheet
     @State private var browserLink: BrowserLink?           // presents the in-app browser for a link fil
     @State private var linkCopied = false                  // brief "copied" state on the URL capsule
+    @State private var pendingLandfilTarget: Note?          // deleted in onDisappear, after the sheet is gone
     @FocusState private var editorFocused: Bool
 
     private let noteMaxHeight: CGFloat = 200
@@ -94,9 +95,9 @@ struct FilFullScreenPlayer: View {
         }
         #if canImport(UIKit)
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false; audio.stop() }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false; audio.stop(); performPendingLandfil() }
         #else
-        .onDisappear { audio.stop() }
+        .onDisappear { audio.stop(); performPendingLandfil() }
         #endif
     }
 
@@ -118,6 +119,8 @@ struct FilFullScreenPlayer: View {
         let next = index + delta
         guard notes.indices.contains(next) else { return }
         audio.stop()
+        carouselSwiping = false   // a torn-down photo carousel never emits .idle; don't wedge fil-nav
+        noteHeight = 0            // re-measure the new note rather than reusing the previous height
         navForward = delta > 0
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
             index = next
@@ -163,16 +166,20 @@ struct FilFullScreenPlayer: View {
     }
 
     /// Delete the current fil. The deck array is a snapshot holding this (soon-deleted) object, so we
-    /// dismiss FIRST, then delete once the sheet is gone — never rendering a deleted model.
+    /// dismiss FIRST and defer the delete to `onDisappear` — the view is provably gone by then, so it
+    /// can never re-render a deleted model (no fixed-delay race).
     private func landfil() {
-        let target = note
+        pendingLandfilTarget = note
         audio.stop()
         onClose()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-            FilLandfil.cleanUpResources(for: target)
-            context.delete(target)
-            try? context.save()
-        }
+    }
+
+    private func performPendingLandfil() {
+        guard let target = pendingLandfilTarget else { return }
+        pendingLandfilTarget = nil
+        FilLandfil.cleanUpResources(for: target)
+        context.delete(target)
+        try? context.save()
     }
 
     // MARK: - Edit (expand-focused)
