@@ -149,13 +149,6 @@ struct CanvasHome: View {
         Dictionary(uniqueKeysWithValues: notes.map { ($0.uuid, $0) })
     }
 
-    /// Folders you can jump to from inside a nested folder — everything except the one you're in.
-    /// Reversed: the switcher Menu is bottom-anchored, so iOS renders it bottom-to-top. Reversing the
-    /// home order here makes the menu read top-to-bottom the same as the folders on the home page.
-    private var switchableFolders: [Folder] {
-        Array(folders.filter { $0.id != contextFolder?.id }.reversed())
-    }
-
     /// Search mode: the composer is the query input and the results (or a blank canvas) sit behind it.
     private var isSearching: Bool { phase == .querying || phase == .results }
     /// True when fils are swipe/long-press selected — drives the floating move/copy/delete chips.
@@ -208,57 +201,8 @@ struct CanvasHome: View {
         .overlay(alignment: .bottom) {
             if phase == .composing || isSearching {
                 VStack(spacing: 10) {
-                    // Floating glass buttons above the dock. On the root, settings + add-folder now live
-                    // in the top nav bar (FoldersHomeSection), so these show only INSIDE a folder
-                    // interior: settings + the folder switcher (or new-folder when there are no siblings).
-                    if !composerFocused {
-                        if phase == .composing && folderInteriorOpen {
-                            VStack(spacing: 10) {
-                                Button(action: onSettings) {
-                                    Image("FilLogo")
-                                        .resizable().scaledToFit()
-                                        .frame(width: 24, height: 24)
-                                        .frame(width: 56, height: 56)
-                                        .glassEffect(.regular.interactive(), in: .circle)
-                                        .contentShape(Circle())
-                                }
-                                .buttonStyle(.plain).accessibilityLabel("Settings")
-
-                                // Inside a folder with siblings, this slot becomes a folder switcher;
-                                // otherwise it's the new-folder button.
-                                if folderInteriorOpen && !switchableFolders.isEmpty {
-                                    Menu {
-                                        ForEach(switchableFolders) { f in
-                                            Button(prefersLowercase ? f.name.lowercased() : f.name) {
-                                                deepLink = .folder(f.id)
-                                            }
-                                        }
-                                    } label: {
-                                        Image(systemName: "arrow.left.arrow.right")
-                                            .font(.system(size: 20, weight: .semibold))
-                                            .foregroundStyle(Theme.primaryText)
-                                            .frame(width: 56, height: 56)
-                                            .glassEffect(.regular.interactive(), in: .circle)
-                                            .contentShape(Circle())
-                                    }
-                                    .buttonStyle(.plain).accessibilityLabel("jump to another folder")
-                                } else {
-                                    Button { newFolderRequest = true } label: {
-                                        Image(systemName: "folder.badge.plus")
-                                            .font(.system(size: 20, weight: .semibold))
-                                            .foregroundStyle(Theme.primaryText)
-                                            .frame(width: 56, height: 56)
-                                            .glassEffect(.regular.interactive(), in: .circle)
-                                            .contentShape(Circle())
-                                    }
-                                    .buttonStyle(.plain).accessibilityLabel("new folder")
-                                }
-                            }
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .padding(.trailing, 14)   // line up with the composer's trailing icon
-                            .transition(.scale.combined(with: .opacity))   // minimize/maximize, not fade
-                        }
-                    }
+                    // Settings + add-folder live in the top nav bar (root) and the folder switcher moved
+                    // into the folder interior's header, so there are no bottom FABs anymore.
 
                     // The floating liquid-glass row above the dock: Bin | Selected switcher (leftmost)
                     // + move/copy/delete chips when selected. Present whenever the dock has fils; hidden

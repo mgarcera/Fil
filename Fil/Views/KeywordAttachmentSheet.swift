@@ -203,15 +203,25 @@ struct KeywordPopup: View {
             set: { if !$0 { editingNoteID = nil } }
         )) {
             if let id = editingNoteID,
-               let idx = attachment?.entries.firstIndex(where: { $0.id == id }) {
+               attachment?.entries.contains(where: { $0.id == id }) == true {
+                // Resolve by id inside each accessor (never a captured index) so an entry removed
+                // mid-edit can't leave a stale index that crashes on subscript.
                 NoteEditorSheet(
                     title: Binding(
-                        get: { attachment?.entries[idx].noteTitle ?? "" },
-                        set: { attachment?.entries[idx].noteTitle = $0 }
+                        get: { attachment?.entries.first(where: { $0.id == id })?.noteTitle ?? "" },
+                        set: { newValue in
+                            if let i = attachment?.entries.firstIndex(where: { $0.id == id }) {
+                                attachment?.entries[i].noteTitle = newValue
+                            }
+                        }
                     ),
                     text: Binding(
-                        get: { attachment?.entries[idx].text ?? "" },
-                        set: { attachment?.entries[idx].text = $0 }
+                        get: { attachment?.entries.first(where: { $0.id == id })?.text ?? "" },
+                        set: { newValue in
+                            if let i = attachment?.entries.firstIndex(where: { $0.id == id }) {
+                                attachment?.entries[i].text = newValue
+                            }
+                        }
                     )
                 )
                 .presentationDetents([.large], selection: $noteEditorDetent)

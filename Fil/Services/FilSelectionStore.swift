@@ -51,12 +51,13 @@ final class FilSelectionStore {
     }
 
     func landfilSelected() {
-        for note in selectedNotes() {
+        let doomed = selectedNotes()
+        clear()   // clear the selection FIRST so no view renders a deleted-but-still-selected fil
+        for note in doomed {
             FilLandfil.cleanUpResources(for: note)
             context?.delete(note)
         }
         try? context?.save()
-        clear()
     }
 
     /// Landfil a specific set of fils by id (used by the trash drop target, where the dropped fils

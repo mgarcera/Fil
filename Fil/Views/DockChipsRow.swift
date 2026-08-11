@@ -38,7 +38,8 @@ struct DockChipsRow: View {
                     switcher
                     if hasSelection {
                         moveChip
-                        copyChip
+                        // Copy acts on the selection only, so hide it while browsing the Bin tab.
+                        if effectiveTab == .selected { copyChip }
                         deleteChip
                     }
                 }
@@ -84,8 +85,7 @@ struct DockChipsRow: View {
 
     private var moveChip: some View {
         Menu {
-            // Bottom-anchored menu renders bottom-to-top; reverse so it reads in home order.
-            ForEach(Array(selection.folders().reversed())) { folder in
+            ForEach(selection.folders()) { folder in
                 Button(folder.name) { withAnimation(.snappy) { selection.moveSelected(to: folder) } }
             }
         } label: { chipLabel("Move", "folder", destructive: false) }
@@ -100,7 +100,7 @@ struct DockChipsRow: View {
     }
 
     private var deleteChip: some View {
-        Button { showLandfil = true } label: { chipLabel("Delete", "trash", destructive: true) }
+        Button { showLandfil = true } label: { chipLabel("Landfil", "trash", destructive: true) }
             .buttonStyle(.plain)
     }
 

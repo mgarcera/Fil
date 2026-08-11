@@ -254,7 +254,12 @@ struct FoldersHomeSection: View {
             title: title, summary: summary, seed: seed, start: start, end: end, glyph: glyph, notes: notes, folders: folders, folder: folder,
             bottomInset: bottomInset,
             onMove: { note, folder in move(note, to: folder) },
-            onNewFolder: { note in pendingMoveNote = note; showNewFolder = true }
+            onNewFolder: { note in pendingMoveNote = note; showNewFolder = true },
+            // Replace the top (back still returns to root). Deferred a tick so the path change lands on a
+            // fresh update cycle — mutating it inline from the menu warns "update multiple times per frame".
+            onSwitchFolder: { target in
+                DispatchQueue.main.async { path = [.folder(target)] }
+            }
         )
     }
 
@@ -543,6 +548,8 @@ struct FolderInteriorView: View {
     var bottomInset: CGFloat = 120
     var onMove: (Note, Folder?) -> Void
     var onNewFolder: (Note) -> Void
+    /// Jump to a sibling folder (from the header switcher).
+    var onSwitchFolder: (Folder) -> Void = { _ in }
 
     @Environment(\.modelContext) private var context
     @AppStorage("prefersLowercase") private var prefersLowercase = false
@@ -572,6 +579,19 @@ struct FolderInteriorView: View {
 
     private func cased(_ text: String) -> String { prefersLowercase ? text.lowercased() : text }
 
+    /// Other folders you can jump to from this interior (everything except the one you're in).
+    private var siblings: [Folder] { folders.filter { $0.id != folder?.id } }
+
+    /// The header's "Switch Folder" control (trailing), mirroring the home settings button's placement.
+    private var switchFolderMenu: some View {
+        Menu {
+            ForEach(siblings) { f in Button(cased(f.name)) { onSwitchFolder(f) } }
+        } label: {
+            Image(systemName: "arrow.left.arrow.right")
+        }
+        .accessibilityLabel("switch folder")
+    }
+
     var body: some View {
         // Sections are reorderable Lists: long-press-drag a card to reorder within its type
         // (like folders). Swipe leading to select, trailing for rename / move / landfil.
@@ -596,6 +616,9 @@ struct FolderInteriorView: View {
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .largeTitle) { folderIdentity }
+            ToolbarItem(placement: .topBarTrailing) {
+                if !siblings.isEmpty { switchFolderMenu }
+            }
         }
         // Creating a fil here happens through the contextual composer bar ("add to {folder}"), not a
         // per-folder ＋. The folder switcher lives in the composer's FAB slot (replaces new-folder).
