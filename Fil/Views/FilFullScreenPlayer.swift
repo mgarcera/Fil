@@ -56,8 +56,10 @@ struct FilFullScreenPlayer: View {
             ZStack {
                 filContent
                     .id(note.uuid)
+                    // Slides in the nav direction AND scales up as it lands (hero pop), slides out plainly.
                     .transition(.asymmetric(
-                        insertion: .move(edge: navForward ? .trailing : .leading).combined(with: .opacity),
+                        insertion: .move(edge: navForward ? .trailing : .leading)
+                            .combined(with: .opacity).combined(with: .scale(scale: 0.92)),
                         removal: .move(edge: navForward ? .leading : .trailing).combined(with: .opacity)))
             }
             .frame(maxHeight: .infinity)
@@ -123,7 +125,8 @@ struct FilFullScreenPlayer: View {
         // Don't reset noteHeight here: it would collapse the still-current outgoing note mid-swipe
         // (the "jump"). The incoming note is a fresh identity (.id(note.uuid)) and re-measures itself.
         navForward = delta > 0
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
+        // Unified deck timing: hero slide + scale pop, header, and transport all ride this snappy.
+        withAnimation(.snappy(duration: 0.2)) {
             index = next
         }
         #if canImport(UIKit)
@@ -216,8 +219,16 @@ struct FilFullScreenPlayer: View {
                 }
             }
             Spacer()
-            Text(editing ? "editing" : "\(cased(typeLabel))  ·  \(index + 1) / \(notes.count)")
-                .font(Theme.fredoka(12, weight: .medium)).monospacedDigit().opacity(0.7)
+            Group {
+                if editing {
+                    Text("editing")
+                } else {
+                    Text("\(cased(typeLabel))  ·  \(index + 1) / \(notes.count)")
+                        .id(index)   // new identity per fil so it scale-pops to the new value on nav
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .font(Theme.fredoka(12, weight: .medium)).monospacedDigit().opacity(0.7)
             Spacer()
             if editing {
                 Button("Done") { finishEdit() }.font(Theme.fredoka(13, weight: .semibold))
@@ -469,6 +480,8 @@ struct FilFullScreenPlayer: View {
                     Button { audio.togglePlayback() } label: {
                         Image(systemName: audio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 58))
+                            .contentTransition(.symbolEffect(.replace))
+                            .symbolEffect(.bounce, value: audio.isPlaying)   // subtle scale pop on toggle
                     }
                     Button { advance(1) } label: {
                         Image(systemName: "forward.fill").font(.system(size: 22))
@@ -478,6 +491,7 @@ struct FilFullScreenPlayer: View {
                 }
                 .foregroundStyle(.white)
             }
+            .transition(.scale.combined(with: .opacity))   // scale-pop the voice controls in on a type-swap
         } else {
             HStack(spacing: 80) {
                 Button { advance(-1) } label: {
@@ -492,6 +506,7 @@ struct FilFullScreenPlayer: View {
                 .disabled(index == notes.count - 1).opacity(index == notes.count - 1 ? 0.3 : 1)
             }
             .foregroundStyle(.white)
+            .transition(.scale.combined(with: .opacity))
         }
     }
 
