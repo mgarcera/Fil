@@ -120,7 +120,8 @@ struct FilFullScreenPlayer: View {
         guard notes.indices.contains(next) else { return }
         audio.stop()
         carouselSwiping = false   // a torn-down photo carousel never emits .idle; don't wedge fil-nav
-        noteHeight = 0            // re-measure the new note rather than reusing the previous height
+        // Don't reset noteHeight here: it would collapse the still-current outgoing note mid-swipe
+        // (the "jump"). The incoming note is a fresh identity (.id(note.uuid)) and re-measures itself.
         navForward = delta > 0
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) {
             index = next
@@ -211,6 +212,7 @@ struct FilFullScreenPlayer: View {
             } else {
                 Button(action: onClose) {
                     Image(systemName: "chevron.down").font(.system(size: 17, weight: .semibold))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
             }
             Spacer()
@@ -228,10 +230,13 @@ struct FilFullScreenPlayer: View {
                     Button(role: .destructive) { showLandfil = true } label: { Label("Landfil", systemImage: "trash") }
                 } label: {
                     Image(systemName: "ellipsis").font(.system(size: 17, weight: .semibold))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
             }
         }
         .foregroundStyle(.white.opacity(0.9))
+        // Breathing room beneath the "editing" label so the editor doesn't crowd the top bar.
+        .padding(.bottom, editing ? 14 : 0)
     }
 
     /// The hero art: a photo fil shows its image carousel; everything else (including links) shows its
@@ -456,23 +461,35 @@ struct FilFullScreenPlayer: View {
             VStack(spacing: 16) {
                 scrubber
                 HStack(spacing: 44) {
-                    Button { advance(-1) } label: { Image(systemName: "backward.fill").font(.system(size: 22)) }
-                        .disabled(index == 0).opacity(index == 0 ? 0.3 : 1)
+                    Button { advance(-1) } label: {
+                        Image(systemName: "backward.fill").font(.system(size: 22))
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    }
+                    .disabled(index == 0).opacity(index == 0 ? 0.3 : 1)
                     Button { audio.togglePlayback() } label: {
                         Image(systemName: audio.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                             .font(.system(size: 58))
                     }
-                    Button { advance(1) } label: { Image(systemName: "forward.fill").font(.system(size: 22)) }
-                        .disabled(index == notes.count - 1).opacity(index == notes.count - 1 ? 0.3 : 1)
+                    Button { advance(1) } label: {
+                        Image(systemName: "forward.fill").font(.system(size: 22))
+                            .frame(width: 44, height: 44).contentShape(Rectangle())
+                    }
+                    .disabled(index == notes.count - 1).opacity(index == notes.count - 1 ? 0.3 : 1)
                 }
                 .foregroundStyle(.white)
             }
         } else {
             HStack(spacing: 80) {
-                Button { advance(-1) } label: { Image(systemName: "chevron.left").font(.system(size: 22)) }
-                    .disabled(index == 0).opacity(index == 0 ? 0.3 : 1)
-                Button { advance(1) } label: { Image(systemName: "chevron.right").font(.system(size: 22)) }
-                    .disabled(index == notes.count - 1).opacity(index == notes.count - 1 ? 0.3 : 1)
+                Button { advance(-1) } label: {
+                    Image(systemName: "chevron.left").font(.system(size: 22))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .disabled(index == 0).opacity(index == 0 ? 0.3 : 1)
+                Button { advance(1) } label: {
+                    Image(systemName: "chevron.right").font(.system(size: 22))
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .disabled(index == notes.count - 1).opacity(index == notes.count - 1 ? 0.3 : 1)
             }
             .foregroundStyle(.white)
         }

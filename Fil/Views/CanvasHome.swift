@@ -158,6 +158,12 @@ struct CanvasHome: View {
 
     /// Search mode: the composer is the query input and the results (or a blank canvas) sit behind it.
     private var isSearching: Bool { phase == .querying || phase == .results }
+    /// True when fils are swipe/long-press selected — drives the floating move/copy/delete chips.
+    private var hasSelection: Bool { !FilSelectionStore.shared.isEmpty }
+    /// The Bin has unfiled fils to browse (root only). Drives the floating switcher chip's visibility.
+    private var binHasItems: Bool { !folderInteriorOpen && notes.contains { $0.folder == nil } }
+    /// Which dock set is shown — shared between the floating switcher chip and HomeBasket's blob row.
+    @State private var dockTab: DockTab = .bin
 
     var body: some View {
         ZStack {
@@ -202,11 +208,11 @@ struct CanvasHome: View {
         .overlay(alignment: .bottom) {
             if phase == .composing || isSearching {
                 VStack(spacing: 10) {
-                    // Floating glass buttons above the dock. Resting home: settings + new-folder,
-                    // right-aligned over the composer's trailing icon (fade in/out). Search results:
-                    // a centered refresh (new-search) FAB.
+                    // Floating glass buttons above the dock. On the root, settings + add-folder now live
+                    // in the top nav bar (FoldersHomeSection), so these show only INSIDE a folder
+                    // interior: settings + the folder switcher (or new-folder when there are no siblings).
                     if !composerFocused {
-                        if phase == .composing {
+                        if phase == .composing && folderInteriorOpen {
                             VStack(spacing: 10) {
                                 Button(action: onSettings) {
                                     Image("FilLogo")
@@ -254,6 +260,16 @@ struct CanvasHome: View {
                         }
                     }
 
+                    // The floating liquid-glass row above the dock: Bin | Selected switcher (leftmost)
+                    // + move/copy/delete chips when selected. Present whenever the dock has fils; hidden
+                    // during search.
+                    if (hasSelection || binHasItems) && !isSearching {
+                        DockChipsRow(tab: $dockTab, showBin: !folderInteriorOpen)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 2)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+
                     VStack(spacing: 12) {
                         // Above the composer: recent-search chips in search (when the query's empty),
                         // else the Bin / selection baskets.
@@ -265,7 +281,8 @@ struct CanvasHome: View {
                         } else {
                             HomeBasket(
                                 onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
-                                showBin: !folderInteriorOpen
+                                showBin: !folderInteriorOpen,
+                                tab: $dockTab
                             )
                         }
                         composerBar
@@ -280,6 +297,8 @@ struct CanvasHome: View {
                 .padding(.bottom, 8)
                 // Quick snappy minimize/maximize for the FABs as focus toggles.
                 .animation(.snappy(duration: 0.2), value: composerFocused)
+                .animation(.snappy(duration: 0.25), value: hasSelection)
+                .animation(.snappy(duration: 0.25), value: binHasItems)
                 // Measure the WHOLE dock (floating buttons + composer) so scroll content clears it all.
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
@@ -469,7 +488,8 @@ struct CanvasHome: View {
             },
             deepLink: $deepLink,
             newFolderRequest: $newFolderRequest,
-            organizeRequest: $organizeRequest
+            organizeRequest: $organizeRequest,
+            onSettings: onSettings
         )
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .transition(.opacity)

@@ -38,6 +38,8 @@ struct FoldersHomeSection: View {
     /// Set true by the composer's ＋ / ✨ to open the new-folder popup / run smart-organize; reset here.
     @Binding var newFolderRequest: Bool
     @Binding var organizeRequest: Bool
+    /// Opens Settings — the root's top-right nav-bar button (add-folder is top-left).
+    var onSettings: () -> Void = {}
 
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
     @Query private var allNotes: [Note]
@@ -100,40 +102,7 @@ struct FoldersHomeSection: View {
                             .listRowBackground(Color.clear)
                     }
                     ForEach(folders) { folder in
-                        Button { path.append(.folder(folder)) } label: {
-                            listRow(seed: seed(for: folder), start: folder.gradientStartHex, end: folder.gradientEndHex,
-                                    glyph: nil, title: folder.name, trailing: "\(folder.notes.count)", caption: folder.summary)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                        .fill(targetedFolderID == folder.id ? Theme.primaryText.opacity(0.10) : .clear)
-                                )
-                        }
-                        .buttonStyle(.plain)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
-                        // Native swipe actions (back by request) + a drop target for a dragged card.
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            // Live Activity is the fast full-swipe action (like Select on fil cards).
-                            let pinned = PinnedFolderStore.shared.isPinned(folder.id)
-                            Button { togglePin(folder) } label: {
-                                Label(pinned ? "Remove" : "Live Activity", systemImage: pinned ? "pin.slash" : "pin")
-                            }
-                            .tint(.indigo)
-                            Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
-                                .tint(.blue)
-                            // Plain (not destructive) so the row doesn't animate out before confirming.
-                            Button { pendingLandfilFolder = folder } label: {
-                                Label("Landfil", systemImage: "trash")
-                            }
-                            .tint(.red)
-                        }
-                        .dropDestination(for: String.self) { items, _ in
-                            handleDrop(items, on: folder)
-                        } isTargeted: { targeted in
-                            if targeted { targetedFolderID = folder.id }
-                            else if targetedFolderID == folder.id { targetedFolderID = nil }
-                        }
+                        folderRow(folder)
                     }
                     .onMove(perform: moveFolders)   // long-press a folder to drag-reorder
                 }
@@ -143,7 +112,11 @@ struct FoldersHomeSection: View {
             .scrollDismissesKeyboard(.interactively)
             .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
             .background(FolderBrowserBackground())
-            .toolbar(.hidden, for: .navigationBar)
+            // Top nav bar (transparent, so the buttons float like the old header): add-folder leading,
+            // settings trailing. The interior pushes its own toolbar via navigationDestination.
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarTitleDisplayMode(.inline)
+            .toolbar { rootToolbar }
             .onChange(of: path) { _, newPath in
                 if case let .folder(folder) = newPath.last { onContextFolderChange(folder) }
                 else { onContextFolderChange(nil) }
@@ -204,6 +177,60 @@ struct FoldersHomeSection: View {
                     .padding(20)
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+        }
+    }
+
+    /// One folder row on the home root: tap to open, swipe for pin/rename/landfil, drop a card to file it.
+    private func folderRow(_ folder: Folder) -> some View {
+        Button { path.append(.folder(folder)) } label: {
+            listRow(seed: seed(for: folder), start: folder.gradientStartHex, end: folder.gradientEndHex,
+                    glyph: nil, title: folder.name, trailing: "\(folder.notes.count)", caption: folder.summary)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(targetedFolderID == folder.id ? Theme.primaryText.opacity(0.10) : .clear)
+                )
+        }
+        .buttonStyle(.plain)
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
+        // Native swipe actions (back by request) + a drop target for a dragged card.
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            // Live Activity is the fast full-swipe action (like Select on fil cards).
+            let pinned = PinnedFolderStore.shared.isPinned(folder.id)
+            Button { togglePin(folder) } label: {
+                Label(pinned ? "Remove" : "Live Activity", systemImage: pinned ? "pin.slash" : "pin")
+            }
+            .tint(.indigo)
+            Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
+                .tint(.blue)
+            // Plain (not destructive) so the row doesn't animate out before confirming.
+            Button { pendingLandfilFolder = folder } label: {
+                Label("Landfil", systemImage: "trash")
+            }
+            .tint(.red)
+        }
+        .dropDestination(for: String.self) { items, _ in
+            handleDrop(items, on: folder)
+        } isTargeted: { targeted in
+            if targeted { targetedFolderID = folder.id }
+            else if targetedFolderID == folder.id { targetedFolderID = nil }
+        }
+    }
+
+    /// The root's transparent top bar: add-folder leading, settings trailing.
+    @ToolbarContentBuilder private var rootToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button { newFolderRequest = true } label: {
+                Image(systemName: "folder.badge.plus").font(.system(size: 18, weight: .semibold))
+            }
+            .accessibilityLabel("new folder")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button(action: onSettings) {
+                Image("FilLogo").resizable().scaledToFit().frame(width: 22, height: 22)
+            }
+            .accessibilityLabel("Settings")
         }
     }
 
