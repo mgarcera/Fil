@@ -6,6 +6,8 @@ final class AudioPlayerViewModel {
     var isPlaying = false
     var currentTime: TimeInterval = 0
     var duration: TimeInterval = 0
+    /// Live output amplitude (0…1) while playing, from the player's meters — drives the fil blob pulse.
+    var level: Double = 0
 
     private var player: AVAudioPlayer?
     private var timer: Timer?
@@ -19,6 +21,7 @@ final class AudioPlayerViewModel {
             // available straight after init, and playback activates the session
             // off the main thread via `configurePlayback()` before `play()`.
             player = try AVAudioPlayer(contentsOf: url)
+            player?.isMeteringEnabled = true
             duration = player?.duration ?? 0
         } catch {
             player = nil
@@ -54,6 +57,7 @@ final class AudioPlayerViewModel {
     func pause() {
         player?.pause()
         isPlaying = false
+        level = 0
         stopTimer()
     }
 
@@ -62,6 +66,7 @@ final class AudioPlayerViewModel {
         player?.currentTime = 0
         currentTime = 0
         isPlaying = false
+        level = 0
         stopTimer()
     }
 
@@ -74,8 +79,13 @@ final class AudioPlayerViewModel {
         timer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             guard let self, let player = self.player else { return }
             self.currentTime = player.currentTime
+            // Live meter → linear amplitude (0…1): amplitude = 10^(dB/20).
+            player.updateMeters()
+            let power = player.averagePower(forChannel: 0)
+            self.level = Double(max(0, min(1, pow(10, power / 20))))
             if !player.isPlaying {
                 self.isPlaying = false
+                self.level = 0
                 self.stopTimer()
             }
         }

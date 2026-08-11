@@ -547,7 +547,7 @@ struct FolderInteriorView: View {
     private var todoNotes: [Note] { notes.filter(hasTodos).sorted(by: inFolderOrder) }
     private var rest: [Note] { notes.filter { !hasTodos($0) } }
     /// The Full Screen player deck: every non-link fil, in the order the sections read top-to-bottom.
-    private var playerDeck: [Note] { todoNotes + photoNotes + plainNotes + voiceNotes }
+    private var playerDeck: [Note] { todoNotes + photoNotes + plainNotes + voiceNotes + linkNotes }
     private var photoNotes: [Note] { rest.filter { $0.isImageFil }.sorted(by: inFolderOrder) }
     private var linkNotes: [Note] { rest.filter { $0.isLinkFil }.sorted(by: inFolderOrder) }
     private var voiceNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && !$0.audioFilePath.isEmpty }.sorted(by: inFolderOrder) }
@@ -687,21 +687,15 @@ struct FolderInteriorView: View {
             }
             .opacity(isSelected(note) ? 0.6 : 1)
             .contentShape(Rectangle())
-            .onTapGesture { onOpen(note, container) }
-            // Swipe left: Select (full swipe selects), then Full Screen / Move / Landfil.
+            // Tapping a fil opens the Full Screen player (the folder's default reader).
+            .onTapGesture { playerSelection = FilPagerSelection(notes: playerDeck, startID: note.uuid) }
+            // Swipe left: Select (full swipe selects), then Move / Landfil.
             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                 Button { toggleSelect(note) } label: {
                     Label(isSelected(note) ? "Deselect" : "Select",
                           systemImage: isSelected(note) ? "checkmark.circle.fill" : "checkmark")
                 }
                 .tint(.green)
-                // Full Screen "player" — every fil type except links.
-                if !note.isLinkFil {
-                    Button { playerSelection = FilPagerSelection(notes: playerDeck, startID: note.uuid) } label: {
-                        Label("Full Screen", systemImage: "arrow.up.left.and.arrow.down.right")
-                    }
-                    .tint(.purple)
-                }
                 Button { moveTargetNote = note } label: { Label("Move", systemImage: "folder") }.tint(.indigo)
                 // Not role:.destructive — that plays the row-removal animation on swipe, before the
                 // user confirms. Plain red button so the card only animates out on the real delete.

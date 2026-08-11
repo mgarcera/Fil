@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import ImageIO
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -26,6 +27,10 @@ struct FilFullScreenPlayer: View {
     @State private var newTodoText = ""
     @State private var editing = false          // expand-focused note editor
     @State private var draft = ""               // editor buffer; committed to note.transcript on Done
+    @State private var carouselSwiping = false   // true while a horizontal drag is paging the photo carousel
+    @State private var filamentKeyword: FilamentKeyword?   // presents the tapped/selected keyword's filament sheet
+    @State private var browserLink: BrowserLink?           // presents the in-app browser for a link fil
+    @State private var linkCopied = false                  // brief "copied" state on the URL capsule
     @FocusState private var editorFocused: Bool
 
     private let noteMaxHeight: CGFloat = 200
@@ -69,7 +74,7 @@ struct FilFullScreenPlayer: View {
         .presentationBackground { BlurredFilBackground(colors: colors) }
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
-        .task(id: note.uuid) { loadAudio() }
+        .task(id: note.uuid) { loadAudio(); await backfillLinkDescription() }
         .alert("Landfil this fil?", isPresented: $showLandfil) {
             Button("Landfil", role: .destructive) { landfil() }
             Button("Cancel", role: .cancel) {}
@@ -80,6 +85,12 @@ struct FilFullScreenPlayer: View {
             TextField("New to-do", text: $newTodoText)
             Button("Add") { addTodo() }
             Button("Cancel", role: .cancel) { newTodoText = "" }
+        }
+        .sheet(item: $filamentKeyword) { fk in
+            KeywordPopup(note: note, keyword: fk.keyword)
+        }
+        .sheet(item: $browserLink) { bl in
+            InAppBrowserView(url: bl.url).ignoresSafeArea()
         }
         #if canImport(UIKit)
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
@@ -96,7 +107,7 @@ struct FilFullScreenPlayer: View {
     private var navSwipe: some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
-                guard !editing else { return }
+                guard !editing, !carouselSwiping else { return }   // let the photo carousel own its own swipe
                 guard abs(value.translation.width) > abs(value.translation.height),
                       abs(value.translation.width) > 60 else { return }
                 advance(value.translation.width < 0 ? 1 : -1)
@@ -123,6 +134,21 @@ struct FilFullScreenPlayer: View {
     }
 
     // MARK: - Actions
+
+    /// Open the filament (keyword attachments) sheet for a tapped highlight or a selected phrase.
+    private func openFilament(_ keyword: String) {
+        let trimmed = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        filamentKeyword = FilamentKeyword(keyword: trimmed)
+    }
+
+    /// Promote a selected phrase in the note into a to-do.
+    private func addSelectionTodo(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        withAnimation(.snappy) { note.addTodo(trimmed) }
+        try? context.save()
+    }
 
     /// Append a to-do to the current fil (mutates in place — the deck array holds live objects).
     private func addTodo() {
@@ -188,7 +214,9 @@ struct FilFullScreenPlayer: View {
                 Button("Done") { finishEdit() }.font(Theme.fredoka(13, weight: .semibold))
             } else {
                 Menu {
-                    Button { enterEdit() } label: { Label("Edit note", systemImage: "pencil") }
+                    if !note.isLinkFil {
+                        Button { enterEdit() } label: { Label("Edit note", systemImage: "pencil") }
+                    }
                     Button { newTodoText = ""; showAddTodo = true } label: { Label("Add to-do", systemImage: "checklist") }
                     Button(role: .destructive) { showLandfil = true } label: { Label("Landfil", systemImage: "trash") }
                 } label: {
@@ -199,23 +227,69 @@ struct FilFullScreenPlayer: View {
         .foregroundStyle(.white.opacity(0.9))
     }
 
-    private var blob: some View {
-        // While a voice fil is playing, breathe the blob (stand-in for real amplitude — metering is a
-        // follow-up). Otherwise it just wobbles.
-        TimelineView(.animation) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            let amp: CGFloat = (isVoice && audio.isPlaying) ? CGFloat(0.5 + 0.5 * sin(t * 6)) : 0
-            FilPlayerBlob(colors: colors, seed: note.blobShapeSeed, amplitude: amp)
-                .frame(height: editing ? 90 : 260)
-                .shadow(color: .black.opacity(0.3), radius: 30, y: 18)
+    /// The hero art: a photo fil shows its images as a swipeable stack (tap the front to expand
+    /// inline); every other type shows its blob.
+    @ViewBuilder private var heroArt: some View {
+        if note.isImageFil, !note.sortedImageFilImages.isEmpty {
+            PhotoStackHero(images: note.sortedImageFilImages.map(\.data), compact: editing, swiping: $carouselSwiping)
+        } else if note.isLinkFil {
+            linkHero
+        } else {
+            blob
         }
+    }
+
+    /// A link fil's hero: a gradient card with the site's favicon + domain; tap to open the in-app browser.
+    private var linkHero: some View {
+        Button { openLink() } label: {
+            VStack(spacing: 12) {
+                linkIcon
+                Text(cased(note.sourceDomain ?? "link"))
+                    .font(Theme.fredoka(13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 200)
+            .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay(alignment: .topTrailing) {
+                Image(systemName: "arrow.up.forward").font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.8)).padding(14)
+            }
+            .padding(.horizontal, 26)
+        }
+        .buttonStyle(.plain)
+        .shadow(color: .black.opacity(0.3), radius: 30, y: 18)
+    }
+
+    @ViewBuilder private var linkIcon: some View {
+        if let data = note.sourceFaviconData, let ui = UIImage(data: data) {
+            Image(uiImage: ui).resizable().scaledToFit().frame(width: 68, height: 68)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        } else {
+            Image(systemName: "link").font(.system(size: 30, weight: .semibold)).foregroundStyle(.white)
+                .frame(width: 68, height: 68)
+                .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    private var blob: some View {
+        // The blob pulses to the voice fil's live amplitude while playing (real meter, smoothed a
+        // touch since it updates at ~20Hz); otherwise it just wobbles.
+        let amp: CGFloat = (isVoice && audio.isPlaying) ? CGFloat(min(1, audio.level * 1.6)) : 0
+        return FilPlayerBlob(colors: colors, seed: note.blobShapeSeed, amplitude: amp)
+            .frame(height: editing ? 90 : 260)
+            .shadow(color: .black.opacity(0.3), radius: 30, y: 18)
+            .animation(.easeOut(duration: 0.08), value: amp)
     }
 
     /// The per-fil block that slides on navigation: blob + title/meta/note/to-dos.
     private var filContent: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 8)
-            blob
+            if note.isLinkFil {
+                linkURLRow.padding(.horizontal, 26).padding(.bottom, 12)
+            }
+            heroArt
             Spacer(minLength: 8)
             info
             if !editing { Spacer(minLength: 12) }
@@ -224,12 +298,11 @@ struct FilFullScreenPlayer: View {
 
     private var info: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(cased(displayTitle))
-                .font(Theme.instrumentSerif(editing ? 22 : 30))
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
             if editing {
+                Text(cased(displayTitle))
+                    .font(Theme.instrumentSerif(22))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 TextEditor(text: $draft)
                     .font(Theme.fredoka(16, weight: .regular))
                     .foregroundStyle(.white)
@@ -237,7 +310,22 @@ struct FilFullScreenPlayer: View {
                     .scrollContentBackground(.hidden)
                     .focused($editorFocused)
                     .frame(maxHeight: .infinity)
+            } else if note.isImageFil {
+                // Photo-forward: title + caption shrink to header-style so the carousel dominates.
+                photoCaption
+                todosBlock
+            } else if note.isLinkFil {
+                Text(cased(linkTitle))
+                    .font(Theme.instrumentSerif(30))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                linkDescription
+                todosBlock
             } else {
+                Text(cased(displayTitle))
+                    .font(Theme.instrumentSerif(30))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 noteBody
                 todosBlock
             }
@@ -245,24 +333,86 @@ struct FilFullScreenPlayer: View {
         .frame(maxWidth: .infinity, maxHeight: editing ? .infinity : nil, alignment: .leading)
     }
 
-    /// The fil's own text — fully open, but sized to its content: short notes shrink so the to-dos sit
-    /// right beneath them; long notes cap at `noteMaxHeight` and scroll (with a bottom fade).
+    /// The link's URL with a copy button. Opening is the hero's job, so the capsule only shows + copies.
+    @ViewBuilder private var linkURLRow: some View {
+        if let url = note.sourceURL {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.fill").font(.system(size: 11, weight: .semibold))
+                Text(url.absoluteString).font(Theme.dmMono(12)).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 6)
+                Button { copyLink(url) } label: {
+                    Image(systemName: linkCopied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 12, weight: .semibold))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Copy link")
+            }
+            .foregroundStyle(.white.opacity(0.85))
+            .padding(.horizontal, 14).frame(height: 40)
+            .background(.white.opacity(0.12), in: Capsule())
+        }
+    }
+
+    private func copyLink(_ url: URL) {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = url.absoluteString
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        #endif
+        withAnimation(.snappy) { linkCopied = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            withAnimation(.snappy) { linkCopied = false }
+        }
+    }
+
+    /// The link page's description (fetched in the background when the fil was made).
+    @ViewBuilder private var linkDescription: some View {
+        if let d = note.sourceDescription?.trimmingCharacters(in: .whitespacesAndNewlines), !d.isEmpty {
+            Text(cased(d))
+                .font(Theme.fredoka(16, weight: .regular)).opacity(0.9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// A photo fil's small header-style title + caption (Fredoka), sitting under the carousel.
+    @ViewBuilder private var photoCaption: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(cased(displayTitle))
+                .font(Theme.instrumentSerif(24))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !body.isEmpty {
+                Text(cased(body))
+                    .font(Theme.fredoka(15, weight: .regular)).opacity(0.85)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    /// The fil's own text — selectable (keyword highlights + select→Filament/To-do, tap a highlight to
+    /// open its filament). Sized to content; long notes cap at `noteMaxHeight` and scroll with a fade.
     @ViewBuilder private var noteBody: some View {
         let text = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         if !text.isEmpty {
             let capped = noteHeight > noteMaxHeight
             ScrollView {
-                Text(cased(text))
-                    .font(Theme.fredoka(16, weight: .regular)).lineSpacing(5).opacity(0.92)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(GeometryReader { g in
-                        Color.clear.preference(key: NoteHeightKey.self, value: g.size.height)
-                    })
+                SelectableTextView(
+                    text: cased(text),
+                    highlightedKeywords: note.attachments.map(\.keyword),
+                    gradientStartHex: note.gradientStartHex,
+                    gradientEndHex: note.gradientEndHex,
+                    onSelectText: { keyword, _ in openFilament(keyword) },
+                    onTapHighlight: { keyword in openFilament(keyword) },
+                    onMakeTodo: { addSelectionTodo($0) },
+                    height: $noteHeight,
+                    textColor: .white
+                )
+                .frame(height: noteHeight)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
             .scrollDisabled(!capped)
             .frame(height: noteHeight == 0 ? nil : min(noteHeight, noteMaxHeight))
-            .onPreferenceChange(NoteHeightKey.self) { noteHeight = $0 }
             .mask(capped
                   ? AnyView(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.9),
                                                    .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
@@ -381,9 +531,34 @@ struct FilFullScreenPlayer: View {
     }
 
     private var typeLabel: String {
+        if note.isLinkFil { return "link" }
         if note.isImageFil { return "photo" }
         if isVoice { return "voice" }
         return "note"
+    }
+
+    private var linkTitle: String {
+        let t = note.sourceTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !t.isEmpty { return t }
+        let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? (note.sourceDomain ?? "Link") : title
+    }
+
+    private func openLink() {
+        guard let url = note.sourceURL else { return }
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+        #endif
+        browserLink = BrowserLink(url: url)
+    }
+
+    /// Backfill a link's description if it's missing (made before descriptions existed, or first fetch failed).
+    private func backfillLinkDescription() async {
+        guard note.isLinkFil, (note.sourceDescription?.isEmpty ?? true), let url = note.sourceURL else { return }
+        if let description = await LinkFil.fetchDescription(for: url) {
+            note.sourceDescription = description
+            try? context.save()
+        }
     }
 
     private func timeString(_ t: TimeInterval) -> String {
@@ -393,10 +568,16 @@ struct FilFullScreenPlayer: View {
     }
 }
 
-/// Reports the note body's natural height so the scroll can size to content (capped).
-private struct NoteHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+/// A tapped/selected keyword, wrapped so it can drive `.sheet(item:)`.
+private struct FilamentKeyword: Identifiable {
+    let id = UUID()
+    let keyword: String
+}
+
+/// A link fil's URL, wrapped so it can drive the in-app browser `.sheet(item:)`.
+private struct BrowserLink: Identifiable {
+    let id = UUID()
+    let url: URL
 }
 
 // MARK: - Background
@@ -412,6 +593,119 @@ private struct BlurredFilBackground: View {
             .blur(radius: 90)
             .overlay(Color.black.opacity(0.34))
             .ignoresSafeArea()
+    }
+}
+
+// MARK: - Photo hero (native responsive carousel)
+
+/// A photo fil's images as a native horizontal carousel: each card is sized to its true aspect (box-fit
+/// within maxCardW × maxCardH, so verticals grow tall), peeking neighbors via content margins. Scrolls
+/// with real momentum/snapping. A single photo is centered (no scroll). Images are decoded once so the
+/// band-height change during scroll doesn't re-decode them (which flashed gray). While the carousel is
+/// scrolling it flips `swiping` so the player's fil-nav swipe stands down (the band owns its own swipe).
+private struct PhotoStackHero: View {
+    let images: [Data]
+    var compact: Bool
+    @Binding var swiping: Bool
+
+    private let aspects: [CGFloat]   // width/height per image, from its pixel dimensions
+    private let decoded: [Image?]    // decoded once (avoids per-render decode → no gray flash)
+
+    @State private var scrollID: Int? = 0
+
+    private let maxCardW: CGFloat = 340   // wide landscapes cap here
+    private let maxCardH: CGFloat = 560   // portraits get to grow tall
+    private let radius: CGFloat = 24
+    private var hasMany: Bool { images.count > 1 }
+    private var current: Int { scrollID ?? 0 }
+
+    init(images: [Data], compact: Bool, swiping: Binding<Bool>) {
+        self.images = images
+        self.compact = compact
+        self._swiping = swiping
+        self.aspects = images.map(Self.aspectRatio)
+        self.decoded = images.map { Image(data: $0) }
+    }
+
+    /// Cheap pixel-dimension read (no full decode) → width / height aspect ratio.
+    private static func aspectRatio(_ data: Data) -> CGFloat {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+              let w = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+              let h = (props[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue, h > 0
+        else { return 1 }
+        return CGFloat(w / h)
+    }
+
+    /// Box-fit within maxCardW × maxCardH, preserving aspect: portraits fill the height and stay narrow;
+    /// landscapes fill the width and are shorter. Verticals therefore read much larger than landscapes.
+    private func cardSize(_ i: Int) -> CGSize {
+        let ar = aspects.indices.contains(i) ? aspects[i] : 1
+        var h = maxCardH, w = maxCardH * ar
+        if w > maxCardW { w = maxCardW; h = maxCardW / ar }
+        return CGSize(width: w, height: h)
+    }
+
+    var body: some View {
+        if compact {
+            imageView(current)
+                .scaledToFill()
+                .frame(height: 90).frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        } else if images.count <= 1 {
+            // A single photo is simply centered — no carousel.
+            let s = cardSize(0)
+            imageView(0)
+                .scaledToFit()
+                .frame(width: s.width, height: s.height)
+                .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                .frame(maxWidth: .infinity)
+        } else {
+            VStack(spacing: 14) {
+                carousel
+                dots
+            }
+        }
+    }
+
+    @ViewBuilder private func imageView(_ i: Int) -> some View {
+        if decoded.indices.contains(i), let image = decoded[i] {
+            image.resizable()
+        } else {
+            Color.white.opacity(0.1)
+        }
+    }
+
+    private var carousel: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 16) {
+                ForEach(images.indices, id: \.self) { i in
+                    let s = cardSize(i)
+                    imageView(i)
+                        .scaledToFit()
+                        .frame(width: s.width, height: s.height)
+                        .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                        .id(i)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .contentMargins(.horizontal, 44, for: .scrollContent)   // peek + lets ends center
+        .scrollPosition(id: $scrollID, anchor: .center)
+        .scrollTargetBehavior(.viewAligned)
+        .scrollIndicators(.hidden)
+        .frame(height: cardSize(current).height)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: current)
+        .onScrollPhaseChange { _, phase in swiping = (phase != .idle) }
+    }
+
+    private var dots: some View {
+        HStack(spacing: 7) {
+            ForEach(images.indices, id: \.self) { i in
+                Circle().fill(.white.opacity(i == current ? 0.95 : 0.35)).frame(width: 6, height: 6)
+                    .onTapGesture { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { scrollID = i } }
+            }
+        }
     }
 }
 

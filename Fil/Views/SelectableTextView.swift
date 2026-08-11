@@ -11,6 +11,8 @@ struct SelectableTextView: UIViewRepresentable {
     var onTapHighlight: ((String) -> Void)?
     var onMakeTodo: ((String) -> Void)?
     @Binding var height: CGFloat
+    /// Body text color; defaults to adaptive `.label`. The player passes white for its dark wash.
+    var textColor: UIColor? = nil
 
     private var lighterHex: String {
         let startLuminance = Color(hex: gradientStartHex).luminance
@@ -51,7 +53,7 @@ struct SelectableTextView: UIViewRepresentable {
 
         let attributed = NSMutableAttributedString(string: text, attributes: [
             .font: bodyFont,
-            .foregroundColor: UIColor.label.withAlphaComponent(0.85),
+            .foregroundColor: textColor ?? UIColor.label.withAlphaComponent(0.85),
             .paragraphStyle: {
                 let style = NSMutableParagraphStyle()
                 style.lineSpacing = 6
@@ -162,6 +164,8 @@ struct SelectableTextView: NSViewRepresentable {
     var onTapHighlight: ((String) -> Void)?
     var onMakeTodo: ((String) -> Void)?
     @Binding var height: CGFloat
+    /// Body text color; defaults to adaptive `.label`. The player passes white for its dark wash.
+    var textColor: UIColor? = nil
 
     private var lighterHex: String {
         let startLuminance = Color(hex: gradientStartHex).luminance
