@@ -47,7 +47,6 @@ struct FoldersHomeSection: View {
     @State private var targetedFolderID: UUID?
 
     @State private var path: [Route] = []
-    @State private var pagerSelection: FilPagerSelection?
     @State private var isSummarizing = false   // a pinned-folder summary is being generated (drives the skeleton)
     @State private var showNewFolder = false
     @State private var newFolderName = ""
@@ -168,12 +167,6 @@ struct FoldersHomeSection: View {
             }
         }
         .tint(Theme.primaryText)
-        .sheet(item: $pagerSelection) { sel in BrowserFilPager(notes: sel.notes, startID: sel.startID) }
-        // Close the pager if any fil it's paging gets landfil'd (from within its own modal or a swipe).
-        .onChange(of: allNotes.map(\.uuid)) { _, ids in
-            let live = Set(ids)
-            if let pager = pagerSelection, !pager.noteIDs.allSatisfy({ live.contains($0) }) { pagerSelection = nil }
-        }
         .sheet(isPresented: $showPaywall) {
             PaywallView()
                 .presentationDetents([.large])
@@ -233,7 +226,6 @@ struct FoldersHomeSection: View {
         FolderInteriorView(
             title: title, summary: summary, seed: seed, start: start, end: end, glyph: glyph, notes: notes, folders: folders, folder: folder,
             bottomInset: bottomInset,
-            onOpen: { note, items in pagerSelection = FilPagerSelection(notes: items, startID: note.uuid) },
             onMove: { note, folder in move(note, to: folder) },
             onNewFolder: { note in pendingMoveNote = note; showNewFolder = true }
         )
@@ -522,8 +514,6 @@ struct FolderInteriorView: View {
     var folder: Folder?
     /// Bottom scroll inset so content clears the floating composer dock.
     var bottomInset: CGFloat = 120
-    /// Opens a fil; the second argument is the ordered container it belongs to, for left/right paging.
-    var onOpen: (Note, [Note]) -> Void
     var onMove: (Note, Folder?) -> Void
     var onNewFolder: (Note) -> Void
 
@@ -667,7 +657,7 @@ struct FolderInteriorView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 4, trailing: 20))
                 ForEach(items, id: \.uuid) { note in
-                    cardRow(filRow(note), note: note, container: items)
+                    cardRow(filRow(note), note: note)
                 }
                 .onMove { reorder(items, from: $0, to: $1) }
             }
@@ -675,7 +665,7 @@ struct FolderInteriorView: View {
     }
 
     /// Shared per-row chrome: selected overlay, tap-to-open, and the leading/trailing swipe actions.
-    private func cardRow<Card: View>(_ card: Card, note: Note, container: [Note]) -> some View {
+    private func cardRow<Card: View>(_ card: Card, note: Note) -> some View {
         card
             .overlay(alignment: .topTrailing) {
                 if isSelected(note) {
@@ -827,7 +817,7 @@ struct FolderInteriorView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets(top: 14, leading: 20, bottom: 4, trailing: 20))
                 ForEach(todoNotes, id: \.uuid) { note in
-                    cardRow(todoCard(note), note: note, container: todoNotes)
+                    cardRow(todoCard(note), note: note)
                 }
                 .onMove { reorder(todoNotes, from: $0, to: $1) }
             }
