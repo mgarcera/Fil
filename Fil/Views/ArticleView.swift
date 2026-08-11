@@ -365,7 +365,8 @@ struct ArticleView: View {
             if let url = note.sourceURL {
                 // The URL, display-only — opening is the "open" button below (tap or swipe up).
                 HStack(spacing: 9) {
-                    Image(systemName: "lock.fill")
+                    // Honest: a lock only for https; a neutral globe for http (no false security claim).
+                    Image(systemName: url.scheme?.lowercased() == "https" ? "lock.fill" : "globe")
                         .font(.system(size: 11, weight: .semibold))
                     Text(url.absoluteString)
                         .font(Theme.dmMono(12))

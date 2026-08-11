@@ -227,8 +227,8 @@ struct FilFullScreenPlayer: View {
         .foregroundStyle(.white.opacity(0.9))
     }
 
-    /// The hero art: a photo fil shows its images as a swipeable stack (tap the front to expand
-    /// inline); every other type shows its blob.
+    /// The hero art: a photo fil shows its image carousel; everything else (including links) shows its
+    /// blob. Tapping a link's blob opens the in-app browser.
     @ViewBuilder private var heroArt: some View {
         if note.isImageFil, !note.sortedImageFilImages.isEmpty {
             PhotoStackHero(images: note.sortedImageFilImages.map(\.data), compact: editing, swiping: $carouselSwiping)
@@ -337,7 +337,9 @@ struct FilFullScreenPlayer: View {
     @ViewBuilder private var linkURLRow: some View {
         if let url = note.sourceURL {
             HStack(spacing: 8) {
-                Image(systemName: "lock.fill").font(.system(size: 11, weight: .semibold))
+                // Honest: a lock only for https; a neutral globe for http (no false security claim).
+                Image(systemName: url.scheme?.lowercased() == "https" ? "lock.fill" : "globe")
+                    .font(.system(size: 11, weight: .semibold))
                 Text(url.absoluteString).font(Theme.dmMono(12)).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 6)
                 Button { copyLink(url) } label: {
