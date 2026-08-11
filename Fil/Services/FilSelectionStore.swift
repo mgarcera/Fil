@@ -26,6 +26,7 @@ final class FilSelectionStore {
     func toggle(_ id: UUID) {
         if let index = selectedIDs.firstIndex(of: id) { selectedIDs.remove(at: index) }
         else { selectedIDs.append(id) }
+        Haptics.selection()   // one place for the select/deselect tap, everywhere selection happens
     }
     func remove(_ id: UUID) { selectedIDs.removeAll { $0 == id } }
     func clear() { selectedIDs.removeAll() }
@@ -48,6 +49,7 @@ final class FilSelectionStore {
         for note in selectedNotes() { note.folder = folder; note.sortIndex = 0 }   // order is per-folder
         try? context?.save()
         clear()
+        Haptics.move()
     }
 
     func landfilSelected() {
@@ -58,6 +60,7 @@ final class FilSelectionStore {
             context?.delete(note)
         }
         try? context?.save()
+        Haptics.destructive()
     }
 
     /// Landfil a specific set of fils by id (used by the trash drop target, where the dropped fils
@@ -73,6 +76,7 @@ final class FilSelectionStore {
         }
         try? context.save()
         for id in ids { remove(id) }
+        Haptics.destructive()
     }
 
     /// Copy the selected fils to the clipboard as Markdown (thought + link + to-do checkboxes).
@@ -173,10 +177,7 @@ struct SwipeToSelect: ViewModifier {
                     }
                     .onEnded { value in
                         if value.translation.width < -46 && abs(value.translation.width) > abs(value.translation.height) {
-                            store.toggle(noteID)
-                            #if canImport(UIKit)
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            #endif
+                            store.toggle(noteID)   // toggle() fires the selection haptic
                         }
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { dx = 0 }
                     }

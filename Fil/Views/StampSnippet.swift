@@ -126,9 +126,7 @@ struct StampDeck: View {
                         order.append(order.removeFirst())
                         drag = .zero
                     }
-                    #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                    #endif
+                    Haptics.navigate()
                 } else {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { drag = .zero }
                 }

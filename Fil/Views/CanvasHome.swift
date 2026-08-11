@@ -847,7 +847,7 @@ struct CanvasHome: View {
     private func landfil(_ note: Note) {
         FilLandfil.cleanUpResources(for: note)
         let id = note.uuid
-        SoundscapeManager.shared.playLandfilSound()
+        SoundscapeManager.shared.playLandfilSound(); Haptics.destructive()
         // Timeline-style deletion: the fil shrinks + blurs away first, then it's removed + deleted.
         withAnimation(.easeOut(duration: 0.45)) {
             landfillingIDs.insert(id)
@@ -868,7 +868,7 @@ struct CanvasHome: View {
     private func toggleTodo(_ note: Note, _ index: Int) {
         note.normalizeCompletedTodos()
         guard note.completedTodos.indices.contains(index) else { return }
-        SoundscapeManager.shared.playTodoArticleToggleSound()
+        SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
         withAnimation(.snappy) {
             note.completedTodos[index].toggle()
         }
@@ -936,7 +936,7 @@ struct CanvasHome: View {
         for todo in composedTodos { note.addTodo(todo) }
         note.folder = contextFolder   // file into the folder the composer is scoped to (nil = Bin)
         modelContext.saveOrLog()
-        SoundscapeManager.shared.playArticleMadeSound()
+        SoundscapeManager.shared.playArticleMadeSound(); Haptics.success()
 
         await afterUserFilCreated()
     }
@@ -993,7 +993,7 @@ struct CanvasHome: View {
         modelContext.saveOrLog()
 
         SoundscapeManager.shared.stopMeshDuringProcessSound()
-        SoundscapeManager.shared.playArticleMadeSound()
+        SoundscapeManager.shared.playArticleMadeSound(); Haptics.success()
 
         await settleCreatedFil(note)
     }
@@ -1023,7 +1023,7 @@ struct CanvasHome: View {
         note.folder = contextFolder
         modelContext.insert(note)
         modelContext.saveOrLog()
-        SoundscapeManager.shared.playArticleMadeSound()
+        SoundscapeManager.shared.playArticleMadeSound(); Haptics.success()
 
         await afterUserFilCreated()
     }
@@ -1087,7 +1087,7 @@ struct CanvasHome: View {
         SoundscapeManager.shared.startMeshDuringProcessSound()
         try? await Task.sleep(for: .milliseconds(900))
         SoundscapeManager.shared.stopMeshDuringProcessSound()
-        SoundscapeManager.shared.playArticleMadeSound()
+        SoundscapeManager.shared.playArticleMadeSound(); Haptics.success()
 
         // …morphs into the settled note blob, holds, then returns to the composer — unless the user
         // navigated away (e.g. opened search) mid-reveal, in which case don't yank them back.

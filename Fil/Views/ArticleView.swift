@@ -441,9 +441,7 @@ struct ArticleView: View {
 
     private func openLink() {
         guard let url = note.sourceURL else { return }
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-        #endif
+        Haptics.navigate()
         linkBrowserURL = url
     }
 
@@ -741,13 +739,13 @@ struct ArticleView: View {
         }
         note.addTodo(trimmed)
         modelContext.saveOrLog()
-        SoundscapeManager.shared.playTodoArticleToggleSound()
+        SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
         newTodoText = ""
         isTodoFieldFocused = true
     }
 
     private func removeTodo(at index: Int) {
-        SoundscapeManager.shared.playTodoArticleToggleSound()
+        SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
         note.removeTodo(at: index)
         modelContext.saveOrLog()
     }
@@ -755,7 +753,7 @@ struct ArticleView: View {
     /// Deletes the whole fil (from the ⋯ menu). Dismisses first so the view isn't rendering a
     /// deleted model, then removes its audio + the record — mirroring the home grid's landfil.
     private func landfilFil() {
-        SoundscapeManager.shared.playLandfilSound()
+        SoundscapeManager.shared.playLandfilSound(); Haptics.destructive()
         let noteToDelete = note
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -770,7 +768,7 @@ struct ArticleView: View {
     private func makeTodo(from text: String) {
         note.addTodo(text)
         modelContext.saveOrLog()
-        SoundscapeManager.shared.playTodoArticleToggleSound()
+        SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
     }
 
     private func isTodoCompleted(at index: Int) -> Bool {
@@ -781,7 +779,7 @@ struct ArticleView: View {
     private func toggleTodo(at index: Int) {
         normalizeTodoCompletionStates()
         guard note.completedTodos.indices.contains(index) else { return }
-        SoundscapeManager.shared.playTodoArticleToggleSound()
+        SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
         note.completedTodos[index].toggle()
         modelContext.saveOrLog()
     }

@@ -68,11 +68,7 @@ struct FoldersHomeSection: View {
 
     private func cased(_ text: String) -> String { prefersLowercase ? text.lowercased() : text }
 
-    private func pullHaptic() {
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        #endif
-    }
+    private func pullHaptic() { Haptics.move() }   // drag-drop file = a move commit
 
     enum Route: Hashable {
         case folder(Folder)
@@ -331,6 +327,7 @@ struct FoldersHomeSection: View {
         if let note = pendingMoveNote { note.folder = folder; note.sortIndex = 0 }
         pendingMoveNote = nil
         try? context.save()
+        Haptics.success()
     }
 
     private func startRename(_ folder: Folder) {
@@ -353,6 +350,7 @@ struct FoldersHomeSection: View {
         note.folder = folder
         note.sortIndex = 0   // order is per-folder; reset so it joins the destination at the top
         try? context.save()
+        Haptics.move()
     }
 
     private func delete(_ folder: Folder) {
@@ -362,6 +360,7 @@ struct FoldersHomeSection: View {
         }
         context.delete(folder)   // .nullify → its fils fall back to the unfiled deck
         try? context.save()
+        Haptics.destructive()
     }
 
     /// Pin a folder to the Lock Screen widget (or unpin it). Pinning also flips the Lock Screen
@@ -369,6 +368,7 @@ struct FoldersHomeSection: View {
     /// builds/refreshes the snapshot from the folder's live contents.
     private func togglePin(_ folder: Folder) {
         SoundscapeManager.shared.playTabSound()
+        Haptics.toggle()
         if PinnedFolderStore.shared.isPinned(folder.id) {
             PinnedFolderStore.shared.unpin()
             UserDefaults.filAppGroup.set(LockScreenActivity.off.rawValue, forKey: LockScreenActivity.storageKey)
@@ -641,6 +641,7 @@ struct FolderInteriorView: View {
             FilLandfil.cleanUpResources(for: note)
             context.delete(note)
             try? context.save()
+            Haptics.destructive()
         })
         .sheet(item: $playerSelection) { sel in
             FilFullScreenPlayer(notes: sel.notes, startID: sel.startID) { playerSelection = nil }
@@ -753,17 +754,12 @@ struct FolderInteriorView: View {
         arr.move(fromOffsets: source, toOffset: destination)
         for (index, note) in arr.enumerated() { note.sortIndex = index }
         try? context.save()
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        #endif
+        Haptics.reorder()
     }
 
     private func isSelected(_ note: Note) -> Bool { selection.contains(note.uuid) }
     private func toggleSelect(_ note: Note) {
-        withAnimation(.snappy) { selection.toggle(note.uuid) }
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        #endif
+        withAnimation(.snappy) { selection.toggle(note.uuid) }   // toggle() fires the selection haptic
     }
 
     /// The Full Screen player's exact wash: a plain diagonal 2-color gradient, zoomed and blurred into
@@ -927,6 +923,7 @@ struct FolderInteriorView: View {
         }
         guard note.completedTodos.indices.contains(index) else { return }
         SoundscapeManager.shared.playTodoArticleToggleSound()
+        Haptics.toggle()
         note.completedTodos[index].toggle()
         try? context.save()
     }
@@ -1166,9 +1163,7 @@ struct PinnedFolderHero: View {
     /// Lifts the cover open, spilling the folder's fils out, then navigates in. The close + retract
     /// happen off-screen so the hero is shut with its fils tucked away when we return.
     private func openFolder() {
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-        #endif
+        Haptics.navigate()
         retract = false
         blobTrigger += 1                                                          // spill the fils
         withAnimation(.spring(response: 0.26, dampingFraction: 0.72)) { lid = 82 } // lid lifts

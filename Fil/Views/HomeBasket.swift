@@ -47,12 +47,11 @@ struct HomeBasket: View {
                 ForEach(shown, id: \.uuid) { note in
                     filBlob(note)
                         // Tap selects (keeps the current tab — a Bin selection stays on Bin); a quick
-                        // long-press opens the reader (with a light haptic). Drag omitted for now.
+                        // long-press opens the reader (navigate haptic). Tap select is handled by
+                        // FilSelectionStore.toggle's own haptic. Drag omitted for now.
                         .onTapGesture { withAnimation(.snappy) { selection.toggle(note.uuid) } }
                         .onLongPressGesture(minimumDuration: 0.2) {
-                            #if canImport(UIKit)
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            #endif
+                            Haptics.navigate()
                             onOpen(note, shown)
                         }
                 }

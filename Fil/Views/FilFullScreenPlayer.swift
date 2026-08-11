@@ -129,9 +129,7 @@ struct FilFullScreenPlayer: View {
         withAnimation(.snappy(duration: 0.2)) {
             index = next
         }
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-        #endif
+        Haptics.navigate()
     }
 
     private func loadAudio() {
@@ -184,6 +182,7 @@ struct FilFullScreenPlayer: View {
         FilLandfil.cleanUpResources(for: target)
         context.delete(target)
         try? context.save()
+        Haptics.destructive()
     }
 
     // MARK: - Edit (expand-focused)
@@ -559,9 +558,7 @@ struct FilFullScreenPlayer: View {
         guard note.completedTodos.indices.contains(item.index) else { return }
         withAnimation(.snappy) { note.completedTodos[item.index].toggle() }
         try? context.save()
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        #endif
+        Haptics.toggle()
     }
 
     // MARK: - Text
@@ -587,9 +584,7 @@ struct FilFullScreenPlayer: View {
 
     private func openLink() {
         guard let url = note.sourceURL else { return }
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-        #endif
+        Haptics.navigate()
         browserLink = BrowserLink(url: url)
     }
 
