@@ -241,8 +241,8 @@ struct CanvasHome: View {
                 .padding(.bottom, 8)
                 // Quick snappy minimize/maximize for the FABs as focus toggles.
                 .animation(.snappy(duration: 0.2), value: composerFocused)
-                .animation(.snappy(duration: 0.25), value: hasSelection)
-                .animation(.snappy(duration: 0.25), value: binHasItems)
+                .animation(.snappy(duration: 0.2), value: hasSelection)
+                .animation(.snappy(duration: 0.2), value: binHasItems)
                 // Measure the WHOLE dock (floating buttons + composer) so scroll content clears it all.
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }
@@ -258,7 +258,7 @@ struct CanvasHome: View {
         .overlay {
             if showWelcomeCongrats {
                 welcomeCongratsOverlay
-                    .transition(.opacity)
+                    .transition(.scale.combined(with: .opacity))
             }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
@@ -1073,9 +1073,9 @@ struct CanvasHome: View {
     /// gooey → note-blob creation the user's own fils get. Runs once, ever.
     private func revealWelcomeFil() async {
         didSeedWelcomeFil = true
-        withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = true }
+        withAnimation(.snappy(duration: 0.2)) { showWelcomeCongrats = true }
         try? await Task.sleep(for: .seconds(2.2))
-        withAnimation(.smooth(duration: 0.5)) { showWelcomeCongrats = false }
+        withAnimation(.snappy(duration: 0.2)) { showWelcomeCongrats = false }
         try? await Task.sleep(for: .milliseconds(350))
 
         let note = insertWelcomeFil()

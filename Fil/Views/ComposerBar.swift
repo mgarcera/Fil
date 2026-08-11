@@ -69,7 +69,7 @@ struct ComposerBar: View {
                 // to-do / voice / photo inline; picking one (or tapping + again) collapses back.
                 if !searchMode {
                     Button {
-                        withAnimation(.snappy(duration: 0.25)) { captureExpanded.toggle() }
+                        withAnimation(.snappy(duration: 0.2)) { captureExpanded.toggle() }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 24, weight: .semibold))
@@ -165,7 +165,7 @@ struct ComposerBar: View {
     }
 
     private func collapseCapture() {
-        withAnimation(.snappy(duration: 0.25)) { captureExpanded = false }
+        withAnimation(.snappy(duration: 0.2)) { captureExpanded = false }
     }
 
     /// A capture-option icon revealed under the + (matches the composer's 56pt icon buttons).
