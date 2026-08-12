@@ -63,22 +63,6 @@ final class FilSelectionStore {
         Haptics.destructive()
     }
 
-    /// Landfil a specific set of fils by id (used by the trash drop target, where the dropped fils
-    /// may not be the current selection). Resolves ids, cleans up resources, deletes, and unselects.
-    func landfil(ids: [UUID]) {
-        guard let context else { return }
-        let all = (try? context.fetch(FetchDescriptor<Note>())) ?? []
-        let byID = Dictionary(all.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
-        for id in ids {
-            guard let note = byID[id] else { continue }
-            FilLandfil.cleanUpResources(for: note)
-            context.delete(note)
-        }
-        try? context.save()
-        for id in ids { remove(id) }
-        Haptics.destructive()
-    }
-
     /// Copy the selected fils to the clipboard as Markdown (thought + link + to-do checkboxes).
     /// Non-destructive — the selection stays intact.
     func copySelectedAsMarkdown() {

@@ -700,6 +700,9 @@ struct CanvasHome: View {
     private func composeAboutQuery() {
         text = query
         searchActive = false   // drives the transition back to the composer (see .onChange(of: searchActive))
+        // The searchActive handler unfocuses on the way home; re-raise the keyboard next tick so the
+        // user can keep typing the thought they searched for.
+        DispatchQueue.main.async { composerFocused = true }
     }
 
     /// "check out fil pro for a smart search" with the "fil pro" wordmark in the multicolor accent
