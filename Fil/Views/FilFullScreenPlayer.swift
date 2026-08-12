@@ -20,7 +20,6 @@ struct FilFullScreenPlayer: View {
 
     @State private var index: Int
     @State private var navForward = true       // last nav direction, drives the slide transition
-    @State private var noteHeight: CGFloat = 0  // measured note-body height, capped at noteMaxHeight
     @State private var audio = AudioPlayerViewModel()
     @State private var showLandfil = false
     @State private var showAddTodo = false
@@ -32,9 +31,18 @@ struct FilFullScreenPlayer: View {
     @State private var browserLink: BrowserLink?           // presents the in-app browser for a link fil
     @State private var linkCopied = false                  // brief "copied" state on the URL capsule
     @State private var pendingLandfilTarget: Note?          // deleted in onDisappear, after the sheet is gone
+    @State private var scrollY: CGFloat = 0                 // reading-scroll offset; drives shrink/parallax/dim
+    @State private var canScrollDown = false                // more text below the fold → show the floating arrow
+    @State private var scrollPosition = ScrollPosition()    // lets the arrow scroll the reader to the bottom
+    @State private var showPhotoDetails = false             // photo fil: the ⌄ flips to a title/caption/to-do section
     @FocusState private var editorFocused: Bool
 
-    private let noteMaxHeight: CGFloat = 200
+    private let heroFull: CGFloat = 260
+    private let heroCollapsed: CGFloat = 90
+    /// Gap between the blob and the text at rest.
+    private let heroToTextGap: CGFloat = 40
+    /// Scroll distance over which the backdrop blob fully shrinks from `heroFull` to `heroCollapsed`.
+    private let heroCollapseDistance: CGFloat = 240
 
     init(notes: [Note], startID: UUID, onClose: @escaping () -> Void = {}) {
         self.notes = notes
@@ -46,6 +54,16 @@ struct FilFullScreenPlayer: View {
     private var note: Note { notes[min(index, notes.count - 1)] }
     private var colors: [Color] { [Color(hex: note.gradientStartHex), Color(hex: note.gradientEndHex)] }
     private var isVoice: Bool { !note.audioFilePath.isEmpty }
+    /// Note/voice fils use the gooey blob as a scrolled-over backdrop; photos/links keep their media hero.
+    private var heroCentersBlob: Bool { !note.isLinkFil && !note.isImageFil }
+    /// Scroll progress 0…1 over `heroCollapseDistance` — drives the backdrop blob's shrink, drift, and dim.
+    private var heroProgress: CGFloat { min(1, max(0, scrollY / heroCollapseDistance)) }
+    /// The blob's height: compact while editing; full at rest; shrinking to `heroCollapsed` as you scroll.
+    private var heroVisualHeight: CGFloat {
+        if editing { return heroCollapsed }
+        guard heroCentersBlob else { return heroFull }
+        return heroFull - heroProgress * (heroFull - heroCollapsed)
+    }
 
     private func cased(_ s: String) -> String { prefersLowercase ? s.lowercased() : s }
 
@@ -122,8 +140,9 @@ struct FilFullScreenPlayer: View {
         guard notes.indices.contains(next) else { return }
         audio.stop()
         carouselSwiping = false   // a torn-down photo carousel never emits .idle; don't wedge fil-nav
-        // Don't reset noteHeight here: it would collapse the still-current outgoing note mid-swipe
-        // (the "jump"). The incoming note is a fresh identity (.id(note.uuid)) and re-measures itself.
+        scrollY = 0               // the incoming fil opens with a full, undimmed backdrop blob
+        canScrollDown = false     // re-evaluated once the new fil reports its scroll geometry
+        showPhotoDetails = false  // the incoming photo starts on the image, not its details
         navForward = delta > 0
         // Unified deck timing: hero slide + scale pop, header, and transport all ride this snappy.
         withAnimation(.snappy(duration: 0.2)) {
@@ -261,7 +280,9 @@ struct FilFullScreenPlayer: View {
         }
     }
 
-    /// A link fil's hero: a gradient card with the site's favicon + domain; tap to open the in-app browser.
+    /// A link fil's hero: a compact, centered gradient card with the site's favicon + domain; tap to open
+    /// the in-app browser. Sized to roughly the blob's footprint (not full-width) so its soft shadow has
+    /// margin and isn't clipped by the scroll bounds — matching the blob's shadow.
     private var linkHero: some View {
         Button { openLink() } label: {
             VStack(spacing: 12) {
@@ -269,18 +290,17 @@ struct FilFullScreenPlayer: View {
                 Text(cased(note.sourceDomain ?? "link"))
                     .font(Theme.fredoka(13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 200)
+            .frame(width: 240, height: 210)
             .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
                         in: RoundedRectangle(cornerRadius: 28, style: .continuous))
             .overlay(alignment: .topTrailing) {
                 Image(systemName: "arrow.up.forward").font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.8)).padding(14)
             }
-            .padding(.horizontal, 26)
         }
         .buttonStyle(.plain)
         .shadow(color: .black.opacity(0.3), radius: 30, y: 18)
+        .frame(maxWidth: .infinity)   // center the compact card
     }
 
     @ViewBuilder private var linkIcon: some View {
@@ -298,23 +318,120 @@ struct FilFullScreenPlayer: View {
         // The blob pulses to the voice fil's live amplitude while playing (real meter, smoothed a
         // touch since it updates at ~20Hz); otherwise it just wobbles.
         let amp: CGFloat = (isVoice && audio.isPlaying) ? CGFloat(min(1, audio.level * 1.6)) : 0
-        return FilPlayerBlob(colors: colors, seed: note.blobShapeSeed, amplitude: amp)
-            .frame(height: editing ? 90 : 260)
+        // Freeze the wobble (and its every-frame blur re-render) once the blob is fully collapsed and
+        // dimmed away — imperceptible there, and this screen keeps the idle timer disabled, so it's a
+        // real battery win. It resumes as soon as you scroll back up.
+        return FilPlayerBlob(colors: colors, seed: note.blobShapeSeed, amplitude: amp, paused: heroProgress >= 1)
+            .frame(height: heroVisualHeight)
             .shadow(color: .black.opacity(0.3), radius: 30, y: 18)
             .animation(.easeOut(duration: 0.08), value: amp)
     }
 
-    /// The per-fil block that slides on navigation: blob + title/meta/note/to-dos.
-    private var filContent: some View {
+    /// The per-fil block that slides on navigation: blob + title/meta/note/to-dos. Reading wraps the
+    /// whole thing in one scroll so a long note scrolls the hero up off the top; editing fills instead.
+    @ViewBuilder private var filContent: some View {
+        if editing {
+            editingContent
+        } else if note.isImageFil, !note.sortedImageFilImages.isEmpty {
+            if showPhotoDetails { photoDetailsSection } else { photoContent }
+        } else {
+            readingContent
+        }
+    }
+
+    /// Photo fils: the image fills the player and is **static** (no vertical scroll — that was the lag).
+    /// Title/caption/to-dos live in a separate `photoDetailsSection`, reached via the transport's ⌄.
+    private var photoContent: some View {
+        PhotoStackHero(images: note.sortedImageFilImages.map(\.data), compact: false, swiping: $carouselSwiping)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// The photo's "back side": title, caption, and to-dos — a separate section from the image. Opened and
+    /// dismissed by the transport's center ⓘ/✕ (which stays under the thumb — no top chevron). Scrolls if
+    /// long (text only, so no image-decode lag).
+    private var photoDetailsSection: some View {
+        let caption = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(cased(displayTitle)).font(Theme.instrumentSerif(30))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if !caption.isEmpty {
+                    Text(cased(caption)).font(Theme.fredoka(16, weight: .regular)).opacity(0.9)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                todosBlock
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 8)
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    /// Editing: the text editor fills the space below a compact hero (no scroll — the editor scrolls).
+    private var editingContent: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 8)
-            if note.isLinkFil {
-                linkURLRow.padding(.horizontal, 26).padding(.bottom, 12)
-            }
             heroArt
             Spacer(minLength: 8)
             info
-            if !editing { Spacer(minLength: 12) }
+        }
+    }
+
+    /// Reading: a "now playing" composition (Spotify / Apple Music). The blob (note/voice) is a backdrop
+    /// in the upper third; the text scrolls up **over** it. As you scroll, the blob shrinks, drifts up
+    /// slower than the text (parallax), and dims/blurs so the text passing over it stays readable. Short
+    /// fils don't scroll, so the blob just sits above the text. Photos/links keep their inline hero.
+    private var readingContent: some View {
+        GeometryReader { geo in
+            let blobTop = max(24, geo.size.height * 0.12)
+            let maxDrift = max(0, blobTop - 8)
+            ZStack(alignment: .top) {
+                if heroCentersBlob {
+                    heroArt   // blob, sized by heroVisualHeight (shrinks with scroll)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, blobTop)
+                        .offset(y: -min(scrollY * 0.3, maxDrift))          // parallax: drifts up slowly
+                        .opacity(1 - heroProgress * 0.55)                   // dim as text covers it
+                        .blur(radius: heroProgress * 6)
+                        .allowsHitTesting(false)
+                }
+                ScrollView {
+                    VStack(spacing: 0) {
+                        if heroCentersBlob {
+                            // Note/voice: reserve the blob's slot; the backdrop blob (above) shows through
+                            // and the text rises over it as you scroll.
+                            Color.clear.frame(height: blobTop + heroFull + heroToTextGap - 8)
+                        } else if note.isLinkFil {
+                            // Link: aligned to the note — the hero region begins at the same upper-third
+                            // anchor with the same gap below, so nav between note↔link doesn't jump. The
+                            // card stays crisp inline (no scroll-over/dim); the URL capsule rides above it.
+                            Color.clear.frame(height: blobTop)
+                            linkURLRow.padding(.horizontal, 26).padding(.bottom, 12)
+                            heroArt.frame(maxWidth: .infinity)
+                            Spacer().frame(height: heroToTextGap)
+                        } else {
+                            // Photo: media-forward — the carousel leads, unchanged.
+                            heroArt.frame(maxWidth: .infinity)
+                            Spacer().frame(height: heroToTextGap)
+                        }
+                        info
+                    }
+                    .frame(maxWidth: .infinity, minHeight: geo.size.height, alignment: .top)
+                    .padding(.bottom, 8)
+                }
+                .scrollIndicators(.hidden)
+                .scrollPosition($scrollPosition)
+                .onScrollGeometryChange(for: ScrollSnapshot.self) { g in
+                    ScrollSnapshot(offset: g.contentOffset.y,
+                                   canScrollDown: g.contentSize.height - g.containerSize.height - g.contentOffset.y > 24)
+                } action: { _, snap in
+                    scrollY = snap.offset
+                    withAnimation(.easeOut(duration: 0.2)) { canScrollDown = snap.canScrollDown }
+                }
+            }
         }
     }
 
@@ -414,33 +531,23 @@ struct FilFullScreenPlayer: View {
     }
 
     /// The fil's own text — selectable (keyword highlights + select→Filament/To-do, tap a highlight to
-    /// open its filament). Sized to content; long notes cap at `noteMaxHeight` and scroll with a fade.
+    /// open its filament). Self-sizing (see `SelectableTextView.sizeThatFits`), so it lays out at its
+    /// true height on the first frame — no reflow when swiping between fils. The whole reading pane
+    /// scrolls (see `readingContent`), so a long note simply carries the hero up as you read.
     @ViewBuilder private var noteBody: some View {
         let text = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         if !text.isEmpty {
-            let capped = noteHeight > noteMaxHeight
-            ScrollView {
-                SelectableTextView(
-                    text: cased(text),
-                    highlightedKeywords: note.attachments.map(\.keyword),
-                    gradientStartHex: note.gradientStartHex,
-                    gradientEndHex: note.gradientEndHex,
-                    onSelectText: { keyword, _ in openFilament(keyword) },
-                    onTapHighlight: { keyword in openFilament(keyword) },
-                    onMakeTodo: { addSelectionTodo($0) },
-                    height: $noteHeight,
-                    textColor: .white
-                )
-                .frame(height: noteHeight)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .scrollIndicators(.hidden)
-            .scrollDisabled(!capped)
-            .frame(height: noteHeight == 0 ? nil : min(noteHeight, noteMaxHeight))
-            .mask(capped
-                  ? AnyView(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.9),
-                                                   .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
-                  : AnyView(Color.black))
+            SelectableTextView(
+                text: cased(text),
+                highlightedKeywords: note.attachments.map(\.keyword),
+                gradientStartHex: note.gradientStartHex,
+                gradientEndHex: note.gradientEndHex,
+                onSelectText: { keyword, _ in openFilament(keyword) },
+                onTapHighlight: { keyword in openFilament(keyword) },
+                onMakeTodo: { addSelectionTodo($0) },
+                textColor: .white
+            )
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 2)
         }
     }
@@ -492,12 +599,13 @@ struct FilFullScreenPlayer: View {
             }
             .transition(.scale.combined(with: .opacity))   // scale-pop the voice controls in on a type-swap
         } else {
-            HStack(spacing: 80) {
+            HStack(spacing: 44) {
                 Button { advance(-1) } label: {
                     Image(systemName: "chevron.left").font(.system(size: 22))
                         .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .disabled(index == 0).opacity(index == 0 ? 0.3 : 1)
+                transportCenterButton
                 Button { advance(1) } label: {
                     Image(systemName: "chevron.right").font(.system(size: 22))
                         .frame(width: 44, height: 44).contentShape(Rectangle())
@@ -506,6 +614,33 @@ struct FilFullScreenPlayer: View {
             }
             .foregroundStyle(.white)
             .transition(.scale.combined(with: .opacity))
+        }
+    }
+
+    /// The transport's center button — styled like the audio play button (filled circle), always in the
+    /// same spot. Photos: an ⓘ that toggles the details section (stays put, becomes ✕ in details — no top
+    /// chevron). Notes/links: a ⌄ that glides to the end, fading in place only when there's more below.
+    @ViewBuilder private var transportCenterButton: some View {
+        if note.isImageFil {
+            Button { withAnimation(.snappy(duration: 0.3)) { showPhotoDetails.toggle() } } label: {
+                Image(systemName: showPhotoDetails ? "xmark.circle.fill" : "info.circle.fill")
+                    .font(.system(size: 50))
+                    .contentTransition(.symbolEffect(.replace))   // swaps in place, no drift
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(showPhotoDetails ? "Back to photo" : "Show details")
+        } else {
+            // Fade the button in its own spot (opacity, not an insertion transition) so it doesn't drift
+            // in at an angle; keep it in the layout at all times so ◀ ▶ spacing never shifts.
+            Button { withAnimation(.snappy) { scrollPosition.scrollTo(edge: .bottom) } } label: {
+                Image(systemName: "chevron.down.circle.fill").font(.system(size: 50)).contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .opacity(canScrollDown ? 1 : 0)
+            .allowsHitTesting(canScrollDown)
+            .accessibilityHidden(!canScrollDown)
+            .accessibilityLabel("Scroll to end")
         }
     }
 
@@ -604,6 +739,13 @@ struct FilFullScreenPlayer: View {
     }
 }
 
+/// The reading scroll's offset + whether more text sits below the fold, tracked together for the
+/// backdrop collapse and the floating scroll-down arrow.
+private struct ScrollSnapshot: Equatable {
+    var offset: CGFloat
+    var canScrollDown: Bool
+}
+
 /// A tapped/selected keyword, wrapped so it can drive `.sheet(item:)`.
 private struct FilamentKeyword: Identifiable {
     let id = UUID()
@@ -660,7 +802,28 @@ private struct PhotoStackHero: View {
         self.compact = compact
         self._swiping = swiping
         self.aspects = images.map(Self.aspectRatio)
-        self.decoded = images.map { Image(data: $0) }
+        self.decoded = images.map { Self.downsampled($0) }
+    }
+
+    /// Decode to roughly display size instead of full resolution — full-res bitmaps composited live
+    /// (over the blurred wash) were the photo player's scroll/swipe lag. Crisp on any card at 3×.
+    private static let maxDecodePixel: CGFloat = 1680
+    private static func downsampled(_ data: Data) -> Image? {
+        #if canImport(UIKit)
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxDecodePixel
+        ]
+        if let src = CGImageSourceCreateWithData(data as CFData, nil),
+           let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) {
+            return Image(uiImage: UIImage(cgImage: cg))
+        }
+        return Image(data: data)
+        #else
+        return Image(data: data)
+        #endif
     }
 
     /// Cheap pixel-dimension read (no full decode) → width / height aspect ratio.
@@ -753,9 +916,11 @@ private struct FilPlayerBlob: View {
     let colors: [Color]
     var seed: Double = 0
     var amplitude: CGFloat = 0
+    /// Stops the per-frame wobble/blur redraws when the blob is collapsed out of sight (battery).
+    var paused: Bool = false
 
     var body: some View {
-        TimelineView(.animation) { timeline in
+        TimelineView(.animation(paused: paused)) { timeline in
             let time = CGFloat(timeline.date.timeIntervalSinceReferenceDate) * 0.9 + CGFloat(seed) * 12
             GeometryReader { proxy in
                 let side = min(proxy.size.width, proxy.size.height)

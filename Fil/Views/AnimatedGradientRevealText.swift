@@ -95,9 +95,34 @@ struct GradientDissolveText: View {
     let text: String
     var elementDuration: TimeInterval = 0.26
     var perElementDelay: TimeInterval = 0.012
-    var duration: TimeInterval = 0.55
+    /// Upper bound for the whole dissolve. The per-glyph stagger compresses to fit inside this, so even
+    /// a long note fully dissolves (a fixed window + fixed stagger left the tail glyphs never starting,
+    /// which looked like the just-sent text got "stuck" mid-flight).
+    var maxWindow: TimeInterval = 0.7
 
     @State private var animationStartDate = Date()
+
+    /// Per-glyph stagger, shrunk as needed so the last glyph still finishes within `maxWindow`.
+    private var resolvedDelay: TimeInterval {
+        guard text.count > 1 else { return 0 }
+        return min(perElementDelay, max(0, maxWindow - elementDuration) / Double(text.count - 1))
+    }
+    /// The true end of the dissolve (last glyph's start + its own duration). Callers use this to time
+    /// removing the overlay so it isn't cut off.
+    var resolvedDuration: TimeInterval {
+        elementDuration + Double(max(0, text.count - 1)) * resolvedDelay
+    }
+
+    /// How long the dissolve of `text` takes, for callers timing the overlay's removal. Mirrors the
+    /// instance math above with the same defaults.
+    static func completion(for text: String,
+                           elementDuration: TimeInterval = 0.26,
+                           perElementDelay: TimeInterval = 0.012,
+                           maxWindow: TimeInterval = 0.7) -> TimeInterval {
+        guard text.count > 1 else { return elementDuration }
+        let delay = min(perElementDelay, max(0, maxWindow - elementDuration) / Double(text.count - 1))
+        return elementDuration + Double(text.count - 1) * delay
+    }
 
     var body: some View {
         TimelineView(.animation) { context in
@@ -106,11 +131,11 @@ struct GradientDissolveText: View {
                     GradientDissolveTextRenderer(
                         elapsedTime: min(
                             max(0, context.date.timeIntervalSince(animationStartDate)),
-                            duration
+                            resolvedDuration
                         ),
                         elementDuration: elementDuration,
-                        totalDuration: duration,
-                        perElementDelay: perElementDelay
+                        totalDuration: resolvedDuration,
+                        perElementDelay: resolvedDelay
                     )
                 )
         }

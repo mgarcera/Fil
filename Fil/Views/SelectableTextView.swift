@@ -10,7 +10,9 @@ struct SelectableTextView: UIViewRepresentable {
     var onSelectText: (String, CGRect) -> Void
     var onTapHighlight: ((String) -> Void)?
     var onMakeTodo: ((String) -> Void)?
-    @Binding var height: CGFloat
+    /// Optional legacy height report. Prefer letting the view self-size via `sizeThatFits`; callers that
+    /// still pin `.frame(height:)` can pass this to keep the old behavior.
+    var height: Binding<CGFloat>? = nil
     /// Body text color; defaults to adaptive `.label`. The player passes white for its dark wash.
     var textColor: UIColor? = nil
 
@@ -83,13 +85,27 @@ struct SelectableTextView: UIViewRepresentable {
             .font: boldBodyFont
         ]
         textView.attributedText = attributed
+        textView.invalidateIntrinsicContentSize()
 
-        DispatchQueue.main.async {
-            let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
-            if size.height != height && textView.bounds.width > 0 {
-                height = size.height
+        // Legacy height report for callers that still pin `.frame(height:)` (e.g. ArticleView). Views
+        // that rely on `sizeThatFits` below don't pass a binding and never take this path.
+        if let height {
+            DispatchQueue.main.async {
+                let size = textView.sizeThatFits(CGSize(width: textView.bounds.width, height: .greatestFiniteMagnitude))
+                if size.height != height.wrappedValue && textView.bounds.width > 0 {
+                    height.wrappedValue = size.height
+                }
             }
         }
+    }
+
+    /// Synchronous sizing: a non-scrolling `UITextView` reports its exact height for the proposed width
+    /// in the same layout pass, so SwiftUI lays it out correctly on the first frame — no async binding,
+    /// no one-frame-late resize (which showed as a reflow when swiping between fils).
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0, width != .infinity else { return nil }
+        let fit = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude))
+        return CGSize(width: width, height: ceil(fit.height))
     }
 
     func makeCoordinator() -> Coordinator {
@@ -163,7 +179,7 @@ struct SelectableTextView: NSViewRepresentable {
     var onSelectText: (String, CGRect) -> Void
     var onTapHighlight: ((String) -> Void)?
     var onMakeTodo: ((String) -> Void)?
-    @Binding var height: CGFloat
+    var height: Binding<CGFloat>? = nil
 
     private var lighterHex: String {
         let startLuminance = Color(hex: gradientStartHex).luminance
@@ -222,21 +238,36 @@ struct SelectableTextView: NSViewRepresentable {
         ]
         textView.textStorage?.setAttributedString(attributed)
 
-        DispatchQueue.main.async {
-            guard textView.bounds.width > 0,
-                  let textContainer = textView.textContainer,
-                  let layoutManager = textView.layoutManager else { return }
+        // Legacy height report for callers that still pin `.frame(height:)`; self-sizing callers omit
+        // the binding and rely on `sizeThatFits` below instead.
+        if let height {
+            DispatchQueue.main.async {
+                guard textView.bounds.width > 0,
+                      let textContainer = textView.textContainer,
+                      let layoutManager = textView.layoutManager else { return }
 
-            textContainer.containerSize = CGSize(
-                width: textView.bounds.width,
-                height: .greatestFiniteMagnitude
-            )
-            layoutManager.ensureLayout(for: textContainer)
-            let size = layoutManager.usedRect(for: textContainer).size
-            if size.height != height {
-                height = ceil(size.height)
+                textContainer.containerSize = CGSize(
+                    width: textView.bounds.width,
+                    height: .greatestFiniteMagnitude
+                )
+                layoutManager.ensureLayout(for: textContainer)
+                let size = layoutManager.usedRect(for: textContainer).size
+                if size.height != height.wrappedValue {
+                    height.wrappedValue = ceil(size.height)
+                }
             }
         }
+    }
+
+    /// Synchronous sizing so SwiftUI lays the text out at its true height on the first pass (no async
+    /// binding, no reflow when navigating between fils).
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: FilSelectableNSTextView, context: Context) -> CGSize? {
+        guard let width = proposal.width, width > 0, width != .infinity,
+              let container = nsView.textContainer, let layoutManager = nsView.layoutManager else { return nil }
+        container.containerSize = CGSize(width: width, height: .greatestFiniteMagnitude)
+        layoutManager.ensureLayout(for: container)
+        let fit = layoutManager.usedRect(for: container).size
+        return CGSize(width: width, height: ceil(fit.height))
     }
 
     func makeCoordinator() -> Coordinator {

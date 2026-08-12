@@ -224,6 +224,11 @@ struct ComposerBar: View {
             TextField("", text: $text, axis: .vertical)
                 .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                 .lineLimit(1...4).focused(focus).submitLabel(searchMode ? .search : .return)
+                // Guard against an iOS 27 crash: the inline grammar/proofreading pass calls a
+                // proofreading-shimmer selector on the vertical TextField's backing VerticalTextView that
+                // it doesn't implement, terminating the app when typing longer, sentence-forming text.
+                // Disabling Writing Tools keeps that path from ever running. Re-test on the iOS 27 GA seed.
+                .writingToolsBehavior(.disabled)
                 .opacity(dissolvingText == nil ? 1 : 0)
                 // Return in the vertical field inserts a newline; in search treat it as "run search".
                 .onChange(of: text) { _, newValue in
@@ -300,8 +305,11 @@ struct ComposerBar: View {
         onSend()
         guard !sent.isEmpty else { return }
         dissolvingText = sent
+        // Hold the overlay until the dissolve actually finishes (scales with length), then clear it —
+        // a fixed delay cut long notes off mid-animation.
+        let hold = GradientDissolveText.completion(for: sent) + 0.05
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(0.6))
+            try? await Task.sleep(for: .seconds(hold))
             dissolvingText = nil
         }
     }
