@@ -124,6 +124,7 @@ struct SettingsView: View {
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 18) {
             settingToggle("Dark mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
+                .onChange(of: isDarkMode) { _, _ in SoundscapeManager.shared.playLightModeSound() }
 
             sectionDivider
 

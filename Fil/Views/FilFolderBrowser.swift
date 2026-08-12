@@ -333,7 +333,7 @@ struct FoldersHomeSection: View {
         if let note = pendingMoveNote { note.folder = folder; note.sortIndex = 0 }
         pendingMoveNote = nil
         try? context.save()
-        Haptics.success()
+        SoundscapeManager.shared.playArticleMadeSound(); Haptics.success()
     }
 
     private func startRename(_ folder: Folder) {
@@ -1169,6 +1169,7 @@ struct PinnedFolderHero: View {
     /// Lifts the cover open, spilling the folder's fils out, then navigates in. The close + retract
     /// happen off-screen so the hero is shut with its fils tucked away when we return.
     private func openFolder() {
+        SoundscapeManager.shared.playCollapsingSound()   // repurposed as the folder-open cue
         Haptics.navigate()
         retract = false
         blobTrigger += 1                                                          // spill the fils

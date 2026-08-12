@@ -48,7 +48,10 @@ struct DockChipsRow: View {
             .scrollIndicators(.hidden)
         }
         .alert("Landfil these fils?", isPresented: $showLandfil) {
-            Button("Landfil", role: .destructive) { withAnimation(.snappy) { selection.landfilSelected() } }
+            Button("Landfil", role: .destructive) {
+                SoundscapeManager.shared.playLandfilSound()
+                withAnimation(.snappy) { selection.landfilSelected() }
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("These fils will be deleted. This cannot be undone.")
@@ -68,7 +71,10 @@ struct DockChipsRow: View {
 
     private func segment(_ label: String, _ count: Int, _ value: DockTab) -> some View {
         let active = effectiveTab == value
-        return Button { withAnimation(.snappy) { tab = value } } label: {
+        return Button {
+            if !active { SoundscapeManager.shared.playTabSound() }
+            withAnimation(.snappy) { tab = value }
+        } label: {
             HStack(spacing: 6) {
                 Text(label).font(Theme.dmSans(14, weight: .semibold))
                 Text("\(count)").font(.system(size: 12, weight: .semibold)).monospacedDigit()
