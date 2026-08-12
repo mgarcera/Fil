@@ -191,8 +191,21 @@ struct CanvasHome: View {
         // A Lock Screen tap must land on the folders home (where the Bin dock + folders live), not a
         // leftover search/results screen. Flip to composing so FoldersHomeSection mounts + routes it.
         .onChange(of: deepLink) { _, link in
-            if link != nil, phase != .composing {
+            guard let link else { return }
+            if phase != .composing {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { phase = .composing }
+            }
+            // Control Center capture links are home-level: consume + clear them here (folder/bin are
+            // consumed by FoldersHomeSection instead).
+            switch link {
+            case .compose:
+                DispatchQueue.main.async { composerFocused = true }
+                deepLink = nil
+            case .voice:
+                DispatchQueue.main.async { startVoiceCapture() }
+                deepLink = nil
+            case .bin, .folder:
+                break
             }
         }
         // The home dock: one liquid-glass container holding the selection + Bin baskets ABOVE the

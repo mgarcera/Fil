@@ -16,12 +16,16 @@ struct FolderBrowserBackground: View {
     }
 }
 
-/// A Lock Screen / widget tap destination the home should route to on launch.
+/// A Lock Screen / widget / Control Center tap destination the home should route to on launch.
 enum HomeDeepLink: Equatable {
     /// Show the Bin (pop to the folders root, where the Bin dock is visible).
     case bin
     /// Open a specific folder's interior.
     case folder(UUID)
+    /// Open the composer with the keyboard up (Control Center "compose" control).
+    case compose
+    /// Open and start a voice fil immediately (Control Center "voice" control).
+    case voice
 }
 
 /// The folders surface, embedded inline on the home below the compose bar (no longer a modal).
@@ -242,6 +246,8 @@ struct FoldersHomeSection: View {
             guard let folder = folders.first(where: { $0.id == id }) else { return }
             path = [.folder(folder)]
             deepLink = nil
+        case .compose, .voice:
+            break   // home-level capture links; CanvasHome consumes + clears these
         }
     }
 

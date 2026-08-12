@@ -2,76 +2,40 @@
 //  FilPinnedWidgetControl.swift
 //  FilPinnedWidget
 //
-//  Created by Mason Garcera on 6/30/26.
+//  Two Control Center controls (also bindable to the Action Button) for one-tap capture. Both use
+//  FilCaptureOpenIntent (an OpenIntent) so the control actually launches the app; see
+//  FilCaptureControlIntents.swift. That intent file must be a member of BOTH the app and the widget
+//  extension targets for the open to work.
 //
 
 import AppIntents
 import SwiftUI
 import WidgetKit
 
-struct FilPinnedWidgetControl: ControlWidget {
-    static let kind: String = "com.masongarcera.Fil.FilPinnedWidget"
+struct FilVoiceCaptureControl: ControlWidget {
+    static let kind = "com.masongarcera.Fil.VoiceCaptureControl"
 
     var body: some ControlWidgetConfiguration {
-        AppIntentControlConfiguration(
-            kind: Self.kind,
-            provider: Provider()
-        ) { value in
-            ControlWidgetToggle(
-                "Start Timer",
-                isOn: value.isRunning,
-                action: StartTimerIntent(value.name)
-            ) { isRunning in
-                Label(isRunning ? "On" : "Off", systemImage: "timer")
+        StaticControlConfiguration(kind: Self.kind) {
+            ControlWidgetButton(action: FilCaptureOpenIntent(target: .voice)) {
+                Label("Record in fil", systemImage: "mic.fill")
             }
         }
-        .displayName("Timer")
-        .description("A an example control that runs a timer.")
+        .displayName("Record in fil")
+        .description("Open Fil and start a voice note.")
     }
 }
 
-extension FilPinnedWidgetControl {
-    struct Value {
-        var isRunning: Bool
-        var name: String
-    }
+struct FilComposeCaptureControl: ControlWidget {
+    static let kind = "com.masongarcera.Fil.ComposeCaptureControl"
 
-    struct Provider: AppIntentControlValueProvider {
-        func previewValue(configuration: TimerConfiguration) -> Value {
-            FilPinnedWidgetControl.Value(isRunning: false, name: configuration.timerName)
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: Self.kind) {
+            ControlWidgetButton(action: FilCaptureOpenIntent(target: .compose)) {
+                Label("Write in fil", systemImage: "square.and.pencil")
+            }
         }
-
-        func currentValue(configuration: TimerConfiguration) async throws -> Value {
-            let isRunning = true // Check if the timer is running
-            return FilPinnedWidgetControl.Value(isRunning: isRunning, name: configuration.timerName)
-        }
-    }
-}
-
-struct TimerConfiguration: ControlConfigurationIntent {
-    static let title: LocalizedStringResource = "Timer Name Configuration"
-
-    @Parameter(title: "Timer Name", default: "Timer")
-    var timerName: String
-}
-
-struct StartTimerIntent: SetValueIntent {
-    static let title: LocalizedStringResource = "Start a timer"
-
-    @Parameter(title: "Timer Name")
-    var name: String
-
-    @Parameter(title: "Timer is running")
-    var value: Bool
-
-    init() {}
-
-    init(_ name: String) {
-        self.name = name
-    }
-
-    func perform() async throws -> some IntentResult {
-        // Start the timer…
-        return .result()
+        .displayName("Write in fil")
+        .description("Open Fil ready to type a thought.")
     }
 }

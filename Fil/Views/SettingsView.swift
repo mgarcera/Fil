@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var section: SettingsSection = .appearance
     @State private var showFromMason = false
     @State private var showFeedback = false
+    @State private var showCaptureAnywhere = false
     @State private var contentVisible = false
 
     @Environment(\.openURL) private var openURL
@@ -60,6 +61,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showFeedback) {
             FeedbackSheet()
+        }
+        .sheet(isPresented: $showCaptureAnywhere) {
+            CaptureAnywhereView()
         }
     }
 
@@ -137,6 +141,18 @@ struct SettingsView: View {
             sectionDivider
 
             lockScreenSection
+
+            sectionDivider
+
+            Button { showCaptureAnywhere = true } label: {
+                HStack {
+                    settingLabel("Capture from anywhere", icon: "bolt.badge.clock")
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+            .buttonStyle(.plain)
 
             if !screensaverOptions.isEmpty {
                 sectionDivider

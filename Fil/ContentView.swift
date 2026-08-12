@@ -131,6 +131,7 @@ struct ContentView: View {
             switch newPhase {
             case .active:
                 ingestSharedDrafts()
+                drainPendingCapture()
             case .background:
                 // Refresh the Lock Screen activity from the current Bin just before we're hidden.
                 Task { await LockScreenActivityCoordinator.sync(modelContext: modelContext) }
@@ -142,7 +143,7 @@ struct ContentView: View {
             Task { await LockScreenActivityCoordinator.sync(modelContext: modelContext) }
         }
         .background(autoScreensaverDetector)
-        .onAppear { applyScreenAwake() }
+        .onAppear { applyScreenAwake(); drainPendingCapture() }
         .onChange(of: shouldKeepScreenAwake) { _, _ in applyScreenAwake() }
         .task {
             if firstLaunchAt == 0 { firstLaunchAt = Date.now.timeIntervalSince1970 }
@@ -339,6 +340,20 @@ struct ContentView: View {
         finishCreatingFil(filID)
     }
 
+    /// Drain a pending capture stamped by a Control Center control (openAppWhenRun writes the flag to
+    /// the shared app group; we route it once the app is foregrounded, then clear it).
+    private func drainPendingCapture() {
+        let defaults = UserDefaults.filAppGroup
+        guard let mode = defaults.string(forKey: "pendingCapture") else { return }
+        defaults.removeObject(forKey: "pendingCapture")
+        searchActive = false
+        switch mode {
+        case "voice":   homeDeepLink = .voice
+        case "compose": homeDeepLink = .compose
+        default:        break
+        }
+    }
+
     private func handleIncomingURL(_ url: URL) {
         if let pinnedNoteID = pinnedNoteID(from: url) {
             openFil(with: pinnedNoteID)
@@ -362,6 +377,16 @@ struct ContentView: View {
                     homeDeepLink = .folder(id)
                     SoundscapeManager.shared.playOpenFilClick()
                 }
+                return
+            case "capture-compose":
+                // Control Center "compose" control: open the composer, keyboard up.
+                searchActive = false
+                homeDeepLink = .compose
+                return
+            case "capture-voice":
+                // Control Center "voice" control: open and start a voice fil immediately.
+                searchActive = false
+                homeDeepLink = .voice
                 return
             default:
                 break

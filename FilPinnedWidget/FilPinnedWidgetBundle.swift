@@ -12,7 +12,8 @@ import SwiftUI
 struct FilPinnedWidgetBundle: WidgetBundle {
     var body: some Widget {
         FilPinnedWidget()
-        FilPinnedWidgetControl()
+        FilVoiceCaptureControl()
+        FilComposeCaptureControl()
         FilPinnedWidgetLiveActivity()
         FilBasketLiveActivity()
     }

@@ -83,6 +83,13 @@
 			);
 			target = D1CB73A52FF491FB00C0E269 /* FilShareExtension */;
 		};
+		73AE6534D40942B097306C40 /* Exceptions for "FilPinnedWidget" folder in "Fil" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				FilCaptureControlIntents.swift,
+			);
+			target = D11FBF3D2FA40BDB00FB77E8 /* Fil */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -99,6 +106,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				D1AB5A1D2FF476E300D6D5EB /* Exceptions for "FilPinnedWidget" folder in "FilPinnedWidgetExtension" target */,
+				73AE6534D40942B097306C40 /* Exceptions for "FilPinnedWidget" folder in "Fil" target */,
 			);
 			path = FilPinnedWidget;
 			sourceTree = "<group>";
