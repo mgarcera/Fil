@@ -13,12 +13,10 @@ struct SettingsView: View {
 
     @AppStorage("autoScreensaverEnabled") private var autoScreensaverEnabled = false
     @AppStorage("soundEnabled") private var soundEnabled = true
-    @AppStorage("prefersLowercase") private var prefersLowercase = false
-    @AppStorage("isDarkMode") private var isDarkMode = true
+    @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.auto.rawValue
     @AppStorage(LockScreenActivity.storageKey, store: .filAppGroup) private var lockScreenActivityRaw = LockScreenActivity.off.rawValue
 
     @State private var section: SettingsSection = .appearance
-    @State private var showFromMason = false
     @State private var showFeedback = false
     @State private var showCaptureAnywhere = false
     @State private var contentVisible = false
@@ -53,11 +51,6 @@ struct SettingsView: View {
             withAnimation(.smooth(duration: 0.7, extraBounce: 0)) {
                 contentVisible = true
             }
-        }
-        .sheet(isPresented: $showFromMason) {
-            FromMasonFilCard()
-                .presentationDetents([.large])
-                .presentationBackground(Theme.background)
         }
         .sheet(isPresented: $showFeedback) {
             FeedbackSheet()
@@ -123,17 +116,7 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 18) {
-            settingToggle("Dark mode", icon: isDarkMode ? "moon.fill" : "sun.max.fill", isOn: $isDarkMode)
-                .onChange(of: isDarkMode) { _, _ in SoundscapeManager.shared.playLightModeSound() }
-
-            sectionDivider
-
-            settingToggle(
-                "Use lowercase",
-                icon: "textformat.abc",
-                description: "Render titles and voice recording transcripts in lowercase for a more casual voice.",
-                isOn: $prefersLowercase
-            )
+            appearanceSectionRow
 
             sectionDivider
 
@@ -186,9 +169,9 @@ struct SettingsView: View {
     /// folder's swipe action; choosing it here with nothing pinned simply shows nothing until you pin one.
     private var lockScreenSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            settingLabel("Lock Screen", icon: "lock.iphone")
-            Text("Keep a live widget on the Lock Screen and Dynamic Island. Bin shows your unfiled fils; Folder shows one folder you pin.")
-                .font(Theme.dmSans(13))
+            settingLabel("Live Widget", icon: "lock.iphone")
+            Text("Keep a live widget on the Lock Screen and Dynamic Island. Bin shows your unsorted thoughts, while Folder shows your chosen folder.")
+                .font(Theme.fredoka(13, weight: .regular))
                 .foregroundStyle(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
@@ -217,6 +200,36 @@ struct SettingsView: View {
         .buttonStyle(.plain)
     }
 
+    /// Appearance: Auto (follow system) / Light / Dark, as capsules matching the Live Widget pills.
+    private var appearanceSectionRow: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            settingLabel("Appearance", icon: "circle.lefthalf.filled")
+            HStack(spacing: 8) {
+                ForEach(AppearanceMode.allCases) { appearancePill($0) }
+            }
+            .padding(.leading, 34)
+        }
+    }
+
+    private func appearancePill(_ mode: AppearanceMode) -> some View {
+        let isSelected = appearanceRaw == mode.rawValue
+        return Button {
+            SoundscapeManager.shared.playLightModeSound()
+            withAnimation(.snappy) { appearanceRaw = mode.rawValue }
+        } label: {
+            Text(mode.title)
+                .font(Theme.fredoka(18, weight: .medium))
+                .foregroundStyle(isSelected ? Color.black : .white)
+                .padding(.horizontal, 16)
+                .frame(height: 40)
+                .background(isSelected ? Color.white : Color.white.opacity(0.12), in: Capsule())
+                .overlay {
+                    Capsule().stroke(Color.white.opacity(isSelected ? 0 : 0.14), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+    }
+
     /// The hairline between settings options (matches the About section's dividers).
     private var sectionDivider: some View {
         Divider().overlay(Color.white.opacity(0.14))
@@ -231,7 +244,7 @@ struct SettingsView: View {
 
             if let description {
                 Text(description)
-                    .font(Theme.dmSans(13))
+                    .font(Theme.fredoka(13, weight: .regular))
                     .foregroundStyle(.white.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -247,7 +260,7 @@ struct SettingsView: View {
                 .foregroundStyle(.white.opacity(0.85))
                 .frame(width: 22)
             Text(title)
-                .font(Theme.fredoka(20, weight: .medium))
+                .font(Theme.fredoka(17, weight: .regular))
                 .foregroundStyle(.white)
         }
     }
@@ -264,7 +277,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(option.title)
-                            .font(Theme.fredoka(20, weight: .medium))
+                            .font(Theme.fredoka(17, weight: .regular))
                             .foregroundStyle(.white)
                         if !option.isUnlocked {
                             Image(systemName: "lock.fill")
@@ -273,7 +286,7 @@ struct SettingsView: View {
                         }
                     }
                     Text(option.isUnlocked ? option.description : "Unlocks at \(option.requirement)")
-                        .font(Theme.dmSans(13))
+                        .font(Theme.fredoka(13, weight: .regular))
                         .foregroundStyle(.white.opacity(0.7))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -288,7 +301,8 @@ struct SettingsView: View {
 
     private var aboutContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            aboutRow("from mason") { showFromMason = true }
+            aboutRow("Open feedback form") { showFeedback = true }
+            aboutRow("Rate Fil on the App Store") { openURL(FilLinks.writeReview) }
 
             Divider().overlay(Color.white.opacity(0.14))
 
@@ -296,12 +310,6 @@ struct SettingsView: View {
             aboutRow("Support") { openURL(FilLinks.support) }
             aboutRow("Privacy policy") { openURL(FilLinks.privacyPolicy) }
             aboutRow("Terms of service") { openURL(FilLinks.termsOfService) }
-            
-            Divider().overlay(Color.white.opacity(0.14))
-            
-            
-            aboutRow("Open feedback form") { showFeedback = true }
-            aboutRow("Rate Fil on the App Store") { openURL(FilLinks.writeReview) }
 
             Divider().overlay(Color.white.opacity(0.14))
 
@@ -311,13 +319,13 @@ struct SettingsView: View {
         }
     }
 
-    /// A tappable About row — a lowercase label with a trailing "open" chevron. Shared by the
-    /// "from mason" sheet and the external Privacy / Terms / Contact / Rate links.
+    /// A tappable About row — a lowercase label with a trailing "open" chevron. Used by the external
+    /// Website / Support / Privacy / Terms / feedback / Rate links.
     private func aboutRow(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Text(title)
-                    .font(Theme.fredoka(20, weight: .medium))
+                    .font(Theme.fredoka(17, weight: .regular))
                     .foregroundStyle(.white)
                 Spacer()
                 Image(systemName: "arrow.up.right")
@@ -437,9 +445,9 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
         case .appearance:
             [Color(hex: "#0EA5E9"), Color(hex: "#14B8A6"), Color(hex: "#22C55E")]
         case .subscription:
-            [Color(hex: "#6659CC"), Color(hex: "#408CD9"), Color(hex: "#E8196A")]
-        case .about:
             [Color(hex: "#F59E0B"), Color(hex: "#F97316"), Color(hex: "#EAB308")]
+        case .about:
+            [Color(hex: "#6659CC"), Color(hex: "#408CD9"), Color(hex: "#E8196A")]
         }
     }
 }

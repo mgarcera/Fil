@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UIKit
 
 /// One editable to-do being composed alongside a fil.
 struct ComposerTodo: Identifiable, Equatable {
@@ -30,6 +31,8 @@ struct ComposerBar: View {
     let onSend: () -> Void
     let onRecordVoice: () -> Void
     let onRemoveStagedImage: (Int) -> Void
+    /// A photo captured with the camera (JPEG data) — staged like a picked photo.
+    var onCapturePhoto: (Data) -> Void = { _ in }
     /// Enter search (resting trailing); run it (submit); restart it (refresh, on results); exit (X, empty).
     var onEnterSearch: () -> Void = {}
     var onSubmitSearch: () -> Void = {}
@@ -37,10 +40,11 @@ struct ComposerBar: View {
     var onExitSearch: () -> Void = {}
 
     @State private var dissolvingText: String?
-    @State private var captureExpanded = false   // the + reveals to-do / voice / photo inline
+    @State private var showPhotoPicker = false   // the + menu's "Add photo" presents the picker
+    @State private var showCamera = false         // the + menu's "Take a photo" presents the camera
     @FocusState private var focusedTodoID: UUID?
 
-    private let placeholders = ["Tap to write", "Thoughts come in all shapes and sizes"]
+    private let placeholders = ["Tap to write", "For big notes, your first line is the title"]
     private let placeholderInterval: TimeInterval = 10
 
     private var trimmedText: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -65,44 +69,33 @@ struct ComposerBar: View {
             }
 
             HStack(alignment: .center, spacing: 10) {
-                // Capture controls — nested behind a + (hidden in search mode). Tap + to reveal
-                // to-do / voice / photo inline; picking one (or tapping + again) collapses back.
+                // Capture controls (hidden in search mode): + is a menu (Record / Add a photo); the
+                // to-do button sits beside it, always visible.
                 if !searchMode {
-                    Button {
-                        withAnimation(.snappy(duration: 0.2)) { captureExpanded.toggle() }
+                    Menu {
+                        // Labels/icons/grouping mirror the filament sheet's add menu (KeywordAttachmentSheet).
+                        Section {
+                            Button { onRecordVoice() } label: { Label("Record", systemImage: "mic.fill") }
+                        }
+                        Section {
+                            Button { showPhotoPicker = true } label: { Label("Add photo", systemImage: "photo") }
+                            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                Button { showCamera = true } label: { Label("Take a photo", systemImage: "camera") }
+                            }
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 24, weight: .semibold))
                             .foregroundStyle(Theme.primaryText)
-                            .rotationEffect(.degrees(captureExpanded ? 45 : 0))
                             .frame(width: 56, height: 56).contentShape(Circle())
                     }
-                    .buttonStyle(.plain).disabled(isProcessing)
-                    .accessibilityLabel(captureExpanded ? "hide capture options" : "more capture options")
+                    .disabled(isProcessing)
+                    .accessibilityLabel("more capture options")
 
-                    if captureExpanded {
-                        Button { addTodoPill(); collapseCapture() } label: {
-                            captureIcon("checklist")
-                        }
-                        .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
-                        .transition(.scale.combined(with: .opacity))
-
-                        // Voice — a bare mic (no filled circle).
-                        Button { onRecordVoice(); collapseCapture() } label: {
-                            captureIcon("mic.fill")
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("record voice note").accessibilityAddTraits(.startsMediaSession)
-                        .transition(.scale.combined(with: .opacity))
-
-                        PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 8, matching: .images) {
-                            captureIcon("photo.on.rectangle.angled")
-                        }
-                        .disabled(isProcessing)
-                        .accessibilityLabel("add photos")
-                        .transition(.scale.combined(with: .opacity))
-                        .onChange(of: selectedPhotos) { _, picked in if !picked.isEmpty { collapseCapture() } }
+                    Button { addTodoPill() } label: {
+                        captureIcon("checklist")
                     }
+                    .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
                 }
 
                 Spacer(minLength: 0)
@@ -133,7 +126,13 @@ struct ComposerBar: View {
         .animation(.snappy(duration: 0.2), value: focus.wrappedValue)
         .animation(.snappy(duration: 0.2), value: focusedTodoID)
         .onChange(of: focusedTodoID) { oldValue, _ in removeRowIfEmpty(oldValue) }
-        .onChange(of: searchMode) { _, s in if s { captureExpanded = false } }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $selectedPhotos, maxSelectionCount: 8, matching: .images)
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker { image in
+                if let data = image.jpegData(compressionQuality: 0.9) { onCapturePhoto(data) }
+            }
+            .ignoresSafeArea()
+        }
     }
 
     // MARK: - To-do pills
@@ -164,9 +163,6 @@ struct ComposerBar: View {
         focusedTodoID = pill.id
     }
 
-    private func collapseCapture() {
-        withAnimation(.snappy(duration: 0.2)) { captureExpanded = false }
-    }
 
     /// A capture-option icon revealed under the + (matches the composer's 56pt icon buttons).
     private func captureIcon(_ name: String) -> some View {

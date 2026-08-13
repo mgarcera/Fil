@@ -4,7 +4,7 @@ import CoreText
 
 @main
 struct FilApp: App {
-    @AppStorage("isDarkMode") private var isDarkMode = true
+    @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.auto.rawValue
     private let modelContainer: ModelContainer
 
     init() {
@@ -25,13 +25,11 @@ struct FilApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
-                .preferredColorScheme(isDarkMode ? .dark : .light)
+                .preferredColorScheme((AppearanceMode(rawValue: appearanceRaw) ?? .dark).colorScheme)
                 // Text now scales with Dynamic Type; clamp the upper bound so the constrained
                 // glass/blob layout stays usable at accessibility sizes. Revisit once the
                 // fixed-height containers are made flexible (audit P2 #23).
                 .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-                // Warm the on-device title model after first frame so the first fil isn't stalled.
-                .task { ArticleGenerationService.shared.prewarm() }
                 // Begin observing subscription state (Fil Pro entitlement + transaction updates).
                 .task { StoreManager.shared.start() }
         }

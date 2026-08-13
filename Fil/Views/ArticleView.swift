@@ -25,7 +25,6 @@ struct ArticleView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
-    @AppStorage("prefersLowercase") private var prefersLowercase = false
     @State private var player = AudioPlayerViewModel()
     @State private var linkBrowserURL: URL?
     @State private var showLandfilConfirmation = false
@@ -43,7 +42,6 @@ struct ArticleView: View {
     @State private var newTodoText = ""
     @FocusState private var isTodoFieldFocused: Bool
     @FocusState private var isCaptionFieldFocused: Bool
-    @State private var transcriptDraftBaseline = ""
     @State private var selectedImageFilIndex = 0
     @State private var imagePreviewURL: URL?
     @State private var imagePreviewURLs: [URL] = []
@@ -549,7 +547,7 @@ struct ArticleView: View {
                     .frame(minHeight: editingTranscriptMinHeight, alignment: .topLeading)
             } else {
                 SelectableTextView(
-                    text: prefersLowercase ? note.transcript.lowercased() : note.transcript,
+                    text: note.transcript,
                     highlightedKeywords: note.attachments.map(\.keyword),
                     gradientStartHex: note.gradientStartHex,
                     gradientEndHex: note.gradientEndHex,
@@ -625,17 +623,14 @@ struct ArticleView: View {
                 return
             }
             SoundscapeManager.shared.playTabSound()
-            let shouldRefreshMetadata = note.transcript != transcriptDraftBaseline
+            // No title to regenerate: the first line of the transcript is the title (Note.titleLine),
+            // so editing the text is all there is — nothing to re-derive.
             withAnimation(.snappy(duration: 0.18)) {
                 isEditingTranscript = false
             }
             isCaptionFieldFocused = false
-            if shouldRefreshMetadata {
-                Task { await refreshMetadataFromTranscript() }
-            }
         } else {
             SoundscapeManager.shared.playTabSound()
-            transcriptDraftBaseline = note.transcript
             withAnimation(.snappy(duration: 0.18)) {
                 isEditingTranscript = true
             }
@@ -799,26 +794,6 @@ struct ArticleView: View {
         }
         note.transcript = newValue
         modelContext.saveOrLog()
-    }
-
-    @MainActor
-    private func refreshMetadataFromTranscript() async {
-        // Drives the badge's "thinking" blur; cleared once the new title is in place,
-        // which triggers its gradient reveal out of that blur.
-        TitleRegenerationTracker.shared.begin(note.uuid)
-        defer { TitleRegenerationTracker.shared.end(note.uuid) }
-        do {
-            // Only the title is regenerated from the edited transcript. To-dos are never
-            // auto-extracted — they're created and edited explicitly by the user.
-            let metadata = try await ArticleGenerationService.shared.generateMetadata(
-                from: note.transcript
-            )
-            note.keyword = metadata.keyword
-            note.title = metadata.keyword
-            modelContext.saveOrLog()
-        } catch {
-            // Keep transcript edits even if metadata refresh fails.
-        }
     }
 }
 

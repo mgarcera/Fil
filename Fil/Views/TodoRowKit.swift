@@ -31,23 +31,38 @@ extension Note {
 /// reads clearly in dark mode.
 struct TodoStatusCircle: View {
     let isCompleted: Bool
+    /// White treatment for colored/dark card backgrounds (the folder fil cards): the outline and
+    /// checkmark stay white in BOTH light and dark mode, since the card is already a colored wash.
+    var onColor: Bool = false
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(isCompleted ? Theme.inactiveTabBackground : Theme.cardBackground)
+                .fill(fillColor)
                 .overlay {
                     RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .stroke(Theme.secondaryText.opacity(isCompleted ? 0.4 : 0.6), lineWidth: 1.5)
+                        .stroke(strokeColor, lineWidth: 1.5)
                 }
 
             if isCompleted {
                 Image(systemName: "checkmark")
                     .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(Theme.secondaryText)
+                    .foregroundStyle(checkColor)
             }
         }
         .frame(width: 22, height: 22)
+    }
+
+    private var fillColor: Color {
+        if onColor { return .white.opacity(isCompleted ? 0.14 : 0.06) }
+        return isCompleted ? Theme.inactiveTabBackground : Theme.cardBackground
+    }
+    private var strokeColor: Color {
+        if onColor { return .white.opacity(isCompleted ? 0.5 : 0.7) }
+        return Theme.secondaryText.opacity(isCompleted ? 0.4 : 0.6)
+    }
+    private var checkColor: Color {
+        onColor ? .white : Theme.secondaryText
     }
 }
 

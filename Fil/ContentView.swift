@@ -289,9 +289,9 @@ struct ContentView: View {
         }
         return [
             option("Filosophy", "camera.filters", "A lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
-            option("Filharmonic", "wave.3.left", "Watch your thoughts ripple. (the more the better)", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
+            option("Filharmonic", "wave.3.left", "Let your thoughts ripple.", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
             option("Filanthropy", "wind", "Watch your thoughts drift and swirl.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
-            option("Chlorofil", "rainbow", "Your thoughts in streaks of light. (uses your latest thoughts, so they'll always change color)", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
+            option("Chlorofil", "rainbow", "Your thoughts in streaks of light. Uses your latest thoughts, so they'll always change color.", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
             option("Fillet", "fish.fill", "Your thoughts...as fish food.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
         ]
     }
@@ -530,16 +530,13 @@ struct ContentView: View {
     }
 
     private func saveImageFil(caption: String, imageData: [Data], todos: [String] = [], filID: UUID) async throws {
-        let title = caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? (todos.first ?? "")
-            : await ArticleGenerationService.shared.generateTitle(from: caption)
-
+        // Photos have no title (see Note.displayBadgeText); the caption is the note.
         let gradient = freshGradientPair()
         let note = Note(
-            title: title,
+            title: "",
             transcript: caption,
             todos: todos,
-            keyword: title,
+            keyword: "",
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
@@ -558,14 +555,11 @@ struct ContentView: View {
         todos: [String] = [],
         filID: UUID
     ) async throws {
-        // A title is generated from the thought. When there's no thought (a to-do-only fil),
-        // fall back to the first to-do so the card still reads meaningfully.
-        let title: String
-        if transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            title = todos.first ?? ""
-        } else {
-            title = await ArticleGenerationService.shared.generateTitle(from: transcript)
-        }
+        // No AI title: the first line of the transcript is the title (Note.titleLine). For a to-do-only
+        // fil (no transcript), fall back to the first to-do so the card still reads meaningfully.
+        let title = transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? (todos.first ?? "")
+            : ""
 
         let gradient = freshGradientPair()
         let note = Note(

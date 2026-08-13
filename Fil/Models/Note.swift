@@ -154,13 +154,36 @@ final class Note {
         return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
     }
 
+    /// The title for text & voice fils: the first non-empty line of the transcript (Apple-Notes style —
+    /// the note is its own title, so nothing to author or regenerate). Photos reuse it over their caption.
+    var titleLine: String {
+        for raw in transcript.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if !line.isEmpty { return line }
+        }
+        return ""
+    }
+
+    /// The body shown beneath the title line: the transcript with its first non-empty line removed, so
+    /// the first line isn't repeated under itself.
+    var bodyAfterTitle: String {
+        let lines = transcript.components(separatedBy: "\n")
+        guard let first = lines.firstIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty })
+        else { return "" }
+        return lines[(first + 1)...].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var displayBadgeText: String {
         if isLinkFil {
             return sourceDomainBadge ?? "link"
         }
-
+        // Notes, voice, and photos all title from the first line of their text (transcript / caption).
+        let line = titleLine
+        if !line.isEmpty { return line }
+        if isImageFil { return "photo" }
+        // Empty transcript fallback (legacy fils / edge cases).
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedTitle.isEmpty ? keyword : trimmedTitle
+        return trimmedTitle.isEmpty ? (keyword.isEmpty ? "fil" : keyword) : trimmedTitle
     }
 
     private var sourceDomainBadge: String? {

@@ -215,3 +215,14 @@ actor ClaudeSurfacingService {
         let fils: [Int]
     }
 }
+
+/// Fil's voice never uses em dashes (see the fil-voice guidance). Swap any the model returns for a
+/// comma, and tidy the spacing. (Previously lived alongside the removed on-device title service.)
+private extension String {
+    var withoutEmDashes: String {
+        replacingOccurrences(of: " — ", with: ", ")
+            .replacingOccurrences(of: "—", with: ", ")
+            .replacingOccurrences(of: "  ", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+}

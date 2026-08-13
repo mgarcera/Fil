@@ -39,7 +39,7 @@ struct PaywallView: View {
         // Terms + Privacy links in the header instead.
         .storeButton(.hidden, for: .policies)
         .storeButton(showsDismiss ? .visible : .hidden, for: .cancellation)
-        .tint(Theme.filProIndigo)
+        .tint(Theme.filProAmber)
         // Standalone gets its own opaque backdrop; embedded stays clear so the Settings sheet's
         // ambient background shows through and it blends in.
         .background(showsDismiss ? Theme.background : Color.clear)
@@ -52,6 +52,10 @@ struct PaywallView: View {
                 dismiss()
             }
         }
+        // Force the whole paywall (our copy + Apple's plan controls + the standalone Theme.background
+        // backdrop) to render light-on-dark regardless of the app's light/dark setting. Scoped to this
+        // subtree via the environment (not .preferredColorScheme, which would leak to the Settings sheet).
+        .environment(\.colorScheme, .dark)
     }
 
     /// Fil's own marketing content above Apple's plan controls. Calm and anti-optimization: it
@@ -59,12 +63,12 @@ struct PaywallView: View {
     private var marketingHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
             AnimatedGradientRevealText(text: "A smarter search.")
-                .font(Theme.dmSans(26, weight: .bold))
+                .font(Theme.fredoka(26, weight: .bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             blobRow
             Text("Find exactly what you were thinking.")
-                .font(Theme.dmSans(15, weight: .bold))
-                .foregroundStyle(Theme.secondaryText)
+                .font(Theme.fredoka(15, weight: .semibold))
+                .foregroundStyle(.white)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -75,14 +79,14 @@ struct PaywallView: View {
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 11, weight: .semibold))
                 }
-                .font(Theme.dmSans(14, weight: .medium))
+                .font(Theme.fredoka(14, weight: .medium))
             }
-            .tint(Theme.filProIndigo)
+            .tint(Theme.filProAmber)
             .frame(maxWidth: .infinity, alignment: .leading)
             // Plain-language data disclosure, shown at the moment of opting in.
             Text("To answer your search, smart search sends relevant text to our AI provider (Anthropic). It's never used to train models and is deleted within 30 days. Free keyword search stays on your device.")
-                .font(Theme.dmSans(15))
-                .foregroundStyle(Theme.tertiaryText)
+                .font(Theme.fredoka(15, weight: .regular))
+                .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
@@ -90,8 +94,8 @@ struct PaywallView: View {
                 Link("Terms", destination: Self.termsURL)
                 Link("Privacy policy", destination: Self.privacyURL)
             }
-            .font(Theme.dmSans(12))
-            .tint(Theme.secondaryText)
+            .font(Theme.fredoka(12, weight: .regular))
+            .tint(.white.opacity(0.7))
         }
         .padding(.horizontal, 24)
         .padding(.top, 24)

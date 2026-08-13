@@ -68,10 +68,6 @@ struct FoldersHomeSection: View {
     @State private var organizing = false
     @State private var organizeError: String?
 
-    @AppStorage("prefersLowercase") private var prefersLowercase = false
-
-    private func cased(_ text: String) -> String { prefersLowercase ? text.lowercased() : text }
-
     private func pullHaptic() { Haptics.move() }   // drag-drop file = a move commit
 
     enum Route: Hashable {
@@ -85,7 +81,7 @@ struct FoldersHomeSection: View {
                     // Home hero: the pinned folder as a 3D object (scrolls with the list). A soft
                     // placeholder invites pinning when nothing is featured yet.
                     PinnedFolderHero(model: pinnedHeroModel,
-                                     placeholderText: cased("Pin a folder to feature it here")) {
+                                     placeholderText: ("Start a live widget by swiping left on a folder.")) {
                         if let folder = pinnedFolder { path.append(.folder(folder)) }
                     }
                     .listRowSeparator(.hidden)
@@ -161,7 +157,7 @@ struct FoldersHomeSection: View {
             Button("Cancel", role: .cancel) { pendingRenameFolder = nil }
         }
         .landfilConfirmation(item: $pendingLandfilFolder, message: { _ in
-            "This folder is removed. Its fils return to the deck."
+            "This folder is removed. Your thoughts will return to the Bin."
         }, onConfirm: { folder in delete(folder) })
         .alert("Couldn't organize", isPresented: .init(
             get: { organizeError != nil },
@@ -199,7 +195,7 @@ struct FoldersHomeSection: View {
             // Live Activity is the fast full-swipe action (like Select on fil cards).
             let pinned = PinnedFolderStore.shared.isPinned(folder.id)
             Button { togglePin(folder) } label: {
-                Label(pinned ? "Remove" : "Live Activity", systemImage: pinned ? "pin.slash" : "pin")
+                Label(pinned ? "Remove" : "Live Widget", systemImage: pinned ? "pin.slash" : "pin")
             }
             .tint(.indigo)
             Button { startRename(folder) } label: { Label("Rename", systemImage: "pencil") }
@@ -298,9 +294,9 @@ struct FoldersHomeSection: View {
         HStack(alignment: .center, spacing: 12) {
             FolderMark(seed: seed, start: start, end: end, glyph: glyph)
             VStack(alignment: .leading, spacing: 3) {
-                Text(cased(title)).font(Theme.instrumentSerif(22)).foregroundStyle(Theme.primaryText).lineLimit(1)
+                Text((title)).font(Theme.instrumentSerif(22)).foregroundStyle(Theme.primaryText).lineLimit(1)
                 if let caption, !caption.isEmpty {
-                    Text(cased(caption))
+                    Text((caption))
                         .font(Theme.fredoka(12, weight: .regular))
                         .foregroundStyle(Theme.secondaryText)
                         .lineLimit(2)
@@ -383,7 +379,7 @@ struct FoldersHomeSection: View {
             let blobs = newest.prefix(8).map { $0.activityBlob }
             PinnedFolderStore.shared.pin(
                 id: folder.id,
-                name: cased(folder.name),
+                name: (folder.name),
                 count: folder.notes.count,
                 blobs: Array(blobs),
                 gradientStartHex: folder.gradientStartHex,
@@ -397,8 +393,9 @@ struct FoldersHomeSection: View {
     /// New folders draw a gradient from the full range the fils use.
     private func makeFolder(named name: String) -> Folder {
         let pair = Theme.randomGradientPair()
-        let nextIndex = (folders.map(\.sortIndex).max() ?? -1) + 1
-        let folder = Folder(name: name, gradientStartHex: pair.start, gradientEndHex: pair.end, sortIndex: nextIndex)
+        // New folders sort to the TOP of the list (lower sortIndex = higher up).
+        let topIndex = (folders.map(\.sortIndex).min() ?? 0) - 1
+        let folder = Folder(name: name, gradientStartHex: pair.start, gradientEndHex: pair.end, sortIndex: topIndex)
         context.insert(folder)
         return folder
     }
@@ -420,7 +417,7 @@ struct FoldersHomeSection: View {
         let fils = folder.notes.prefix(6).map {
             HeroFil(start: $0.gradientStartHex, end: $0.gradientEndHex, seed: $0.blobShapeSeed)
         }
-        return .init(title: cased(folder.name), start: folder.gradientStartHex,
+        return .init(title: (folder.name), start: folder.gradientStartHex,
                      end: folder.gradientEndHex, seed: seed(for: folder), count: folder.notes.count,
                      parts: heroParts(folder), loadingSummary: isSummarizing, fils: fils)
     }
@@ -428,13 +425,13 @@ struct FoldersHomeSection: View {
     /// Stamp snippets for the hero: the Pro-generated parts, or — free tier / before generation —
     /// the organize caption split into a couple of short fragments (no API).
     private func heroParts(_ folder: Folder) -> [String] {
-        if !folder.summaryParts.isEmpty { return folder.summaryParts.map(cased) }
+        if !folder.summaryParts.isEmpty { return folder.summaryParts }
         let caption = folder.summary.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !caption.isEmpty else { return [] }
         let sentences = caption
             .replacingOccurrences(of: ". ", with: ".\n")
             .split(separator: "\n")
-            .map { cased($0.trimmingCharacters(in: .whitespaces)) }
+            .map { ($0.trimmingCharacters(in: .whitespaces)) }
             .filter { !$0.isEmpty }
         return Array(sentences.prefix(3))
     }
@@ -558,7 +555,6 @@ struct FolderInteriorView: View {
     var onSwitchFolder: (Folder) -> Void = { _ in }
 
     @Environment(\.modelContext) private var context
-    @AppStorage("prefersLowercase") private var prefersLowercase = false
     private let selection = FilSelectionStore.shared
 
     @State private var moveTargetNote: Note?
@@ -583,15 +579,13 @@ struct FolderInteriorView: View {
     private var voiceNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && !$0.audioFilePath.isEmpty }.sorted(by: inFolderOrder) }
     private var plainNotes: [Note] { rest.filter { !$0.isImageFil && !$0.isLinkFil && $0.audioFilePath.isEmpty }.sorted(by: inFolderOrder) }
 
-    private func cased(_ text: String) -> String { prefersLowercase ? text.lowercased() : text }
-
     /// Other folders you can jump to from this interior (everything except the one you're in).
     private var siblings: [Folder] { folders.filter { $0.id != folder?.id } }
 
     /// The header's "Switch Folder" control (trailing), mirroring the home settings button's placement.
     private var switchFolderMenu: some View {
         Menu {
-            ForEach(siblings) { f in Button(cased(f.name)) { onSwitchFolder(f) } }
+            ForEach(siblings) { f in Button((f.name)) { onSwitchFolder(f) } }
         } label: {
             Image(systemName: "arrow.left.arrow.right")
         }
@@ -610,14 +604,14 @@ struct FolderInteriorView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.automatic)   // show the scroll bar inside a folder (the root list stays clean)
         .contentMargins(.bottom, bottomInset, for: .scrollContent)   // clear the floating composer dock
         .background(FolderBrowserBackground())
         // Native large-title collapse: the expanded identity (blob + Instrument Serif title + count)
         // sits below the bar with the caption; on scroll it collapses to the compact inline identity.
         // `.toolbarTitleDisplayMode(.large)` is what drives the collapse (and stops the large + inline
         // titles rendering at once). The folders root hides its bar, so force it visible here.
-        .navigationTitle(cased(title))
+        .navigationTitle((title))
         .toolbarTitleDisplayMode(.large)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
@@ -633,7 +627,7 @@ struct FolderInteriorView: View {
             set: { if !$0 { moveTargetNote = nil } }
         ), titleVisibility: .visible, presenting: moveTargetNote) { note in
             ForEach(folders.filter { $0.id != note.folder?.id }) { folder in
-                Button(cased(folder.name)) { onMove(note, folder) }
+                Button((folder.name)) { onMove(note, folder) }
             }
             Button("New folder…") { onNewFolder(note) }
             if note.folder != nil {
@@ -662,7 +656,7 @@ struct FolderInteriorView: View {
             FolderMark(seed: seed, start: start, end: end, glyph: glyph, size: 40)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .center, spacing: 8) {
-                    Text(cased(title))
+                    Text((title))
                         .font(Theme.instrumentSerif(28))
                         .foregroundStyle(Theme.primaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -672,7 +666,7 @@ struct FolderInteriorView: View {
                         .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
                 }
                 if !summary.isEmpty {
-                    Text(cased(summary))
+                    Text((summary))
                         .font(Theme.fredoka(13, weight: .regular))
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
@@ -782,7 +776,7 @@ struct FolderInteriorView: View {
         let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
         // Plain notes and photos caption their date; typed fils keep their identity caption.
         let showsDate = isPlainNote || note.isImageFil
-        let main = cased(cardContent(note))
+        let main = (cardContent(note))
         return HStack(alignment: .top, spacing: 14) {
             rowRich(note)
             VStack(alignment: .leading, spacing: 3) {
@@ -795,8 +789,8 @@ struct FolderInteriorView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 let caption = showsDate
-                    ? cased(note.timestamp.formatted(date: .abbreviated, time: .omitted))
-                    : cased(captionText(note))
+                    ? (note.timestamp.formatted(date: .abbreviated, time: .omitted))
+                    : (captionText(note))
                 if !caption.isEmpty {
                     Text(caption).font(.system(size: 12, weight: .light)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                 }
@@ -886,7 +880,7 @@ struct FolderInteriorView: View {
                 // The fil's own thought, so the user sees what they typed above its to-dos.
                 let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !body.isEmpty {
-                    Text(cased(body))
+                    Text((body))
                         .font(Theme.fredoka(15, weight: .regular))
                         .foregroundStyle(.white)
                         .lineLimit(30)
@@ -896,8 +890,8 @@ struct FolderInteriorView: View {
                 ForEach(note.todoRowItems) { item in
                     Button { toggleTodo(note, at: item.index) } label: {
                         HStack(alignment: .top, spacing: 10) {
-                            TodoStatusCircle(isCompleted: item.done)
-                            Text(cased(item.text))
+                            TodoStatusCircle(isCompleted: item.done, onColor: true)
+                            Text((item.text))
                                 .font(Theme.fredoka(15, weight: .light))
                                 .foregroundStyle(.white)
                                 .strikethrough(item.done, color: .white.opacity(0.5))
@@ -1045,7 +1039,7 @@ struct PinnedFolderHero: View {
     }
 
     let model: Model?
-    var placeholderText: String = "Pin a folder to feature it here"
+    var placeholderText: String = "Start a live widget to feature it here"
     var onOpen: () -> Void = {}
 
     @State private var bob = false

@@ -55,10 +55,9 @@ enum LockScreenActivityCoordinator {
             PinnedFolderStore.shared.unpin()
             return nil
         }
-        let lowercase = UserDefaults.standard.bool(forKey: "prefersLowercase")
         let newest = folder.notes.sorted { $0.timestamp > $1.timestamp }
         let blobs = newest.prefix(blobPeekCap).map { $0.activityBlob }
-        let name = lowercase ? folder.name.lowercased() : folder.name
+        let name = folder.name
         return PinnedFolderStore.shared.pin(
             id: folder.id,
             name: name,

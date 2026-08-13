@@ -3,7 +3,7 @@ import SwiftData
 
 struct AttachmentEntry: Codable, Equatable {
     enum Kind: String, Codable {
-        case image, recording, link, textNote, linkedNote, pdf, video
+        case image, recording, link, textNote, linkedNote, pdf, video, file
     }
 
     var id: UUID = UUID()
@@ -16,6 +16,9 @@ struct AttachmentEntry: Codable, Equatable {
     var pdfName: String?
     var noteTitle: String?
     var linkCaption: String?
+    /// Display name for a generic `.file` attachment (the original filename). The bytes live on disk —
+    /// `text` holds the documents-dir filename, like `.video`.
+    var fileName: String?
 
     static func image(_ data: Data) -> AttachmentEntry {
         AttachmentEntry(kind: .image, imageData: data)
@@ -45,6 +48,12 @@ struct AttachmentEntry: Codable, Equatable {
     /// (a filename in the app's documents directory), never the bytes.
     static func video(path: String) -> AttachmentEntry {
         AttachmentEntry(kind: .video, text: path)
+    }
+
+    /// A generic imported file (PDF, doc, image, media, …) previewed via QuickLook. Bytes live on disk;
+    /// `text` is the documents-dir filename and `fileName` is the original display name.
+    static func file(path: String, name: String) -> AttachmentEntry {
+        AttachmentEntry(kind: .file, text: path, fileName: name)
     }
 }
 

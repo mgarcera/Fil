@@ -63,7 +63,7 @@ struct KeywordPopup: View {
     @State private var didCompleteDrop = false
     @State private var showNotePicker = false
     @State private var showCamera = false
-    @State private var showPDFImporter = false
+    @State private var showFileImporter = false
     @State private var recordingEntryID: UUID?
     @State private var memoRecorder: AVAudioRecorder?
     @State private var memoTimer: Timer?
@@ -244,15 +244,14 @@ struct KeywordPopup: View {
             .ignoresSafeArea()
         }
         .fileImporter(
-            isPresented: $showPDFImporter,
-            allowedContentTypes: [.pdf]
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.pdf, .image, .movie, .audio, .plainText, .rtf, .html,
+                                  .commaSeparatedText, .spreadsheet, .presentation, .usdz, .content]
         ) { result in
             if case .success(let url) = result {
                 guard url.startAccessingSecurityScopedResource() else { return }
                 defer { url.stopAccessingSecurityScopedResource() }
-                if let data = try? Data(contentsOf: url) {
-                    appendEntry(.pdf(data: data, name: url.lastPathComponent))
-                }
+                importFile(from: url)
             }
         }
     }
@@ -276,6 +275,20 @@ struct KeywordPopup: View {
             pdfView(entry)
         case .video:
             videoView(entry)
+        case .file:
+            fileView(entry)
+        }
+    }
+
+    private func fileView(_ entry: AttachmentEntry) -> some View {
+        Button {
+            openFilePreview(for: entry)
+        } label: {
+            FileAttachmentTile(name: entry.fileName ?? "File", cornerRadius: cornerRadius)
+        }
+        .buttonStyle(AttachmentCellButtonStyle())
+        .contextMenu {
+            landfilButton(for: entry.id)
         }
     }
 
@@ -474,9 +487,9 @@ struct KeywordPopup: View {
             }
             Section {
                 Button {
-                    showPDFImporter = true
+                    showFileImporter = true
                 } label: {
-                    Label("Upload PDF", systemImage: "doc.fill")
+                    Label("Add File", systemImage: "doc")
                 }
             }
         } label: {
@@ -533,6 +546,28 @@ struct KeywordPopup: View {
         guard let url = AudioPlayerViewModel.audioFileURL(for: entry.text ?? "") else { return }
         previewURLs = [url]
         previewURL = url
+    }
+
+    /// Generic files live in the same documents directory; QuickLook renders whatever it supports.
+    private func openFilePreview(for entry: AttachmentEntry) {
+        guard let url = AudioPlayerViewModel.audioFileURL(for: entry.text ?? "") else { return }
+        previewURLs = [url]
+        previewURL = url
+    }
+
+    /// Copies a picked file into the documents dir (unique name, extension preserved) and appends a
+    /// `.file` entry pointing at it — never stores the bytes in SwiftData.
+    private func importFile(from sourceURL: URL) {
+        let ext = sourceURL.pathExtension
+        let filename = "file-\(UUID().uuidString)" + (ext.isEmpty ? "" : ".\(ext)")
+        let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: dest)
+        } catch {
+            return
+        }
+        FileProtection.protectAtRest(dest)
+        appendEntry(.file(path: filename, name: sourceURL.lastPathComponent))
     }
 
     /// Generates a first-frame thumbnail once per video entry, cached in memory.
@@ -1056,6 +1091,46 @@ private struct PDFAttachmentTile: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 24, height: 24)
+                    Text(name)
+                        .font(Theme.dmSans(11, weight: .semibold))
+                        .foregroundStyle(Theme.secondaryText)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 6)
+                }
+            }
+    }
+}
+
+private struct FileAttachmentTile: View {
+    let name: String
+    let cornerRadius: CGFloat
+
+    /// A rough SF Symbol by extension so common files read at a glance; falls back to a generic doc.
+    private var icon: String {
+        switch (name as NSString).pathExtension.lowercased() {
+        case "pdf": return "doc.richtext"
+        case "jpg", "jpeg", "png", "heic", "gif", "tiff", "webp": return "photo"
+        case "mov", "mp4", "m4v", "avi": return "film"
+        case "mp3", "m4a", "wav", "aiff", "caf": return "waveform"
+        case "doc", "docx", "pages", "rtf", "txt": return "doc.text"
+        case "xls", "xlsx", "numbers", "csv": return "tablecells"
+        case "ppt", "pptx", "key": return "rectangle.on.rectangle"
+        case "zip": return "doc.zipper"
+        case "usdz": return "cube"
+        default: return "doc"
+        }
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius)
+            .fill(Theme.cardBackground)
+            .aspectRatio(1, contentMode: .fill)
+            .overlay {
+                VStack(spacing: 4) {
+                    Image(systemName: icon)
+                        .font(.system(size: 22))
+                        .foregroundStyle(Theme.secondaryText)
                     Text(name)
                         .font(Theme.dmSans(11, weight: .semibold))
                         .foregroundStyle(Theme.secondaryText)

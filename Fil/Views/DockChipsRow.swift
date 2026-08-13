@@ -47,14 +47,14 @@ struct DockChipsRow: View {
             }
             .scrollIndicators(.hidden)
         }
-        .alert("Landfil these fils?", isPresented: $showLandfil) {
+        .alert("Send to landfil?", isPresented: $showLandfil) {
             Button("Landfil", role: .destructive) {
                 SoundscapeManager.shared.playLandfilSound()
                 withAnimation(.snappy) { selection.landfilSelected() }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("These fils will be deleted. This cannot be undone.")
+            Text("These thoughts will be deleted. This cannot be undone.")
         }
     }
 

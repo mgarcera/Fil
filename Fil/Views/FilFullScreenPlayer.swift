@@ -16,7 +16,6 @@ struct FilFullScreenPlayer: View {
     var onClose: () -> Void = {}
 
     @Environment(\.modelContext) private var context
-    @AppStorage("prefersLowercase") private var prefersLowercase = false
 
     @State private var index: Int
     @State private var navForward = true       // last nav direction, drives the slide transition
@@ -65,7 +64,6 @@ struct FilFullScreenPlayer: View {
         return heroFull - heroProgress * (heroFull - heroCollapsed)
     }
 
-    private func cased(_ s: String) -> String { prefersLowercase ? s.lowercased() : s }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -241,7 +239,7 @@ struct FilFullScreenPlayer: View {
                 if editing {
                     Text("editing")
                 } else {
-                    Text("\(cased(typeLabel))  ·  \(index + 1) / \(notes.count)")
+                    Text("\((typeLabel))  ·  \(index + 1) / \(notes.count)")
                         .id(index)   // new identity per fil so it scale-pops to the new value on nav
                         .transition(.scale.combined(with: .opacity))
                 }
@@ -287,7 +285,7 @@ struct FilFullScreenPlayer: View {
         Button { openLink() } label: {
             VStack(spacing: 12) {
                 linkIcon
-                Text(cased(note.sourceDomain ?? "link"))
+                Text((note.sourceDomain ?? "link"))
                     .font(Theme.fredoka(13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
             }
             .frame(width: 240, height: 210)
@@ -353,11 +351,9 @@ struct FilFullScreenPlayer: View {
         let caption = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(cased(displayTitle)).font(Theme.instrumentSerif(30))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Photos have no title — just the caption (the note) and any to-dos.
                 if !caption.isEmpty {
-                    Text(cased(caption)).font(Theme.fredoka(16, weight: .regular)).opacity(0.9)
+                    Text(caption).font(Theme.fredoka(16, weight: .regular)).opacity(0.9)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -438,10 +434,8 @@ struct FilFullScreenPlayer: View {
     private var info: some View {
         VStack(alignment: .leading, spacing: 12) {
             if editing {
-                Text(cased(displayTitle))
-                    .font(Theme.instrumentSerif(22))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // The first line of the text is the title, so the editor holds the whole note — no
+                // separate title field to edit or keep in sync.
                 TextEditor(text: $draft)
                     .font(Theme.fredoka(16, weight: .regular))
                     .foregroundStyle(.white)
@@ -454,18 +448,24 @@ struct FilFullScreenPlayer: View {
                 photoCaption
                 todosBlock
             } else if note.isLinkFil {
-                Text(cased(linkTitle))
+                Text((linkTitle))
                     .font(Theme.instrumentSerif(30))
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 linkDescription
                 todosBlock
+            } else if note.bodyAfterTitle.isEmpty {
+                // Single-line/paragraph note: no separate title — render the whole thing as the
+                // interactive body so every filament stays tappable (nothing absorbed into a plain title).
+                noteText(note.transcript.trimmingCharacters(in: .whitespacesAndNewlines))
+                todosBlock
             } else {
-                Text(cased(displayTitle))
+                // Multi-line note: first line is the serif title; the rest is the interactive body.
+                Text((displayTitle))
                     .font(Theme.instrumentSerif(30))
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                noteBody
+                noteText(note.bodyAfterTitle)
                 todosBlock
             }
         }
@@ -509,7 +509,7 @@ struct FilFullScreenPlayer: View {
     /// The link page's description (fetched in the background when the fil was made).
     @ViewBuilder private var linkDescription: some View {
         if let d = note.sourceDescription?.trimmingCharacters(in: .whitespacesAndNewlines), !d.isEmpty {
-            Text(cased(d))
+            Text((d))
                 .font(Theme.fredoka(16, weight: .regular)).opacity(0.9)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -518,27 +518,26 @@ struct FilFullScreenPlayer: View {
     /// A photo fil's small header-style title + caption (Fredoka), sitting under the carousel.
     @ViewBuilder private var photoCaption: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(cased(displayTitle))
+            Text((displayTitle))
                 .font(Theme.instrumentSerif(24))
                 .frame(maxWidth: .infinity, alignment: .leading)
             let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
             if !body.isEmpty {
-                Text(cased(body))
+                Text((body))
                     .font(Theme.fredoka(15, weight: .regular)).opacity(0.85)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
-    /// The fil's own text — selectable (keyword highlights + select→Filament/To-do, tap a highlight to
-    /// open its filament). Self-sizing (see `SelectableTextView.sizeThatFits`), so it lays out at its
-    /// true height on the first frame — no reflow when swiping between fils. The whole reading pane
-    /// scrolls (see `readingContent`), so a long note simply carries the hero up as you read.
-    @ViewBuilder private var noteBody: some View {
-        let text = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// The fil's selectable text (keyword highlights + select→Filament/To-do, tap a highlight to open
+    /// its filament). Self-sizing (see `SelectableTextView.sizeThatFits`), so it lays out at true height
+    /// on the first frame — no reflow when swiping between fils. Given whichever slice of the transcript
+    /// the caller renders (full note for one-liners, or the body-after-title for multi-line notes).
+    @ViewBuilder private func noteText(_ text: String) -> some View {
         if !text.isEmpty {
             SelectableTextView(
-                text: cased(text),
+                text: (text),
                 highlightedKeywords: note.attachments.map(\.keyword),
                 gradientStartHex: note.gradientStartHex,
                 gradientEndHex: note.gradientEndHex,
@@ -558,8 +557,8 @@ struct FilFullScreenPlayer: View {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(todos) { item in
                     HStack(spacing: 12) {
-                        playerCheckbox(done: item.done)
-                        Text(cased(item.text))
+                        TodoStatusCircle(isCompleted: item.done, onColor: true)
+                        Text((item.text))
                             .font(Theme.fredoka(16, weight: .light))
                             .strikethrough(item.done, color: .white.opacity(0.6))
                             .opacity(item.done ? 0.55 : 1)
@@ -671,23 +670,6 @@ struct FilFullScreenPlayer: View {
 
     // MARK: - To-dos
 
-    /// A bordered 22pt chip mirroring the app's `TodoStatusCircle`, tinted for the dark player.
-    private func playerCheckbox(done: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 11, style: .continuous)
-            .fill(done ? Color.white.opacity(0.9) : Color.white.opacity(0.06))
-            .overlay {
-                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .stroke(.white.opacity(done ? 0 : 0.5), lineWidth: 1.5)
-            }
-            .overlay {
-                if done {
-                    Image(systemName: "checkmark").font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.black.opacity(0.7))
-                }
-            }
-            .frame(width: 22, height: 22)
-    }
-
     private func toggleTodo(_ item: FilTodoItem) {
         note.normalizeCompletedTodos()
         guard note.completedTodos.indices.contains(item.index) else { return }
@@ -698,10 +680,9 @@ struct FilFullScreenPlayer: View {
 
     // MARK: - Text
 
-    private var displayTitle: String {
-        let t = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return t.isEmpty ? note.displayBadgeText : t
-    }
+    /// The header title: notes/voice show their first content line (`displayBadgeText`), so it always
+    /// matches the text and never needs a separate authored/regenerated title.
+    private var displayTitle: String { note.displayBadgeText }
 
     private var typeLabel: String {
         if note.isLinkFil { return "link" }

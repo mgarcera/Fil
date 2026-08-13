@@ -28,7 +28,6 @@ struct CanvasHome: View {
     // Match the home folder list's order exactly (sortIndex, then newest-first tiebreak) so the
     // composer's folder switcher lists them in the same order as the folders on the home page.
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)]) private var folders: [Folder]
-    @AppStorage("prefersLowercase") private var prefersLowercase = false
 
     // First-run onboarding, re-homed here because creation now happens on the canvas (not through
     // ContentView.createFil). See docs/onboarding/.
@@ -38,8 +37,6 @@ struct CanvasHome: View {
     /// Ask for a rating at most once, after the user has felt the core loop a few times.
     @AppStorage("didRequestReview") private var didRequestReview = false
     @Environment(\.requestReview) private var requestReview
-    /// True only while the quiet "that's a fil" congrats is on screen (before the seed reveal).
-    @State private var showWelcomeCongrats = false
 
     private enum Phase { case composing, recording, creating, formed, querying, results }
 
@@ -125,6 +122,7 @@ struct CanvasHome: View {
     // flows into the same creation animation typed/link fils use.
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showMicPriming = false
+    @State private var showEmptyVoicePrompt = false   // transcription came back empty → redo / exit
     @State private var recordingPulse = false
     // Photo capture: "add photo" in the composer edit menu opens the picker.
     @State private var photoItems: [PhotosPickerItem] = []
@@ -267,13 +265,6 @@ struct CanvasHome: View {
                     .padding(.bottom, 90)
             }
         }
-        // A quiet beat after the user's very first fil, before the "from mason" seed reveals.
-        .overlay {
-            if showWelcomeCongrats {
-                welcomeCongratsOverlay
-                    .transition(.scale.combined(with: .opacity))
-            }
-        }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: hasText)
         .sheet(item: $selectedNote, onDismiss: { filSheetDetent = .fraction(0.6); filSheetPath.removeAll() }) { note in
             NavigationStack(path: $filSheetPath) {
@@ -322,6 +313,12 @@ struct CanvasHome: View {
             )
             .presentationDetents([.medium])
             .presentationBackground(Theme.background)
+        }
+        .alert("Fil didn't hear you", isPresented: $showEmptyVoicePrompt) {
+            Button("Redo") { Task { await beginRecording() } }
+            Button("Exit", role: .cancel) { composerFocused = true }
+        } message: {
+            Text("Want to try again?")
         }
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
@@ -468,7 +465,7 @@ struct CanvasHome: View {
             selectedPhotos: $photoItems,
             stagedImageData: pendingPhotos.map(\.data),
             isProcessing: false,
-            contextLabel: contextFolder.map { "Add to \(prefersLowercase ? $0.name.lowercased() : $0.name)" },
+            contextLabel: contextFolder.map { "Add to \($0.name)" },
             focus: $composerFocused,
             searchMode: isSearching,
             searchShowingResults: phase == .results,
@@ -480,6 +477,7 @@ struct CanvasHome: View {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos.remove(at: index) }
                 }
             },
+            onCapturePhoto: { data in stageCapturedPhoto(data) },
             onEnterSearch: { withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { searchActive = true } },
             onSubmitSearch: { Task { await runQuery() } },
             onRestartSearch: { beginSurface() },
@@ -605,12 +603,12 @@ struct CanvasHome: View {
                             if !results.isEmpty {
                                 Button("Open feedback form") { showFeedback = true }
                                     .font(Theme.dmSans(14, weight: .medium))
-                                    .tint(Theme.filProIndigo)
+                                    .tint(Theme.filProAmber)
                             }
                         }
                     }
                     if !summary.isEmpty && !results.isEmpty {
-                        AnimatedGradientRevealText(text: prefersLowercase ? summary.lowercased() : summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
+                        AnimatedGradientRevealText(text: summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
                             .font(Theme.dmSans(16, weight: .medium))
                             .foregroundStyle(Theme.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
@@ -680,7 +678,7 @@ struct CanvasHome: View {
             line = AttributedString("Nothing came up for it. Want to try ")
             line.foregroundColor = Theme.secondaryText
             var link = AttributedString(suggestedQuery)
-            link.foregroundColor = Theme.filProIndigo
+            link.foregroundColor = Theme.filProAmber
             link.link = URL(string: "fil-action://suggest")
             var tail = AttributedString(" instead?")
             tail.foregroundColor = Theme.secondaryText
@@ -689,14 +687,14 @@ struct CanvasHome: View {
             line = AttributedString("Nothing came up for it. Do you have a ")
             line.foregroundColor = Theme.secondaryText
             var link = AttributedString("thought?")
-            link.foregroundColor = Theme.filProIndigo
+            link.foregroundColor = Theme.filProAmber
             link.link = URL(string: "fil-action://compose")
             line.append(link)
         }
 
         return Text(line)
             .font(Theme.dmSans(15, weight: .semibold))
-            .tint(Theme.filProIndigo)
+            .tint(Theme.filProAmber)
             .fixedSize(horizontal: false, vertical: true)
             .environment(\.openURL, OpenURLAction { url in
                 switch url.host {
@@ -991,16 +989,25 @@ struct CanvasHome: View {
 
         let transcript = ((try? await recorder.transcribe(url: url)) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Nothing transcribed (silence / failed) → don't create a ghost voice fil. Discard the clip and
+        // offer to redo or exit, so an empty recording never lands in the Bin.
+        guard !transcript.isEmpty else {
+            SoundscapeManager.shared.stopMeshDuringProcessSound()
+            try? FileManager.default.removeItem(at: url)
+            withAnimation(.snappy(duration: 0.2)) { phase = .composing }
+            showEmptyVoicePrompt = true
+            return
+        }
+
         let gradient = Theme.randomGradientPair()
-        let title = transcript.isEmpty
-            ? "Voice thought"
-            : await ArticleGenerationService.shared.generateTitle(from: transcript)
+        // No AI title: the first line of the transcript is the title (see Note.titleLine).
         let note = Note(
-            title: title,
+            title: "",
             transcript: transcript,
             audioFilePath: url.lastPathComponent,   // bare filename; resolved against the docs dir
             duration: duration,
-            keyword: title,
+            keyword: "",
             gradientStartHex: gradient.start,
             gradientEndHex: gradient.end
         )
@@ -1017,6 +1024,16 @@ struct CanvasHome: View {
     // MARK: - Photo capture
 
     /// Turn a picked image into an image fil, flowing through the same gooey-blob creation animation.
+    /// Stage a camera-captured photo just like a picked one: it joins `pendingPhotos` (caption still
+    /// required to send), keeping the compose flow identical to the photo picker.
+    private func stageCapturedPhoto(_ data: Data) {
+        guard let image = UIImage(data: data) else { return }
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            pendingPhotos.append(PendingPhoto(itemID: nil, image: image, data: data))
+        }
+        composerFocused = true   // keep composing — a caption can be added before sending
+    }
+
     /// Turn the pending photos (+ optional caption) into one image fil, flowing through the same
     /// gooey-blob creation animation typed fils use.
     private func createImageFil(images: [Data], caption: String, todos: [String] = []) async {
@@ -1085,43 +1102,28 @@ struct CanvasHome: View {
         await revealWelcomeFil()
     }
 
-    /// A quiet congratulation, then the "from mason" seed fil revealed with the same full-screen
-    /// gooey → note-blob creation the user's own fils get. Runs once, ever.
+    /// Seeds the one-time "from mason" welcome quietly, as real content: a "From Mason" folder holding
+    /// the welcome fil — no congrats overlay, no creating-blob animation. Runs once, ever.
     private func revealWelcomeFil() async {
         didSeedWelcomeFil = true
-        withAnimation(.snappy(duration: 0.2)) { showWelcomeCongrats = true }
-        try? await Task.sleep(for: .seconds(2.2))
-        withAnimation(.snappy(duration: 0.2)) { showWelcomeCongrats = false }
-        try? await Task.sleep(for: .milliseconds(350))
-
-        let note = insertWelcomeFil()
-        modelContext.saveOrLog()
-
-        // Full-screen gooey creating blob…
-        composerFocused = false
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.52)) { phase = .creating }
-        SoundscapeManager.shared.startMeshDuringProcessSound()
-        try? await Task.sleep(for: .milliseconds(900))
-        SoundscapeManager.shared.stopMeshDuringProcessSound()
-        SoundscapeManager.shared.playArticleMadeSound(); Haptics.success()
-
-        // …morphs into the settled note blob, holds, then returns to the composer — unless the user
-        // navigated away (e.g. opened search) mid-reveal, in which case don't yank them back.
-        formedNote = note
-        formedShown = false
-        withAnimation(.easeOut(duration: 0.25)) { phase = .formed }
-        withAnimation(Self.popAnimation) { formedShown = true }
-        try? await Task.sleep(for: .milliseconds(1500))
-        if phase == .formed {
-            withAnimation(.easeIn(duration: 0.28)) { formedShown = false }
-            try? await Task.sleep(for: .milliseconds(300))
-            withAnimation(.easeOut(duration: 0.2)) { phase = .composing }
+        // Insert inside an animation so the new folder eases into the home's folder list.
+        withAnimation(.snappy(duration: 0.35)) {
+            _ = insertWelcomeFil()
         }
+        modelContext.saveOrLog()
+        SoundscapeManager.shared.playArticleMadeSound()
+        Haptics.success()
     }
 
     /// Builds the fixed "from mason" seed fil (no AI) with two sample filaments: a "filament" text
     /// note and a "here" word that opens a bundled tutorial video. Deletable like any fil.
-    private func insertWelcomeFil() -> Note {
+    private func insertWelcomeFil() -> (folder: Folder, note: Note) {
+        // The seed lands as real content: a "From Mason" folder holding the welcome fil.
+        let folder = Folder(
+            name: "From Mason",
+            gradientStartHex: WelcomeFil.gradientStart,
+            gradientEndHex: WelcomeFil.gradientEnd
+        )
         let note = Note(
             title: WelcomeFil.title,
             transcript: WelcomeFil.transcript,
@@ -1129,6 +1131,7 @@ struct CanvasHome: View {
             gradientStartHex: WelcomeFil.gradientStart,
             gradientEndHex: WelcomeFil.gradientEnd
         )
+        note.folder = folder
 
         let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
         filament.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.filamentNote, noteTitle: WelcomeFil.filamentNoteTitle)]
@@ -1176,8 +1179,9 @@ struct CanvasHome: View {
 
         note.attachments = [filament, example, instructions]
 
+        modelContext.insert(folder)
         modelContext.insert(note)
-        return note
+        return (folder, note)
     }
 
     /// Requests an App Store review after a genuine "aha" moment — a fil the user just made — but
@@ -1192,18 +1196,6 @@ struct CanvasHome: View {
         }
     }
 
-
-    /// A quiet, calm beat after the user's first fil — no confetti. Fades before the seed reveal.
-    private var welcomeCongratsOverlay: some View {
-        ZStack {
-            Theme.background.opacity(0.55).ignoresSafeArea()
-            Text("That's a thought.\nIt's yours.")
-                .font(Theme.dmSans(24, weight: .bold))
-                .foregroundStyle(Theme.primaryText)
-                .multilineTextAlignment(.center)
-        }
-        .allowsHitTesting(false)
-    }
 
     private func runQuery() async {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1535,6 +1527,7 @@ struct CanvasHome: View {
                 case .link:       parts.append(contentsOf: [entry.linkCaption, entry.text].compactMap { $0 })
                 case .linkedNote: if let t = entry.text { parts.append(t) }   // the linked fil's title
                 case .pdf:        if let n = entry.pdfName { parts.append(n) }
+                case .file:       if let n = entry.fileName { parts.append(n) }
                 case .video:      parts.append("video")
                 case .recording:  parts.append("voice memo")
                 case .image:      parts.append("photo")
@@ -1661,6 +1654,6 @@ struct CanvasHome: View {
         let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         // Text fils no longer carry a title, so fall back to a snippet of the thought itself.
         let title = !trimmed.isEmpty ? trimmed : (body.isEmpty ? "fil" : String(body.prefix(80)))
-        return prefersLowercase ? title.lowercased() : title
+        return title
     }
 }
