@@ -213,15 +213,15 @@ SwiftData as `.externalStorage` Data, or into a CloudKit assets container) — n
 - Cross-platform import (there is no other platform).
 - Encryption/password on the archive — the file inherits wherever the user stores it.
 
-## Open decisions
+## Decisions — settled 2026-08-13
 
-1. **Include app settings** (appearance, lowercase, sound, screensaver choice)? Cheap, slightly
-   surprising on restore. Leaning yes, in a `settings.json` the importer applies only on an explicit
-   "restore settings too" toggle.
-2. **`.filbox` or plain `.zip`?** Custom extension enables tap-to-import via a registered UTI; plain
-   zip is more obviously openable elsewhere. Leaning `.filbox`, since `readable/` already covers the
-   "open it anywhere" need.
-3. **Skip vs "keep both" on uuid collision.** Default skip; "keep both" needs a new uuid and
-   therefore a new face, which is a product decision.
-4. **Where does the readable layer put voice fils?** Transcript as Markdown with the audio filename
-   referenced alongside — or omit them from `readable/` entirely.
+1. **App settings ride along, but are ignored on import.** Write `settings.json` into the archive so
+   the data exists; v1's importer does not read it. No UI, no restore surprise, and the option is
+   there if anyone asks for it later.
+2. **`.filbox`, with a registered UTI** (conforming to `public.zip-archive`). Tap-to-import from
+   Files is the whole point; `readable/` already answers "can I open it elsewhere."
+3. **Skip on uuid collision, and report it.** "Keep both" would need a new uuid — and therefore a
+   new face — so it isn't a mechanical option. If people ask, the better answer is "replace with the
+   imported copy," not "keep two."
+4. **Voice fils appear in `readable/`** — transcript as the Markdown body, with a relative path to
+   the audio in `media/` at the bottom. Complete tree, no duplicated bytes.

@@ -59,6 +59,17 @@ exists (`appStoreID` is a real ID). Nothing has been submitted.
 | 21 | **Export / import** | **New v1 item, free tier.** Spec'd in `docs/features/export-import.md`. Makes the "landscape after six months" claim honest and covers the delete-and-reinstall case that device backup cannot. |
 | 22 | **Store-recovery notice** | ✅ **Shipped** (`d0f614d`). The container recovery paths never destroyed data, but presented as an empty app — indistinguishable from total loss, and the natural reaction (delete and reinstall) was the one thing that would make it real. Now says so on launch. |
 
+### Decided 2026-08-13 (evening) — entity, brand, and a monetization hold
+
+| # | Thread | Decision |
+|---|--------|----------|
+| 23 | **Apple account** | The org account can't convert to individual (Apple confirmed in writing). The LLC is revoked and reinstatement is $600 for an entity that earned nothing, so: **new individual developer account**, org account left to lapse. **Weeklite: race the transfer** — no $99 renewal. If the new account activates before the old expires, transfer it; if not, Weeklite goes. Fil needs no transfer (never released) — it gets recreated under the new account, which means a **new `appStoreID`** and a re-registered bundle ID and App Group. |
+| 24 | **Brand** | **Smidgecraft replaces Rootcause as the label**, not just the domain. `smidgecraft.com` is the new home; Fil keeps its `/fil/*` route shape, so `FilLinks` URLs change host only. Affects `src/lib/brand.ts` (name, thesis, url, description), site nav and footer, and every legal doc that names the entity. |
+| 25 | **Contact** | **`mason@smidgecraft.com` is canonical** — app, site, legal pages, support page, and App Store Connect. Replaces the current split between `mason@garcera.us` (website) and `mason@rootcause.ltd` (Fil legal docs). |
+| 26 | **Monetization** | **On hold pending the Private Cloud Compute test.** WWDC 2026 opened PCC to third parties, free for Small Business Program members under 2M downloads — which is the entire cost basis the subscription was built on. Test device reach, quality against Haiku, and guardrails before pricing anything. The new individual account's SBP enrolment is the gate. |
+| 27 | **Export / import spec** | Four open decisions settled — see `docs/features/export-import.md`. |
+| 2b | **Device verification** | Revised from "done" to **partial**: daily use, never deliberate testing. The August surface (both Live Activities, both Control Center controls, player audio, sound and haptics) has not had a cold-install, locked-device, or activity-eviction pass. |
+
 ### Pro gating (decision detail)
 
 Everything gated today is cloud-cost-bearing and nothing else: AI surfacing +
