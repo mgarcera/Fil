@@ -4,6 +4,12 @@
 findings is `LAUNCH_READINESS_AUDIT.md`; this file records what was actually done,
 in what order, and how it was verified. Newest entries at the bottom.*
 
+> **2026-08-13:** this worklog stopped at Jul 13 and describes a branch that no longer exists.
+> The last entry below brings it current. **For the forward view — what's decided, parked, and
+> sequenced — read `docs/v1-route.md` first.** Branch history has since been consolidated: `main`
+> is the single trunk, and `launch-prep` / `blank-canvas-home` / `dynamic-island-share-capture`
+> were deleted after verifying every commit was an ancestor of `main`.
+
 Branch: `launch-prep` (forked from `dynamic-island-share-capture` @ `607779c`).
 Working agreement: one commit per audit item (`P<phase>.<n>: … (audit #N)`); build/diagnostics
 must pass before an item is checked off in the roadmap; review batched per phase.
@@ -361,3 +367,48 @@ Design in `docs/onboarding/onboarding-design.md` (research in `onboarding-resear
 
 
 
+
+---
+
+## 2026-07-14 → 2026-08-13 — the craft month, then a full walkthrough
+
+**97 commits since the Phase 2 docs were finished, 85 of them in August.** None of it was launch
+work; all of it was product. In rough order: the full-screen player (now-playing layout, voice
+meter, photo carousel, filament reading, links, self-sizing text, photo details), folders routing
+into the player, the floating glass dock with the Bin↔Selected switcher, a composer + capture
+rework, titles derived from the first line, folder captions, a shared fil-card language, two
+Control Center capture controls, a haptics pass unified by semantic role, a fade/transition audit,
+and the first sound quick-wins. Dead on-device clustering was removed (`FilClusteringService`).
+
+**Build hygiene (2026-08-13):** cleared every Swift warning in the app target — `nonisolated` on
+the MainActor-isolation sites (`withoutEmDashes`, both ActivityKit attributes structs plus the
+`FilActivityBlob` they carry, `FilCaptureLaunch`, `FilFullScreenPlayer.aspectRatio`) and `_ =` in
+the `withAnimation` closures; also assigned FilLogo's white variants in the widget asset catalog.
+The app target now builds with **zero warnings, zero errors**. Note: the Metal toolchain is a
+separately-downloaded Xcode component (688 MB) — without it `xcodebuild` fails on
+`Fil/FilMetaball.metal` before the Swift phase ever runs.
+
+### The 2026-08-13 walkthrough
+
+Every open thread was walked one at a time. Full results — decisions, what's parked and on whom,
+and the sequenced remaining work — are in **`docs/v1-route.md`**. In brief:
+
+- **Decided:** redo all screenshots/assets with an automated simulator capture; Fil a Folder is
+  post-v1 (so smart-organize **stays**, and its removal items are void); `Note.kind` deferred with
+  it; capture modes confirmed done and phase 8 closed, with onboarding polish left open; sound v1
+  scope is the reuse-only pass, with the Mirelo generation spike evaluated and banked; keep the
+  conventional StoreKit free trial (the reverse trial can't be made safe against
+  `originalTransactionId`-keyed cost controls); Pro gating goes **additive**, with a folder cap and
+  explicitly **no** filament cap; circuit-breaker ships as-is; prompt caching turns out to be
+  already implemented and threshold-bound; the Anthropic account spend cap is confirmed set.
+- **Parked:** the App Store Connect state (Mason believes July's work covered it), and — the big
+  one — a **positioning reset** retiring July's privacy-as-positioning claims, held for a 6pm
+  decision block. That one gates the listing copy, the legal pages, the website, and ZDR.
+- **Housekeeping:** `main` fast-forwarded 370 commits to the current app and the three absorbed
+  branches deleted; a standing git rule added to `~/.claude/CLAUDE.md` so the trunk doesn't drift
+  again.
+
+`AppStore/submission-checklist.md` was corrected in the same pass — it had been wrong about
+hosting (done), App Privacy (now User Content, not "Data Not Collected"), and the App Store ID
+(set, not a placeholder), and it was missing the ASC subscription work entirely, which is the one
+hard gate left that isn't about copy.

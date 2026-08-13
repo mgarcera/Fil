@@ -5,7 +5,13 @@ answers 1–3 clarifying questions (the Remindown copilot pattern), picks **how 
 to-dos**, and Fil generates them: notes written, links found (real URLs via web search), to-dos
 created. Pro-only (Claude + web search cost). Replaces the old smart-organize/clustering grouping.
 
-Status: DESIGN / not built. Model tier: **Haiku 4.5** (locked; see docs/monetization/blank-canvas-pivot-plan.md).
+Status: **POST-V1 — design only, deprioritized (decided 2026-08-13).** Model tier: **Haiku 4.5**
+(locked; see docs/monetization/blank-canvas-pivot-plan.md).
+
+> **Consequence of the post-v1 call:** smart-organize **stays in v1**. Its removal was only ever
+> premised on Fil a Folder replacing it, so punch-list items 4 and 8 — and the "remove `organize`"
+> half of item 5 — are **void, not deferred**. Smart-organize is live, Pro-gated, and was improved
+> as recently as 2026-08-12 (folder captions). v1's Pro story is surfacing **plus** smart-organize.
 
 ## Punch list
 | # | Item | Status |
@@ -13,11 +19,11 @@ Status: DESIGN / not built. Model tier: **Haiku 4.5** (locked; see docs/monetiza
 | 1 | Price-test Fil a Folder on Haiku 4.5 (prompts + cost worksheet below; measure a real run) | ▫️ in progress |
 | 2 | Lock the design forks (to-dos shape, links-in-v1, Q&A step, review step, caps) | ▫️ open |
 | 3 | Cloudflare worker: add `fil-a-folder` endpoint (notes/links/todos; web search for links) | ▫️ blocked on infra (Mason) |
-| 4 | Cloudflare worker: REMOVE the `organize` endpoint | ▫️ blocked on infra (Mason) |
-| 5 | Client: `ClaudeSurfacingService.filAFolder(...)`; remove `organize` + `OrganizedFolder` | ▫️ not started |
+| 4 | ~~Cloudflare worker: REMOVE the `organize` endpoint~~ | ❌ VOID — organize stays in v1 |
+| 5 | Client: `ClaudeSurfacingService.filAFolder(...)` (~~remove `organize` + `OrganizedFolder`~~ — void) | ▫️ not started |
 | 6 | Client: `FilAFolderView` copilot sheet (name → Q&A → steppers → generate → review → create) | ▫️ not started |
 | 7 | Client: build folder + fils from result (notes; link fils via LinkFil; to-dos fil) | ▫️ not started |
-| 8 | Remove old smart-organize UI: `organizeRequest`, `organize()`, `apply()`, organizing/error, ✨ control | ▫️ not started |
+| 8 | ~~Remove old smart-organize UI: `organizeRequest`, `organize()`, `apply()`, organizing/error, ✨ control~~ | ❌ VOID — smart-organize stays in v1 |
 | 9 | Pro gate + per-type caps + daily rate limit (reuse circuit-breaker) | ▫️ not started |
 | ✓ | Delete dead on-device `FilClusteringService` (kept `FilClusterInput`) | ✅ done 2026-08-11 |
 

@@ -52,6 +52,24 @@ Still parked (optional / needs a hook):
 | **Select tick** (optional) | select/deselect a fil | or just reuse `tabsound` |
 | **Copy tick** (optional) | copy to clipboard | or reuse `click` |
 
+## Decisions (2026-08-13)
+- **v1 scope = the reuse-only pass.** Mic start/stop, select tick, copy tick, folder close, plus
+  deleting the two orphaned `addparagraph*` assets. No sourcing, no external dependency.
+  The single gap worth calling v1-relevant: **voice capture has no audible cue at either end**,
+  and voice is the flagship capture.
+- **Sourced/generated sounds are post-launch.**
+- **Mirelo connector evaluated, spike banked.** The MCP does text-to-SFX; the account has 5,000
+  credits, and a four-variant exploration costs **40 credits / ~1.5s**. Good fit for the shopping
+  list — the audit's role briefs ("brief, directional, non-destructive") are already prompts.
+  Three caveats before relying on it:
+  1. **Minimum duration is 1,000ms**; UI cues are 100–400ms, so every clip needs trimming and
+     fade-shaping afterward. It produces raw material, not ship-ready ticks.
+  2. **Family coherence is the real risk** — generate the whole set in one session behind a shared
+     house-style prefix, and judge each candidate *against* an existing Fil sound, not in isolation.
+  3. **Confirm Mirelo's commercial terms** cover shipping generated audio in a paid App Store app.
+  Spike when we pick it up: one role (mic start), four variants, trimmed, A/B'd against
+  `articlemade`.
+
 ## Suggested order when we build it
 1. Ship the **quick wins** (all reuse existing assets — no sourcing). 2. Delete the truly orphaned
 assets (`addparagraph*`). 3. Source the **shopping-list** sounds (Mason, external) and wire them.

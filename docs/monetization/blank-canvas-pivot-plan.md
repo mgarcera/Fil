@@ -189,10 +189,17 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
    tracking) + matching `PrivacyInfo.xcprivacy`, and a plain-language data line in the paywall at
    opt-in (+ SubscriptionStoreView's privacy link). *Re-publish the hosted policy at
    rootcause.ltd/fil/privacy to match the repo copy; fair-use clause TBD in the terms.*
-7. ⬜ **Altitude cleanups** (#9): rename `BlankCanvasPrototype` → real home, optional `Note.kind`.
-   (Dev-key path already removed in phase 4.)
-8. ⬜ **Re-home capture modes + onboarding (#5):** voice/photo/link capture and the first-fil seed
-   reveal, so the paid home is also a complete capture home.
+7. ◐ **Altitude cleanups** (#9) — *mostly done (verified 2026-08-13).*
+   `BlankCanvasPrototype` is now `CanvasHome`; the `showsChrome` scaffolding and the
+   "TEMPORARY / delete when promoted" comments are gone; the dev-key path went in phase 4.
+   **Remaining:** the optional `Note.kind` enum — now ~50 references across 8 files.
+   **Deferred to post-launch** (2026-08-13): its only pre-ship rationale was groundwork for
+   Fil a Folder, which is post-v1.
+8. ✅ **Re-home capture modes + onboarding (#5)** — *done (verified 2026-08-13).*
+   Voice, photo, and link capture all live in `CanvasHome`, and the first-fil seed reveal with
+   them (`didSeedWelcomeFil` / `firstUserFilAt` / `revealWelcomeFil()`). The August composer and
+   capture rework completed this.
+   **Open:** onboarding still needs polish — a v1 work item, scope TBD.
 
 **Cost controls — DONE (2026-07-12):** per-user cost attribution (Workers KV, keyed on
 originalTransactionId) + the silent ~200/day circuit-breaker in the proxy; the payload pre-filter
@@ -201,7 +208,7 @@ recent floor, capped at 60, only when the library exceeds ~50). Chose direct tex
 embeddings (unreliable before). Known gap: purely-semantic old fils / temporal-past on big libraries.
 
 **Set-and-forget (not a code phase):** set the **Anthropic account-level spend cap** in the console
-— the outermost backstop. *(Confirm done.)*
+— the outermost backstop. ✅ **Confirmed set (2026-08-13).**
 
 **Testing note:** the App Store Server API can't verify local `.storekit` transactions, so the cloud
 path must be tested in **sandbox** (products live in ASC + a sandbox tester + subscribe on device).
@@ -217,15 +224,36 @@ Local `.storekit` still exercises the paywall + the `isPro` flip.
   offline user gets local keyword results (never hidden, never a hard paywall wall), with an upgrade
   nudge when the query is one only AI could satisfy.
 
+## Resolved 2026-08-13 (was "open")
+- **Reverse-trial mechanics — RESOLVED: ship the conventional StoreKit free trial.**
+  The reverse trial was never built; `Products.storekit` has a `P2W` free *introductory offer* on
+  both products, i.e. two weeks free **after** subscribing. Keeping it, because a true reverse
+  trial can't be made safe as architected: per-user cost attribution and the ~200/day
+  circuit-breaker key on the StoreKit `originalTransactionId`, which a non-purchaser doesn't have —
+  so every install would get 14 days of real API spend against no payment instrument and outside
+  the abuse controls. Revisit once there's conversion data to argue with.
+- **Circuit-breaker number — RESOLVED for v1:** ship ~200/day as-is. There is no pre-launch data to
+  tune from; the KV attribution is the instrument for tuning later.
+- **Prompt-cache use at scale — RESOLVED:** already implemented, and correctly placed
+  (`cache_control` on the notes block, query in a separate block after it). Two thresholds bound
+  whether it ever hits: Haiku 4.5 won't cache a prefix under **4,096 tokens** (silently), and the
+  payload pre-filter makes the prefix vary per query above ~50 fils. Narrow band; not a reliable
+  cost lever. **Gap:** the `organize` / `describe` branches set no `cache_control` at all, and
+  organize sends up to 200 fils — fix structurally so new modes inherit the breakpoint.
+  Full analysis in `docs/v1-route.md`.
+
 ## Still open
 - **Fate of the old cosmetics shop** — drop, or keep as optional extra support alongside Pro.
+  *Parked with the positioning reset — it was always half monetization, half identity.*
 - **Zero Data Retention** — pursue a ZDR agreement with Anthropic (lets us say "not stored," a
   stronger privacy claim) vs. ship with the default 30-day-deletion wording.
-- **Reverse-trial mechanics** — exact length (~14d), how trial state is tracked (StoreKit intro
-  offer vs app-side flag), and what the downgrade moment feels like.
-- **Circuit-breaker number** — start ~200/day, tune from attribution data.
-- **Prompt-cache use at scale** — the corpus prefix is cacheable (Haiku 4096-token min); worth it
-  once payloads/library sizes are known (ties to the #10 payload cap).
+  *Parked: downstream of the positioning reset. No point strengthening a privacy claim before
+  knowing whether privacy is still the claim. Note the 30-day wording is baked into
+  `PaywallView.swift:87`, so upgrading later costs a build.*
+- **Pro gating scope (new, 2026-08-13)** — direction decided: **additive gating in, folder cap in,
+  filament cap out**, and any new AI mode is Pro by default. Three numbers still to set (which
+  screensavers stay free, which Lock Screen surfaces move to Pro, the folder number); they lock
+  with positioning. Rationale in `docs/v1-route.md` → "Pro gating (decision detail)."
 
 ## Verification / gates before shipping
 - Proxy: key never in the client build; subscription verified server-side (can't be spoofed);
