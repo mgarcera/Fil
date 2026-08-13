@@ -49,7 +49,7 @@ struct NoteCardView: View {
                     // Bigger search blobs: the waveform (scaled up with the blob) + the time.
                     CompactWaveformView(duration: note.duration, color: blobTextColor)
                         .scaleEffect(cardHeight / 98)
-                    Text(formatDuration(note.duration))
+                    Text(note.duration.clockLabel)
                         .font(Theme.dmMono(voiceMetricFont))
                         .foregroundStyle(blobTextColor.opacity(0.9))
                 } else {
@@ -109,35 +109,6 @@ struct NoteCardView: View {
     private var showsVoiceWaveform: Bool { !note.audioFilePath.isEmpty && cardHeight >= 60 }
     /// The duration label scales with the blob (floored so it stays legible on the small chips).
     private var voiceMetricFont: CGFloat { max(10, cardHeight * 0.1) }
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-}
-
-/// The search grid's title treatment: centered on one line, and left-aligned + wrapping when it
-/// doesn't fit the blob width (ViewThatFits picks, no manual line counting). Shared by the search
-/// results grid and the folder browser's photo cells.
-struct BlobTitle: View {
-    let title: String
-    var width: CGFloat = 150
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            Text(title)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-            Text(title)
-                .multilineTextAlignment(.leading)
-                .frame(width: width, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .font(Theme.dmSans(15, weight: .medium))
-        .foregroundStyle(Theme.primaryText)
-        .frame(width: width)
-    }
 }
 
 private struct NoteBlobBackground: View {

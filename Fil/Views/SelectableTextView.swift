@@ -16,11 +16,7 @@ struct SelectableTextView: UIViewRepresentable {
     /// Body text color; defaults to adaptive `.label`. The player passes white for its dark wash.
     var textColor: UIColor? = nil
 
-    private var lighterHex: String {
-        let startLuminance = Color(hex: gradientStartHex).luminance
-        let endLuminance = Color(hex: gradientEndHex).luminance
-        return endLuminance > startLuminance ? gradientEndHex : gradientStartHex
-    }
+    private var lighterHex: String { Theme.lighterHex(gradientStartHex, gradientEndHex) }
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
@@ -181,11 +177,7 @@ struct SelectableTextView: NSViewRepresentable {
     var onMakeTodo: ((String) -> Void)?
     var height: Binding<CGFloat>? = nil
 
-    private var lighterHex: String {
-        let startLuminance = Color(hex: gradientStartHex).luminance
-        let endLuminance = Color(hex: gradientEndHex).luminance
-        return endLuminance > startLuminance ? gradientEndHex : gradientStartHex
-    }
+    private var lighterHex: String { Theme.lighterHex(gradientStartHex, gradientEndHex) }
 
     func makeNSView(context: Context) -> FilSelectableNSTextView {
         let textView = FilSelectableNSTextView()

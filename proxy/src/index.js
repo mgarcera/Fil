@@ -129,6 +129,19 @@ ${VOICE_RULES}
 Respond with ONLY a JSON object, no prose or code fences:
 {"parts": ["fragment", "fragment", "fragment"]}`;
 
+// Describe mode: caption ONE folder in a sentence or two — the same grounded quality as organize's
+// per-group "description", but for a single (named) folder. Written for the interior folder caption.
+const DESCRIBE_PROMPT = `You help someone explore their own private notes (they call each one a "fil"). The notes below all live in ONE folder. Caption what this folder holds in ONE concise line, roughly 8 to 16 words — a touch fuller than a tab label but never a long sentence (e.g. "weeknight recipes you want to try, plus a few baking experiments", "apartment stuff: the lease, move-in dates, and some layout ideas").
+
+Each note is listed as:
+  N. (when it was made, its type, whether it has open to-dos) title: snippet
+
+${VOICE_RULES}
+- This is a folder caption, not a reflection on the person. Don't open with "you have", "these notes", or "this folder"; name the contents themselves.
+- ONE line, roughly 8 to 16 words. Never two sentences, never a wordy build-up.
+
+Respond with ONLY the one-line caption, no preamble, no quotes, no JSON.`;
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method !== "POST") return json({ error: "Use POST." }, 405);
@@ -177,7 +190,9 @@ export default {
     const organize = body.organize === true;
     // Snippets mode: reflect a folder's contents as a few short fragments (for the home hero stamps).
     const snippets = body.snippets === true;
-    if (!fils || (!organize && !snippets && !query)) return json({ error: "Expected { query, fils: [...] }." }, 400);
+    // Describe mode: caption one folder (query = the folder's name) in a sentence or two.
+    const describe = body.describe === true;
+    if (!fils || (!organize && !snippets && !describe && !query)) return json({ error: "Expected { query, fils: [...] }." }, 400);
 
     // Summarize-only mode: the app supplies the notes it already chose (a keyword match) and just wants
     // a reflection — no selection. Returns { summary } and never touches `relevant`.
@@ -196,17 +211,19 @@ export default {
     const noQuery = organize || snippets;   // these modes reflect the whole list, no query
     const anthropicBody = {
       model: MODEL,
-      max_tokens: organize ? ORGANIZE_MAX_TOKENS : (snippets ? 300 : MAX_TOKENS),
-      system: organize ? ORGANIZE_PROMPT : snippets ? SNIPPETS_PROMPT : (summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT),
+      max_tokens: organize ? ORGANIZE_MAX_TOKENS : (snippets || describe ? 300 : MAX_TOKENS),
+      system: organize ? ORGANIZE_PROMPT : snippets ? SNIPPETS_PROMPT : describe ? DESCRIBE_PROMPT : (summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT),
       messages: [
         {
           role: "user",
-          content: noQuery
-            ? [{ type: "text", text: `Notes:\n${numbered}` }]
-            : [
-                { type: "text", text: `Notes:\n${numbered}`, cache_control: { type: "ephemeral" } },
-                { type: "text", text: `Query: ${query}` },
-              ],
+          content: describe
+            ? [{ type: "text", text: `Folder${query ? ` named "${query}"` : ""}:\n${numbered}` }]
+            : noQuery
+              ? [{ type: "text", text: `Notes:\n${numbered}` }]
+              : [
+                  { type: "text", text: `Notes:\n${numbered}`, cache_control: { type: "ephemeral" } },
+                  { type: "text", text: `Query: ${query}` },
+                ],
         },
       ],
     };
@@ -255,6 +272,11 @@ export default {
       if (!parts) return json({ error: "Couldn't read the model's response." }, 502);
       console.log(`snippets: ${fils.length} fils -> ${parts.length} parts | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
       return json({ parts }, 200);
+    }
+
+    if (describe) {
+      console.log(`describe "${query}": ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
+      return json({ summary: firstSentence(text.trim()), relevant: [] }, 200);
     }
 
     const parsed = parseSurfacing(text);

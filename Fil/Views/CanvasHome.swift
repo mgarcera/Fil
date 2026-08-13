@@ -96,9 +96,6 @@ struct CanvasHome: View {
     /// The search phase to restore when the user returns from home, so a search survives a home trip.
     /// Only the header refresh button starts a fresh search (via `beginSurface`).
     @State private var savedSearchPhase: Phase?
-    /// Surfaced grid blobs that have popped in. They reveal one-by-one like a fil being created;
-    /// gating scale/opacity on this drives that entrance (and survives a home trip, so no re-pop).
-    @State private var revealedResultIDs: Set<UUID> = []
     @State private var summary = ""
     /// True when the last query resolved to a deterministic metadata/filter (type/time/to-dos), so the
     /// results screen skips the summary and the free-tier "try Pro" invites (Pro wouldn't do better).
@@ -116,6 +113,8 @@ struct CanvasHome: View {
     @State private var selectedNote: Note?
     /// A paged reading session for the Bin / selection baskets (swipe between the tapped set of fils).
     @State private var basketPager: FilPagerSelection?
+    /// Tapping a search result opens the Full Screen player over the result set (same as the folders).
+    @State private var resultsPager: FilPagerSelection?
     @State private var showPaywall = false
     @State private var showFeedback = false
     // Voice capture: the mic glyph starts recording; the gooey blob pulses while recording, then
@@ -283,6 +282,9 @@ struct CanvasHome: View {
         .sheet(item: $basketPager) { sel in
             BrowserFilPager(notes: sel.notes, startID: sel.startID)
         }
+        .sheet(item: $resultsPager) { sel in
+            FilFullScreenPlayer(notes: sel.notes, startID: sel.startID) { resultsPager = nil }
+        }
         // Photos open taller (0.8); everything else rests at 0.6. Set before the sheet reads it.
         .onChange(of: selectedNote) { _, note in
             filSheetDetent = (note?.isImageFil ?? false) ? .fraction(0.8) : .fraction(0.6)
@@ -422,7 +424,6 @@ struct CanvasHome: View {
         surfaceError = nil
         results = []
         todoFilIDs = []
-        revealedResultIDs = []
         withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { phase = .querying }
         composerFocused = true
     }
@@ -572,44 +573,48 @@ struct CanvasHome: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Two-column grid for the surfaced fils. Blobs fill the column width; tweak spacing here.
-    private let gridColumns = [GridItem(.flexible(), spacing: 20), GridItem(.flexible(), spacing: 20)]
-    /// Uniform blob size in the results grid. Titles are pinned to this width, so bigger = roomier titles.
-    private let gridBlobSize: CGFloat = 150
+    /// Shimmering placeholder shown while a query is retrieving: a summary line plus a few card
+    /// silhouettes that mirror the folder-browser result cards.
+    private var searchSkeleton: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            SkeletonView(Capsule()).frame(height: 12).frame(maxWidth: 220)
+            VStack(spacing: 10) {
+                ForEach(0..<4, id: \.self) { _ in
+                    SkeletonView(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                        .frame(height: 76)
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
 
-    /// Everything — query, summary, and the fil grid — scrolls together in one ScrollView.
+    /// Everything — query, summary, and the fil cards — scrolls together in one ScrollView.
     private var resultsList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 resultsHeader
 
                 if isRetrieving {
-                    HStack(spacing: 10) {
-                        ProgressView()
-                        AnimatedGradientRevealText(text: "Searching…", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
-                            .font(Theme.dmSans(15, weight: .semibold))
-                            .foregroundStyle(Theme.secondaryText)
-                    }
-                    .padding(.top, 16)
+                    searchSkeleton
                 } else {
                     if let surfaceError {
                         // Gentle, non-blocking note when smart search fails and we fall back to keyword.
                         VStack(alignment: .leading, spacing: 6) {
-                            AnimatedGradientRevealText(text: surfaceError, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
-                                .font(Theme.dmSans(15, weight: .semibold))
+                            AnimatedGradientRevealText.search(surfaceError)
+                                .font(Theme.fredoka(15, weight: .medium))
                                 .foregroundStyle(Theme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                             // Offer feedback only when we actually fell back to keyword matches (path E).
                             if !results.isEmpty {
                                 Button("Open feedback form") { showFeedback = true }
-                                    .font(Theme.dmSans(14, weight: .medium))
+                                    .font(Theme.fredoka(14, weight: .medium))
                                     .tint(Theme.filProAmber)
                             }
                         }
                     }
                     if !summary.isEmpty && !results.isEmpty {
-                        AnimatedGradientRevealText(text: summary, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
-                            .font(Theme.dmSans(16, weight: .medium))
+                        AnimatedGradientRevealText.search(summary)
+                            .font(Theme.fredoka(16, weight: .regular))
                             .foregroundStyle(Theme.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     } else if !StoreManager.shared.isPro && !results.isEmpty && !isFilterQuery {
@@ -643,8 +648,8 @@ struct CanvasHome: View {
     private var freeSurfaceInvite: some View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
-                AnimatedGradientRevealText(text: "Found by keyword.", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
-                    .font(Theme.dmSans(15, weight: .semibold))
+                AnimatedGradientRevealText.search("Found by keyword.")
+                    .font(Theme.fredoka(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                 filProInviteLine
             }
@@ -657,8 +662,8 @@ struct CanvasHome: View {
     private var freeEmptyInvite: some View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
-                AnimatedGradientRevealText(text: "Nothing came up for \(query)", elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
-                    .font(Theme.dmSans(15, weight: .semibold))
+                AnimatedGradientRevealText.search("Nothing came up for \(query)")
+                    .font(Theme.fredoka(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 filProInviteLine
@@ -693,7 +698,7 @@ struct CanvasHome: View {
         }
 
         return Text(line)
-            .font(Theme.dmSans(15, weight: .semibold))
+            .font(Theme.fredoka(15, weight: .medium))
             .tint(Theme.filProAmber)
             .fixedSize(horizontal: false, vertical: true)
             .environment(\.openURL, OpenURLAction { url in
@@ -733,108 +738,55 @@ struct CanvasHome: View {
         if let range = mask.range(of: word) { mask[range].foregroundColor = .black }
 
         return Text(base)
-            .font(Theme.dmSans(14))
+            .font(Theme.fredoka(14))
             .foregroundStyle(Theme.secondaryText)
-            .overlay { Theme.accentGradient.mask(Text(mask).font(Theme.dmSans(14))) }
+            .overlay { Theme.accentGradient.mask(Text(mask).font(Theme.fredoka(14))) }
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    private func blobCell(_ note: Note) -> some View {
-        Button { selectedNote = note } label: {
-            // Blob and title share the same 120pt-wide column, centered in the grid cell. The title
-            // text is left-aligned *within* that 120pt block, so it reads left-aligned but lines up
-            // under the blob rather than spanning the whole cell. Photo fils show their image (blob-
-            // clipped, like the main-branch card) instead of a gradient blob.
-            VStack(alignment: .center, spacing: 14) {
-                Group {
-                    if hasBlobArtwork(note) {
-                        NoteCardView(note: note, cardHeight: gridBlobSize)
-                    } else {
-                        NoteBlobShape(seed: note.blobShapeSeed)
-                            .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                    }
-                }
-                .frame(width: gridBlobSize, height: gridBlobSize)
-                gridTitle(note)
-            }
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .scaleEffect(blobShown(note) ? 1 : 0.01, anchor: .center)
-            .blur(radius: isLandfilling(note) ? 8 : 0)
-            .opacity(blobShown(note) ? 1 : 0)
-        }
-        .buttonStyle(.plain)
-        .contextMenu { filContextMenu(note) }
-    }
-
-    /// A one-line title centers under the blob; a title that wraps to two+ lines left-aligns.
-    /// ViewThatFits picks the single-line centered version when it fits the blob width, else the
-    /// wrapping left-aligned version — no manual line counting.
-    private func gridTitle(_ note: Note) -> some View {
-        BlobTitle(title: displayTitle(note), width: gridBlobSize)
-    }
-
-    // Mixed-type theme results: one uniform blob grid (photos render as images, same size as notes)
-    // plus a to-do checklist section. The split is captured once per query (`todoFilIDs`, set in
-    // runQuery) so completing a to-do can't reflow a fil out of the checklist mid-tap.
+    // Results mirror the folder browser: typed sections of full-width cards, tapping one opens the
+    // Full Screen player over the whole result set. The to-do split is captured once per query
+    // (`todoFilIDs`, set in runQuery) so completing a to-do can't reflow a fil out of its section
+    // mid-tap. The rest split by kind — photos, notes, links, voice — matching the folder interior.
     private var todoResults: [Note] { results.filter { todoFilIDs.contains($0.uuid) } }
     private var gridResults: [Note] { results.filter { !todoFilIDs.contains($0.uuid) } }
     private var photoResults: [Note] { gridResults.filter { $0.isImageFil } }
-    private var otherResults: [Note] { gridResults.filter { !$0.isImageFil } }
+    private var linkResults: [Note] { gridResults.filter { !$0.isImageFil && $0.isLinkFil } }
+    private var voiceResults: [Note] { gridResults.filter { !$0.isImageFil && !$0.isLinkFil && !$0.audioFilePath.isEmpty } }
+    private var noteResults: [Note] { gridResults.filter { !$0.isImageFil && !$0.isLinkFil && $0.audioFilePath.isEmpty } }
+    /// The player deck for tapped results — the same top-to-bottom order the sections render in.
+    private var resultDeck: [Note] { todoResults + photoResults + noteResults + linkResults + voiceResults }
 
-    /// Summary sits above; below it the results order is to-dos, then photos, then everything else
-    /// (notes / links / voice).
+    /// Sections top to bottom: to-dos, photos, notes, links, voice — the folder-browser order.
     private var scrapbook: some View {
-        VStack(alignment: .leading, spacing: 28) {
-            if !todoResults.isEmpty { todoChecklist(todoResults) }
-            if !photoResults.isEmpty { blobGrid(photoResults) }
-            if !otherResults.isEmpty { blobGrid(otherResults) }
+        VStack(alignment: .leading, spacing: 24) {
+            if !todoResults.isEmpty { resultSection("To-dos", "checklist", todoResults, isTodo: true) }
+            if !photoResults.isEmpty { resultSection("Photos", "photo", photoResults) }
+            if !noteResults.isEmpty { resultSection("Notes", "note.text", noteResults) }
+            if !linkResults.isEmpty { resultSection("Links", "link", linkResults) }
+            if !voiceResults.isEmpty { resultSection("Voice", "waveform", voiceResults) }
         }
         .padding(.top, 4)
     }
 
-    private func blobGrid(_ notes: [Note]) -> some View {
-        LazyVGrid(columns: gridColumns, alignment: .leading, spacing: 28) {
-            ForEach(notes, id: \.uuid) { blobCell($0) }
-        }
-    }
-
-    /// TodoSheet-style checklist: each fil as a bold header (blob + title), its open to-dos beneath.
-    private func todoChecklist(_ notes: [Note]) -> some View {
-        VStack(alignment: .leading, spacing: 22) {
+    /// One type container: the header, then its full-width cards. To-do sections count their open
+    /// items (like the folder browser); the rest count fils.
+    @ViewBuilder
+    private func resultSection(_ label: String, _ icon: String, _ notes: [Note], isTodo: Bool = false) -> some View {
+        let count = isTodo ? notes.reduce(0) { $0 + $1.todoRowItems.count } : notes.count
+        VStack(alignment: .leading, spacing: 10) {
+            FilSectionHeader(label: label, icon: icon, count: count)
             ForEach(notes, id: \.uuid) { note in
-                VStack(alignment: .leading, spacing: 10) {
-                    Button { selectedNote = note } label: {
-                        HStack(spacing: 12) {
-                            NoteBlobShape(seed: note.blobShapeSeed)
-                                .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-                                .frame(width: 36, height: 36)
-                            Text(displayTitle(note))
-                                .font(Theme.dmSans(18, weight: .bold))
-                                .foregroundStyle(Theme.primaryText)
-                                .fixedSize(horizontal: false, vertical: true)
-                            Spacer(minLength: 0)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu { filContextMenu(note) }
-
-                    // All of the fil's to-dos (completed ones struck through), reusing the model's
-                    // stable row items so completing one strikes in place instead of vanishing.
-                    // Indented past the header blob (36) + spacing (12) so the circle sits under the title.
-                    VStack(alignment: .leading, spacing: 10) {
-                        ForEach(note.todoRowItems, id: \.id) { item in
-                            TodoRowContent(text: item.text, isCompleted: item.done) {
-                                toggleTodo(note, item.index)
-                            }
-                        }
-                    }
-                    .padding(.leading, 48)
+                Group {
+                    if isTodo { FilTodoCard(note: note) { toggleTodo(note, $0) } } else { FilCard(note: note) }
                 }
+                .contentShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                .onTapGesture { resultsPager = FilPagerSelection(notes: resultDeck, startID: note.uuid) }
+                .contextMenu { filContextMenu(note) }
+                .blur(radius: isLandfilling(note) ? 8 : 0)
+                .opacity(isLandfilling(note) ? 0 : 1)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Long-press menu on a surfaced fil: landfil it (confirmed). (Pinning is being reworked.)
@@ -878,21 +830,15 @@ struct CanvasHome: View {
         }
     }
 
-    /// Mirrors ContentView.toggleTodoFromSheet: normalize, bound-check, sound, toggle, save.
+    /// Toggle a surfaced fil's to-do: shared model mutation + this surface's sound + animation.
     private func toggleTodo(_ note: Note, _ index: Int) {
-        note.normalizeCompletedTodos()
-        guard note.completedTodos.indices.contains(index) else { return }
         SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
-        withAnimation(.snappy) {
-            note.completedTodos[index].toggle()
-        }
-        modelContext.saveOrLog()
+        withAnimation(.snappy) { note.toggleCompletedTodo(at: index) }
     }
-
     private var resultsHeader: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(query)
-                .font(Theme.dmSans(24, weight: .bold))
+                .font(Theme.instrumentSerif(28))
                 .foregroundStyle(Theme.primaryText)
             Spacer()
         }
@@ -1234,24 +1180,6 @@ struct CanvasHome: View {
         }
 
         isRetrieving = false
-        revealResults(gridResults)
-    }
-
-    /// Pop the surfaced blobs in one after another — each scales up from ~0 with the same bouncy
-    /// spring a freshly created fil uses, for the scrapbook reveal.
-    private func revealResults(_ blobs: [Note]) {
-        revealedResultIDs = []
-        for (i, note) in blobs.enumerated() {
-            let id = note.uuid
-            DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.06) {
-                withAnimation(Self.popAnimation) { _ = revealedResultIDs.insert(id) }
-            }
-        }
-    }
-
-    /// A grid blob is visible once it has popped in (revealed) and isn't being landfilled.
-    private func blobShown(_ note: Note) -> Bool {
-        revealedResultIDs.contains(note.uuid) && !isLandfilling(note)
     }
 
     /// Fils whose blob carries its own artwork (photo image, link favicon, or voice waveform) render

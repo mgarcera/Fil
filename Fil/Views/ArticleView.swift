@@ -443,19 +443,7 @@ struct ArticleView: View {
         linkBrowserURL = url
     }
 
-    private var linkDisplayTitle: String {
-        let sourceTitle = note.sourceTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !sourceTitle.isEmpty {
-            return sourceTitle
-        }
-
-        let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty {
-            return title
-        }
-
-        return note.sourceDomain ?? "Link"
-    }
+    private var linkDisplayTitle: String { note.linkDisplayTitle }
 
     @ViewBuilder
     private var linkIcon: some View {
@@ -766,17 +754,9 @@ struct ArticleView: View {
         SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
     }
 
-    private func isTodoCompleted(at index: Int) -> Bool {
-        guard note.completedTodos.indices.contains(index) else { return false }
-        return note.completedTodos[index]
-    }
-
     private func toggleTodo(at index: Int) {
-        normalizeTodoCompletionStates()
-        guard note.completedTodos.indices.contains(index) else { return }
         SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
-        note.completedTodos[index].toggle()
-        modelContext.saveOrLog()
+        note.toggleCompletedTodo(at: index)
     }
 
     private func normalizeTodoCompletionStates() {

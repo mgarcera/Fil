@@ -57,34 +57,11 @@ struct AnimatedGradientRevealText: View {
     }
 }
 
-/// Text whose glyphs are filled with the accent gradient slowly drifting sideways — a
-/// looping "thinking" shimmer (e.g. while a fil's title is being regenerated). Pairs
-/// with `AnimatedGradientRevealText`, which then reveals the settled result.
-struct AccentShimmerText: View {
-    let text: String
-    var period: TimeInterval = 1.6
-
-    var body: some View {
-        TimelineView(.animation) { context in
-            let phase = context.date.timeIntervalSinceReferenceDate
-                .truncatingRemainder(dividingBy: period) / period
-            Text(text)
-                .hidden()
-                .overlay {
-                    GeometryReader { geometry in
-                        let width = max(geometry.size.width, 1)
-                        // Accent colors doubled so the leftward drift loops seamlessly.
-                        LinearGradient(
-                            colors: Theme.accentGradientColors + Theme.accentGradientColors,
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                        .frame(width: width * 2)
-                        .offset(x: -width * CGFloat(phase))
-                        .mask(alignment: .leading) { Text(text) }
-                    }
-                }
-        }
+extension AnimatedGradientRevealText {
+    /// The search-results reveal cadence — a touch quicker than the default, shared by the summary,
+    /// fallback note, and Pro invites so they animate in identically.
+    static func search(_ text: String) -> AnimatedGradientRevealText {
+        AnimatedGradientRevealText(text: text, elementDuration: 0.2, perElementDelay: 0.006, minDuration: 0.4)
     }
 }
 

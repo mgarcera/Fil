@@ -204,6 +204,35 @@ extension Note {
     var activityBlob: FilActivityBlob {
         FilActivityBlob(startHex: gradientStartHex, endHex: gradientEndHex, seed: blobShapeSeed)
     }
+
+    /// A link fil's display title: its fetched page title, else the user's title, else the domain.
+    /// Shared by the reader (ArticleView) and the Full Screen player.
+    var linkDisplayTitle: String {
+        let source = sourceTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !source.isEmpty { return source }
+        let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? (sourceDomain ?? "Link") : t
+    }
+
+    /// Toggle a to-do's completion: normalize the parallel arrays, flip it at `index`, and persist.
+    /// Returns false (no-op) when the index is out of range. Sound / haptic / animation stay at the
+    /// call site since they differ per surface (some animate, some play a sound, some don't).
+    @discardableResult
+    func toggleCompletedTodo(at index: Int) -> Bool {
+        normalizeCompletedTodos()
+        guard completedTodos.indices.contains(index) else { return false }
+        completedTodos[index].toggle()
+        try? modelContext?.save()
+        return true
+    }
+}
+
+extension TimeInterval {
+    /// `m:ss` — minutes and zero-padded seconds. Used for voice-fil durations and the player scrubber.
+    var clockLabel: String {
+        let total = Int(self)
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
 }
 
 private extension String {

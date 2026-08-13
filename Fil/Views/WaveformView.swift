@@ -8,7 +8,7 @@ struct WaveformView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Text(formatDuration(duration))
+            Text(duration.clockLabel)
                 .font(Theme.dmMono(13))
                 .foregroundStyle(Theme.secondaryText)
                 .monospacedDigit()
@@ -24,12 +24,6 @@ struct WaveformView: View {
             .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
         }
         .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
-    }
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 

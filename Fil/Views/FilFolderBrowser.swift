@@ -63,6 +63,7 @@ struct FoldersHomeSection: View {
     @State private var renameFolderText = ""
     @State private var renameFolderCaption = ""
     @State private var pendingLandfilFolder: Folder?
+    @State private var pendingSummarizeFolder: Folder?   // non-empty caption → confirm before overwrite
 
     @State private var showPaywall = false
     @State private var organizing = false
@@ -155,6 +156,15 @@ struct FoldersHomeSection: View {
             TextField("caption (optional)", text: $renameFolderCaption)
             Button("Save") { commitFolderRename() }
             Button("Cancel", role: .cancel) { pendingRenameFolder = nil }
+        }
+        .alert("Summarize folder", isPresented: .init(
+            get: { pendingSummarizeFolder != nil },
+            set: { if !$0 { pendingSummarizeFolder = nil } }
+        ), presenting: pendingSummarizeFolder) { folder in
+            Button("Proceed") { runSummarize(folder) }
+            Button("Cancel", role: .cancel) { pendingSummarizeFolder = nil }
+        } message: { _ in
+            Text("This will overwrite your caption with a summary of your folder.")
         }
         .landfilConfirmation(item: $pendingLandfilFolder, message: { _ in
             "This folder is removed. Your thoughts will return to the Bin."
@@ -257,7 +267,10 @@ struct FoldersHomeSection: View {
             // fresh update cycle — mutating it inline from the menu warns "update multiple times per frame".
             onSwitchFolder: { target in
                 DispatchQueue.main.async { path = [.folder(target)] }
-            }
+            },
+            onRename: { if let folder { startRename(folder) } },
+            onSummarize: { if let folder { summarizeFolder(folder) } },
+            isSummarizing: isSummarizing
         )
     }
 
@@ -346,6 +359,55 @@ struct FoldersHomeSection: View {
             try? context.save()
         }
         pendingRenameFolder = nil
+    }
+
+    /// Clamp a caption to its first sentence — a safety net so the folder caption stays one concise line.
+    private func firstSentence(_ s: String) -> String {
+        let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let r = t.range(of: #"[.!?](\s|$)"#, options: .regularExpression) {
+            return String(t[..<r.upperBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return t
+    }
+
+    /// Tap-menu "Summarize": Pro-gated. An empty caption summarizes immediately; a non-empty one asks
+    /// to confirm first (it will be overwritten).
+    private func summarizeFolder(_ folder: Folder) {
+        guard StoreManager.shared.isPro else { showPaywall = true; return }
+        if folder.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            runSummarize(folder)
+        } else {
+            pendingSummarizeFolder = folder
+        }
+    }
+
+    /// Summarize the folder's fils via Claude and write the caption (`folder.summary`). Uses the warm
+    /// prose `summarize` pass (the same quality as the search reflection) — not the short `snippets`
+    /// fragments, which read poorly as a caption. Clears the cached stamp parts so the pinned-home hero
+    /// re-derives its stamps from the fresh caption.
+    private func runSummarize(_ folder: Folder) {
+        guard !folder.notes.isEmpty else { return }
+        let inputs = folder.notes.map { note in
+            FilClusterInput(
+                id: note.uuid,
+                text: String((note.transcript.isEmpty ? note.title : note.transcript).prefix(240)),
+                keyword: note.displayBadgeText
+            )
+        }
+        isSummarizing = true
+        Task {
+            defer { Task { @MainActor in isSummarizing = false } }
+            let txn = StoreManager.shared.proTransactionID ?? ""
+            guard let summary = try? await ClaudeSurfacingService.shared.describeFolder(
+                name: folder.name, fils: inputs, transactionID: txn
+            ), !summary.isEmpty else { return }
+            await MainActor.run {
+                // One concise sentence for the caption (a safety net over the prompt). Leave
+                // `summaryParts`/`summarySignature` untouched so the home-hero stamps aren't affected.
+                folder.summary = firstSentence(summary)
+                try? context.save()
+            }
+        }
     }
 
     private func move(_ note: Note, to folder: Folder?) {
@@ -553,6 +615,11 @@ struct FolderInteriorView: View {
     var onNewFolder: (Note) -> Void
     /// Jump to a sibling folder (from the header switcher).
     var onSwitchFolder: (Folder) -> Void = { _ in }
+    /// Folder options (rename / summarize) live in the top-left info menu.
+    var onRename: () -> Void = {}
+    var onSummarize: () -> Void = {}
+    /// True while a summary is generating — the caption shows the shimmering skeleton.
+    var isSummarizing: Bool = false
 
     @Environment(\.modelContext) private var context
     private let selection = FilSelectionStore.shared
@@ -581,6 +648,26 @@ struct FolderInteriorView: View {
 
     /// Other folders you can jump to from this interior (everything except the one you're in).
     private var siblings: [Folder] { folders.filter { $0.id != folder?.id } }
+
+    /// Folder options, right of the back button: rename it, or summarize its contents (Pro).
+    private var infoMenu: some View {
+        Menu {
+            Button { onRename() } label: { Label("Rename", systemImage: "pencil") }
+            // Pro accent: a system menu won't tint the title, but a pre-tinted (alwaysOriginal) image
+            // renders in color — so the Summarize icon carries the amber to signal it's a Pro feature.
+            Button { onSummarize() } label: {
+                if let amber = UIImage(systemName: "text.append")?
+                    .withTintColor(UIColor(Theme.filProAmber), renderingMode: .alwaysOriginal) {
+                    Label { Text("Summarize") } icon: { Image(uiImage: amber) }
+                } else {
+                    Label("Summarize", systemImage: "text.append")
+                }
+            }
+        } label: {
+            Image(systemName: "info.circle")
+        }
+        .accessibilityLabel("folder options")
+    }
 
     /// The header's "Switch Folder" control (trailing), mirroring the home settings button's placement.
     private var switchFolderMenu: some View {
@@ -616,6 +703,7 @@ struct FolderInteriorView: View {
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .largeTitle) { folderIdentity }
+            ToolbarItem(placement: .topBarLeading) { infoMenu }
             ToolbarItem(placement: .topBarTrailing) {
                 if !siblings.isEmpty { switchFolderMenu }
             }
@@ -665,7 +753,14 @@ struct FolderInteriorView: View {
                         .padding(.horizontal, 7).padding(.vertical, 2)
                         .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
                 }
-                if !summary.isEmpty {
+                if isSummarizing {
+                    // Same shimmering loader the pinned-hero stamps use while generating.
+                    VStack(alignment: .leading, spacing: 6) {
+                        SkeletonView(Capsule()).frame(height: 10)
+                        SkeletonView(Capsule()).frame(width: 120, height: 10)
+                    }
+                    .padding(.top, 2)
+                } else if !summary.isEmpty {
                     Text((summary))
                         .font(Theme.fredoka(13, weight: .regular))
                         .foregroundStyle(Theme.secondaryText)
@@ -680,19 +775,11 @@ struct FolderInteriorView: View {
 
     // MARK: - Containers
 
-    /// A type container header: an icon + serif label + a count chip.
+    /// A type container header: an icon + serif label + a count chip. Shared with the search results.
+    // No internal horizontal padding — the List's default section-header inset positions it,
+    // matching the home "Folders" header.
     private func containerHeader(_ label: String, _ icon: String, _ count: Int) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon).font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.secondaryText)
-            Text(label).font(Theme.instrumentSerif(22)).foregroundStyle(Theme.primaryText)
-            Text("\(count)")
-                .font(.system(size: 12, weight: .medium)).foregroundStyle(Theme.secondaryText)
-                .padding(.horizontal, 7).padding(.vertical, 2)
-                .background(Capsule().fill(Theme.primaryText.opacity(0.08)))
-            Spacer()
-        }
-        // No internal horizontal padding — the List's default section-header inset positions it,
-        // matching the home "Folders" header.
+        FilSectionHeader(label: label, icon: icon, count: count)
     }
 
     /// One type's fils as a reorderable List section of full-width cards. Long-press-drag reorders
@@ -762,94 +849,8 @@ struct FolderInteriorView: View {
         withAnimation(.snappy) { selection.toggle(note.uuid) }   // toggle() fires the selection haptic
     }
 
-    /// The Full Screen player's exact wash: a plain diagonal 2-color gradient, zoomed and blurred into
-    /// a soft low-contrast field, darkened. Clipped to the card by the row's `clipShape`.
-    private func filWash(_ note: Note) -> some View {
-        LinearGradient(colors: [Color(hex: note.gradientStartHex), Color(hex: note.gradientEndHex)],
-                       startPoint: .topLeading, endPoint: .bottomTrailing)
-            .scaleEffect(3.5)
-            .overlay(Color.black.opacity(0.44))
-    }
-
-    /// A full-width card row: the rich component (photo thumb / fil blob) on the left, light text right.
-    private func filRow(_ note: Note) -> some View {
-        let isPlainNote = !(note.isImageFil || note.isLinkFil || !note.audioFilePath.isEmpty)
-        // Plain notes and photos caption their date; typed fils keep their identity caption.
-        let showsDate = isPlainNote || note.isImageFil
-        let main = (cardContent(note))
-        return HStack(alignment: .top, spacing: 14) {
-            rowRich(note)
-            VStack(alignment: .leading, spacing: 3) {
-                // A captionless photo has no words — show only its date below the thumbnail.
-                if !main.isEmpty {
-                    Text(highlightedCardText(note, base: main))
-                        .font(Theme.fredoka(15, weight: .regular))
-                        .foregroundStyle(.white)
-                        .lineLimit(30)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                let caption = showsDate
-                    ? (note.timestamp.formatted(date: .abbreviated, time: .omitted))
-                    : (captionText(note))
-                if !caption.isEmpty {
-                    Text(caption).font(.system(size: 12, weight: .light)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        // A dark card tinted with the fil's gradient — enough color to feel like the fil, but kept
-        // low so light text stays legible.
-        .background { filWash(note) }
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
-    }
-
-    /// The row's leading rich component. Photo thumbnails stretch to the card's height; the fil blob
-    /// and link/voice markers stay fixed squares, top-aligned beside long notes.
-    @ViewBuilder private func rowRich(_ note: Note) -> some View {
-        if note.isImageFil {
-            photoThumb(note)
-                .frame(width: 52)
-                .frame(minHeight: 52, maxHeight: .infinity)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        } else {
-            filMarker(note, size: 48)
-        }
-    }
-
-    @ViewBuilder private func photoThumb(_ note: Note) -> some View {
-        if let data = note.sortedImageFilImages.first?.data, let image = Image(data: data) {
-            image.resizable().scaledToFill()
-        } else {
-            Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed)
-        }
-    }
-
-    /// A card's main text: plain notes and photos show their own words (no generated title); other
-    /// typed fils (links, voice) show their identity.
-    private func cardContent(_ note: Note) -> String {
-        // Photos read like notes: their caption words on top, no title. Empty if the photo has none.
-        if note.isImageFil { return note.transcript.trimmingCharacters(in: .whitespacesAndNewlines) }
-        if note.isLinkFil || !note.audioFilePath.isEmpty { return displayTitle(note) }
-        let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        return body.isEmpty ? displayTitle(note) : body
-    }
-
-    /// The fil marker: each fil's shape + color (a play glyph / favicon for voice / links).
-    @ViewBuilder private func filMarker(_ note: Note, size: CGFloat) -> some View {
-        Group {
-            if note.isLinkFil || !note.audioFilePath.isEmpty {
-                NoteCardView(note: note, cardHeight: size)
-            } else {
-                NoteBlobShape(seed: note.blobShapeSeed)
-                    .fill(Theme.gradient(startHex: note.gradientStartHex, endHex: note.gradientEndHex, seed: note.blobShapeSeed))
-            }
-        }
-        .frame(width: size, height: size)
-    }
+    /// A full-width card row — the shared `FilCard` (also used by the search results).
+    private func filRow(_ note: Note) -> some View { FilCard(note: note) }
 
     // The To-dos section: one reorderable card per fil that has to-dos (styled like the note cards),
     // listing that fil's to-dos with an inline checkbox each.
@@ -870,111 +871,18 @@ struct FolderInteriorView: View {
         }
     }
 
-    /// A fil's to-dos as a note-style card: blob left + gradient wash; each to-do is a checkbox +
-    /// light text row on the right.
+    /// A fil's to-dos as a note-style card — the shared `FilTodoCard` (also used by the search results).
     private func todoCard(_ note: Note) -> some View {
-        HStack(alignment: .top, spacing: 14) {
-            // Photos lead with their thumbnail (like the note cards); other fils show their blob.
-            rowRich(note)
-            VStack(alignment: .leading, spacing: 8) {
-                // The fil's own thought, so the user sees what they typed above its to-dos.
-                let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !body.isEmpty {
-                    Text((body))
-                        .font(Theme.fredoka(15, weight: .regular))
-                        .foregroundStyle(.white)
-                        .lineLimit(30)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                ForEach(note.todoRowItems) { item in
-                    Button { toggleTodo(note, at: item.index) } label: {
-                        HStack(alignment: .top, spacing: 10) {
-                            TodoStatusCircle(isCompleted: item.done, onColor: true)
-                            Text((item.text))
-                                .font(Theme.fredoka(15, weight: .light))
-                                .foregroundStyle(.white)
-                                .strikethrough(item.done, color: .white.opacity(0.5))
-                                .opacity(item.done ? 0.6 : 1)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .fixedSize(horizontal: false, vertical: true)
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background { filWash(note) }
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 30, style: .continuous).stroke(.white.opacity(0.12), lineWidth: 1))
+        FilTodoCard(note: note) { toggleTodo(note, at: $0) }
     }
 
-    /// Toggle a to-do's completion, keeping `completedTodos` aligned with `todos` (mirrors ArticleView).
+    /// Toggle a to-do's completion — shared model mutation + this surface's sound.
     private func toggleTodo(_ note: Note, at index: Int) {
-        if note.completedTodos.count < note.todos.count {
-            note.completedTodos.append(contentsOf: Array(repeating: false, count: note.todos.count - note.completedTodos.count))
-        } else if note.completedTodos.count > note.todos.count {
-            note.completedTodos = Array(note.completedTodos.prefix(note.todos.count))
-        }
-        guard note.completedTodos.indices.contains(index) else { return }
         SoundscapeManager.shared.playTodoArticleToggleSound()
         Haptics.toggle()
-        note.completedTodos[index].toggle()
-        try? context.save()
+        note.toggleCompletedTodo(at: index)
     }
 
-    // MARK: - Text helpers
-
-    private func displayTitle(_ note: Note) -> String {
-        let trimmed = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? note.displayBadgeText : trimmed
-    }
-
-    /// The card's main text with its filament keywords lit — same treatment as the reading view
-    /// (Fredoka medium in the fil's lighter gradient color), so highlights read on the card too.
-    private func highlightedCardText(_ note: Note, base: String) -> AttributedString {
-        var attributed = AttributedString(base)
-        let keywords = note.attachments.map(\.keyword)
-            .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-        guard !keywords.isEmpty else { return attributed }
-
-        let color = Color(hex: lighterHex(note))
-        for keyword in keywords {
-            var start = attributed.startIndex
-            while start < attributed.endIndex,
-                  let range = attributed[start...].range(of: keyword, options: .caseInsensitive) {
-                attributed[range].font = Theme.fredoka(15, weight: .medium)
-                attributed[range].foregroundColor = color
-                start = range.upperBound
-            }
-        }
-        return attributed
-    }
-
-    /// The lighter of the fil's two gradient endpoints — the highlight tint (matches SelectableTextView).
-    private func lighterHex(_ note: Note) -> String {
-        Color(hex: note.gradientStartHex).luminance > Color(hex: note.gradientEndHex).luminance
-            ? note.gradientStartHex : note.gradientEndHex
-    }
-
-    /// The caption line: a link's domain, a voice fil's duration, or — for a plain note — a preview
-    /// of the note's own text so the row shows a glimpse of the content.
-    private func captionText(_ note: Note) -> String {
-        if note.isLinkFil { return note.sourceDomain ?? "link" }
-        if !note.audioFilePath.isEmpty {
-            let m = Int(note.duration) / 60, s = Int(note.duration) % 60
-            return String(format: "%d:%02d", m, s)
-        }
-        let body = note.transcript
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "\n", with: " ")
-        return body.isEmpty ? "note" : body
-    }
 }
 
 /// Shared gradient blob for folders (and the Bin tray).

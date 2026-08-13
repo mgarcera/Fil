@@ -10,8 +10,8 @@ import AppIntents
 ///   2. Reflects an optimistic Bin count on the Dynamic Island / Lock Screen immediately,
 ///      in-process (no server), via `FilBasketLiveActivityController`.
 ///
-/// A background intent can't mint a real fil (that needs SwiftData's `modelContext` and
-/// `ArticleGenerationService`), so it stages here; the app drains the buffer into real unfiled fils
+/// A background intent can't mint a real fil (that needs SwiftData's `modelContext`), so it stages
+/// here; the app drains the buffer into real unfiled fils
 /// on the next launch. The island count is `snapshot + pending`, since the true Bin (unfiled fils)
 /// isn't readable out of process — the next app-active sync corrects it from SwiftData.
 struct AddToFilIntent: LiveActivityIntent {

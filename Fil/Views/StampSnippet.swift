@@ -100,9 +100,19 @@ struct StampDeck: View {
     /// A resting angle per stamp (keyed by part index, so it stays with the card as the deck cycles).
     private let tilts: [Double] = [-4, 3, -2.5, 5]
 
+    /// A render order guaranteed valid for the CURRENT `parts`: keep the live shuffle where it still
+    /// points at real parts, then append any new indices. `order` is @State and survives a `parts`
+    /// change (same view identity), so rendering it raw would index a stale/shorter array and crash —
+    /// this is the fix for the "Index out of range" when a folder summary is overwritten.
+    private var displayOrder: [Int] {
+        let live = order.filter { parts.indices.contains($0) }
+        let missing = parts.indices.filter { !live.contains($0) }
+        return live + missing
+    }
+
     var body: some View {
         ZStack {
-            ForEach(Array(order.enumerated()), id: \.element) { depth, index in
+            ForEach(Array(displayOrder.enumerated()), id: \.element) { depth, index in
                 let front = depth == 0
                 let d = min(depth, 2)
                 StampSnippet(text: parts[index], start: start, end: end, seed: seed, width: cardWidth)
@@ -110,10 +120,15 @@ struct StampDeck: View {
                     .offset(y: CGFloat(d) * 8)
                     .offset(front ? drag : .zero)
                     .rotationEffect(.degrees(tilts[index % tilts.count] + (front ? Double(drag.width / 22) : 0)))
-                    .zIndex(Double(order.count - depth))
+                    .zIndex(Double(displayOrder.count - depth))
                     .allowsHitTesting(front)
                     .gesture(front ? swipe : nil)
             }
+        }
+        // Resync the shuffle when the summary changes (parts replaced) so swipes stay correct.
+        .onChange(of: parts) { _, newParts in
+            order = Array(newParts.indices)
+            drag = .zero
         }
     }
 

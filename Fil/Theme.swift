@@ -178,6 +178,11 @@ enum Theme {
         )
     }
 
+    /// The lighter of two hex colors by luminance — the highlight tint used on cards and in the reader.
+    static func lighterHex(_ aHex: String, _ bHex: String) -> String {
+        Color(hex: aHex).luminance > Color(hex: bHex).luminance ? aHex : bHex
+    }
+
     /// A per-fil gradient direction derived from its seed, so blobs aren't all lit on
     /// the same diagonal. Returns unit-space (0...1) endpoints for a line through center.
     nonisolated static func gradientUnitPoints(seed: Double) -> (start: UnitPoint, end: UnitPoint) {

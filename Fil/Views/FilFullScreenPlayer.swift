@@ -671,10 +671,7 @@ struct FilFullScreenPlayer: View {
     // MARK: - To-dos
 
     private func toggleTodo(_ item: FilTodoItem) {
-        note.normalizeCompletedTodos()
-        guard note.completedTodos.indices.contains(item.index) else { return }
-        withAnimation(.snappy) { note.completedTodos[item.index].toggle() }
-        try? context.save()
+        withAnimation(.snappy) { note.toggleCompletedTodo(at: item.index) }
         Haptics.toggle()
     }
 
@@ -691,12 +688,7 @@ struct FilFullScreenPlayer: View {
         return "note"
     }
 
-    private var linkTitle: String {
-        let t = note.sourceTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if !t.isEmpty { return t }
-        let title = note.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return title.isEmpty ? (note.sourceDomain ?? "Link") : title
-    }
+    private var linkTitle: String { note.linkDisplayTitle }
 
     private func openLink() {
         guard let url = note.sourceURL else { return }
@@ -715,8 +707,7 @@ struct FilFullScreenPlayer: View {
 
     private func timeString(_ t: TimeInterval) -> String {
         guard t.isFinite, t >= 0 else { return "0:00" }
-        let s = Int(t.rounded())
-        return String(format: "%d:%02d", s / 60, s % 60)
+        return t.rounded().clockLabel
     }
 }
 

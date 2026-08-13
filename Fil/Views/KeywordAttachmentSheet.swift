@@ -707,12 +707,6 @@ struct KeywordPopup: View {
         (try? AVAudioPlayer(contentsOf: url))?.duration ?? 0
     }
 
-    private func formatMemoDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
-    }
-
     private func resolveLinkedNote(_ entry: AttachmentEntry) -> Note? {
         guard let idString = entry.linkedNoteID,
               let uuid = UUID(uuidString: idString) else { return nil }
@@ -1050,7 +1044,7 @@ private struct VoiceMemoAttachmentTile: View {
                             .font(.system(size: 22))
                             .foregroundStyle(.red)
                         if let displayedDuration {
-                            Text(formatDuration(displayedDuration))
+                            Text(displayedDuration.clockLabel)
                                 .font(Theme.dmMono(11))
                                 .foregroundStyle(Theme.secondaryText)
                         }
@@ -1061,19 +1055,13 @@ private struct VoiceMemoAttachmentTile: View {
                             .font(.system(size: 18))
                             .foregroundStyle(Theme.secondaryText)
                         if let displayedDuration {
-                            Text(formatDuration(displayedDuration))
+                            Text(displayedDuration.clockLabel)
                                 .font(Theme.dmMono(11))
                                 .foregroundStyle(Theme.secondaryText)
                         }
                     }
                 }
             }
-    }
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let minutes = Int(duration) / 60
-        let seconds = Int(duration) % 60
-        return String(format: "%d:%02d", minutes, seconds)
     }
 }
 
