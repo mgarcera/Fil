@@ -46,6 +46,19 @@ exists (`appStoreID` is a real ID). Nothing has been submitted.
 | 14 | Anthropic spend cap | **Confirmed set.** |
 | 15 | Trunk | `main` fast-forwarded to the current app; `blank-canvas-home`, `launch-prep`, and `dynamic-island-share-capture` deleted after verifying every commit was an ancestor. One branch now. |
 
+### Decided later the same day — positioning, and what it dragged with it
+
+| # | Thread | Decision |
+|---|--------|----------|
+| 17 | **Positioning** | **Decided, no longer parked.** Fil leads with the surfaces outside the app and pays off with the room behind them. Three pillars: **the door** (six surfaces that aren't the app), **the form** (every thought arrives as its own object, unchosen and unrepeatable), **the room** (worth staying in). Privacy demotes from wedge to an honest data note. Copy drafted in `docs/website/website-copy-v2.md`. |
+| 17b | **Name** | `Fil — Folders Outside the App` · `Lock screen & dynamic island` (29 / 28 chars). "Fil" stays the first word. The name states the category; the subtitle carries both searchable surfaces. |
+| 17c | **The claim, precisely** | **Not** "no app to open" — untrue, since you open Fil to read, add, and rearrange. The honest claim is that it's *already there when you context-switch*; you never open it just to check. Written into the copy guardrails. |
+| 18 | **The door is free** | **Reverses part of 11b.** All six non-app surfaces stay in the free tier — lock screen, Dynamic Island, home screen widget, Today View, Control Center controls, share sheet. The door is how the habit forms; a free user who never installs it never gets far enough to want the room. |
+| 19 | **Onboarding scope** | Was "needs polish, scope TBD." Now defined: **first run ends with the door installed**, not with a fil created — Live Activity started, plus instructions to go look at the lock screen or tap the Dynamic Island. Consider seeding a *situational* example folder (the Yosemite pattern: a trip with a to-do list, photos, links) so the utility is visible before the user has built anything. |
+| 20 | **Accessory lock-screen widget** | **New v1 item.** `FilPinnedWidget` is `systemSmall` only — there is no `accessoryRectangular`/`accessoryCircular` widget, so the lock-screen surface today is Live-Activity-only. Live Activities are capped around 8 hours *and* share a single slot, so a delivery or a timer evicts Fil's door. Permanent surface = accessory widget; Live Activity keeps the transient loud moment. **The positioning depends on this shipping.** |
+| 21 | **Export / import** | **New v1 item, free tier.** Spec'd in `docs/features/export-import.md`. Makes the "landscape after six months" claim honest and covers the delete-and-reinstall case that device backup cannot. |
+| 22 | **Store-recovery notice** | ✅ **Shipped** (`d0f614d`). The container recovery paths never destroyed data, but presented as an empty app — indistinguishable from total loss, and the natural reaction (delete and reinstall) was the one thing that would make it real. Now says so on launch. |
+
 ### Pro gating (decision detail)
 
 Everything gated today is cloud-cost-bearing and nothing else: AI surfacing +
@@ -56,11 +69,16 @@ extension, and unlimited fils, folders, and filaments.
 
 **Direction chosen:**
 
-- **Additive gating** — the strongest untapped ground, and the assets already
-  exist. Free gets one screensaver, Pro gets all five plus auto-screensaver;
-  Lock Screen surfaces and Control Center controls move to Pro; a sound/ambience
-  pack ties into the sound work. The free user never *loses* anything; Pro
-  blooms.
+- **Additive gating** — the assets already exist. Free gets one screensaver, Pro
+  gets all five plus auto-screensaver; a sound/ambience pack ties into the sound
+  work. The free user never *loses* anything; Pro blooms.
+  **Revised same day (see #18): the six non-app surfaces are NOT part of this.**
+  Lock Screen, Dynamic Island, home-screen widget, Today View, Control Center,
+  and the share sheet all stay free — they're the door, and the door is how the
+  habit forms.
+  *Consequence worth facing: the additive set is now thinner than it looked, so
+  Pro leans harder on surfacing + smart organize + folder captions. Whether that
+  carries a $2.99/mo ask is a live question, not a settled one.*
 - **Folder cap** — defensible. Folders are an organizing convenience, and v1 is
   the cheapest moment to introduce a cap since there are no libraries to
   grandfather.
@@ -101,51 +119,65 @@ all — and organize sends up to 200 fils, the largest payload in the system. Se
 
 | What | Waiting on | Note |
 |---|---|---|
-| **ASC state** | Mason | Believes the App Store Connect work was done in July. If so, items 3 and 4 collapse to "update ASC to match what we decide, then update the docs." |
-| **Positioning reset** | Mason, 6pm block | The privacy-as-positioning claims made in July are being retired. This is an aiming decision, deliberately not made at 3am. |
-| **Zero Data Retention** | downstream of positioning | No point pursuing a stronger privacy claim before knowing whether privacy is still the claim. |
+| **ASC state** | Mason | Believes the App Store Connect work was done in July. If so, items 3 and 4 collapse to "update ASC to match what we decided, then update the docs." |
 | **Fair-use clause** | inside the terms rewrite | Lands with the legal-page rewrite rather than as its own task. |
-| **Cosmetics shop** | with positioning | Always half monetization, half identity. |
+| **Cosmetics shop** | open | No longer positioning-blocked. Still undecided: drop, or keep as optional extra support alongside Pro. |
+| **Zero Data Retention** | reassess | **Value dropped.** Privacy is no longer the wedge, so a stronger privacy claim buys much less than it would have in July. The 30-day wording is honest and already shipped in `PaywallView.swift:87`. Not worth chasing before launch. |
 | **Mirelo spike** | banked | One role, four variants, trimmed, judged against an existing Fil sound. |
+| **Gating numbers** | Mason | Which screensavers stay free, and the folder cap. The Lock Screen half of this question is now answered (#18: free). |
 
-### What the positioning decision blocks
+### What the positioning decision unlocked
 
-It is the upstream gate for more than its own thread. Privacy-as-positioning is
-load-bearing in the brand doc, the website copy, the App Store description and
-keywords, `PaywallView.swift:87`, and the terms. Until it's settled:
-
-- the listing copy can't be finalized,
-- the legal pages can't be rewritten,
-- the website copy can't be rewritten,
-- and ZDR can't be sensibly pursued.
+It was the upstream gate on four threads, and all four are now actionable:
+the App Store listing copy, the legal pages, the hosted website, and the
+screenshot spec (the hero shot is now known: **the expanded Dynamic Island**,
+because that's the surface in daily use and no competitor's listing shows
+anything like it).
 
 **Factual floor, unaffected by any of it:** the App Privacy answers and
 `PrivacyInfo.xcprivacy` describe what the app actually does with data (User
 Content › Other User Content, App Functionality, not linked, not tracking).
-Those stay true whatever the positioning becomes — and they already agree with
-each other.
+Those stay true under the new positioning, and they already agree with each
+other.
+
+### Data durability — checked 2026-08-13, no action needed on backup
+
+The store lives in `URL.applicationSupportDirectory`; audio and the
+`.video`/`.file` attachment payloads live in the documents directory; **nothing
+anywhere sets `isExcludedFromBackup`**. Both directories are covered by iCloud
+Backup and by device-to-device transfer, so **a phone upgrade carries everything
+across**. What device backup cannot cover is delete-and-reinstall, or a phone
+lost with backups switched off — which is what export/import (#21) is for.
+CloudKit sync stays shelved; the reasoning, with the specific blocking fields,
+is in `docs/features/export-import.md`.
 
 ---
 
 ## Open work, sequenced
 
-1. **Positioning decision** (6pm block) — gates 3, 5, and 6.
-2. **Onboarding polish** — scope it, then do it.
-3. **Screenshot spec rewrite + capture harness** — the Jul 5 spec describes a UI
-   that no longer exists. Needs a seed launch-argument for curated demo data,
-   `simctl status_bar` for a shipped-looking status bar, and 6.9″ capture.
-4. **ASC subscription products + sandbox tester** — the one hard gate that isn't
+1. **Accessory lock-screen widget** (#20) — the positioning's central claim
+   depends on a permanent lock-screen surface. Nothing else on this list is
+   worth doing if the door closes after eight hours.
+2. **Onboarding to the door** (#19) — first run ends with the Live Activity
+   started and the user told to go look; optionally a seeded situational folder.
+3. **Export / import** (#21) — spec'd, free tier. Makes the six-month claim
+   honest and covers reinstall.
+4. **Screenshot spec rewrite + capture harness** — hero is the expanded Dynamic
+   Island. Needs a seed launch-argument for curated demo data, `simctl
+   status_bar` for a shipped-looking status bar, and 6.9″ capture.
+5. **ASC subscription products + sandbox tester** — the one hard gate that isn't
    about copy. Local `Products.storekit` has both products; ASC needs its own,
    plus a tester, before the cloud path can be tested end to end.
-5. **Listing copy + legal pages**, rewritten to the new positioning.
-6. **Gating implementation** — additive set + folder cap, once the three numbers
-   are locked.
-7. **Sound reuse pass** — mic start/stop, select tick, copy tick, folder close;
+6. **Listing copy + legal pages + website**, rewritten against
+   `website-copy-v2.md`. The hosted legal pages still carry July's language.
+7. **Gating implementation** — additive set + folder cap, once the numbers are
+   locked. The door is explicitly excluded (#18).
+8. **Sound reuse pass** — mic start/stop, select tick, copy tick, folder close;
    delete the two orphaned `addparagraph*` assets.
-8. **Device verification of the August surface** — Live Activities, Control
+9. **Device verification of the August surface** — Live Activities, Control
    Center controls, player audio, sounds and haptics on hardware.
-9. **Archive → validate → upload → submit**, with a reviewer note covering the
-   on-device model and first-run seeding.
+10. **Archive → validate → upload → submit**, with a reviewer note covering the
+    on-device model, first-run seeding, and how to reach Pro.
 
 ---
 
