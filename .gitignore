@@ -1,1 +1,5 @@
 .appstore/
+
+# Claude Code personal settings
+.claude/settings.local.json
+.claude/settings.json
