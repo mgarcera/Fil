@@ -1,7 +1,16 @@
+<!--
+STAGED — revised 2026-08-13. Email and domain updated ahead of the migration sweep.
+
+Still to resolve: the Fil Pro answers assume a subscription ships, which is on hold pending the
+Private Cloud Compute test. If v1 has no paywall, the free-vs-Pro FAQ entry is rewritten and the
+"Pro smart search" framing drops. Live copy is src/app/fil/support/page.tsx in the website repo.
+See docs/entity-migration.md.
+-->
+
 # Fil Support
 
 Fil is a quiet place to speak your mind and let thoughts be. If something isn't working, or you
-have an idea, email **mason@rootcause.ltd**, and a real person (Mason) reads every message.
+have an idea, email **mason@smidgecraft.com**, and a real person (Mason) reads every message.
 
 ## Frequently asked
 
@@ -9,7 +18,7 @@ have an idea, email **mason@rootcause.ltd**, and a real person (Mason) reads eve
 Everyone gets unlimited capture (text, voice, photos, links) and free keyword search that stays on
 your device. **Fil Pro** adds *smart search*: ask in your own words and Fil finds what you meant, by
 meaning, time, and kind, then reflects it back. See everything it can find at
-rootcause.ltd/fil/smart-search.
+smidgecraft.com/fil/smart-search.
 
 **Does smart search send my notes anywhere?**
 Only when you run a Pro smart search. To answer it, the text of your fils is sent to our AI provider
@@ -56,4 +65,4 @@ Delete a single fil in the app ("landfil"). To remove everything, delete the app
 Some ambient screensavers unlock as you create fils (10 or more). Keep filling.
 
 ## Contact
-**mason@rootcause.ltd**
+**mason@smidgecraft.com**
