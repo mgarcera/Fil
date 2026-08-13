@@ -799,7 +799,7 @@ private struct PhotoStackHero: View {
     }
 
     /// Cheap pixel-dimension read (no full decode) → width / height aspect ratio.
-    private static func aspectRatio(_ data: Data) -> CGFloat {
+    private nonisolated static func aspectRatio(_ data: Data) -> CGFloat {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
               let w = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
