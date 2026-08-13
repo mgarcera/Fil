@@ -7,6 +7,41 @@ struct FilApp: App {
     @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.auto.rawValue
     private let modelContainer: ModelContainer
 
+    /// How the store loaded this launch. The recovery paths in `makeModelContainer` deliberately
+    /// never destroy data — but a silent recovery looks *exactly* like total data loss to the
+    /// person holding the phone, and their natural reaction (delete and reinstall) is the one
+    /// action that would make it real. So say something.
+    enum StoreLoadOutcome {
+        case normal
+        /// The old store wouldn't load and was moved aside to `default.store.corrupt-<ts>`.
+        /// This session runs on a fresh, empty store; the old fils are still on disk.
+        case recoveredWithFreshStore
+        /// Nothing on disk could be opened. This session is in-memory — nothing written now
+        /// persists — and the on-disk store is left untouched for the next launch.
+        case inMemory
+
+        var noticeTitle: String {
+            switch self {
+            case .normal: ""
+            case .recoveredWithFreshStore: "your fils are still here"
+            case .inMemory: "fil couldn't open your library"
+            }
+        }
+
+        var noticeMessage: String {
+            switch self {
+            case .normal:
+                ""
+            case .recoveredWithFreshStore:
+                "fil couldn't open your library this time and started a fresh one. your old fils are still on this device — please don't delete the app. reopening fil will usually load them again."
+            case .inMemory:
+                "your fils are still on this device, but they aren't loaded right now — anything you add this session won't be saved. please don't delete the app; reopen fil and it will usually load them again."
+            }
+        }
+    }
+
+    private(set) static var storeLoadOutcome: StoreLoadOutcome = .normal
+
     init() {
         Self.registerBundledFonts()
         modelContainer = Self.makeModelContainer()
@@ -41,8 +76,20 @@ struct FilApp: App {
 /// (first fil → congratulation → "from mason" seed fil) lives in ContentView.
 /// See docs/onboarding/onboarding-design.md.
 struct RootView: View {
+    @State private var showsStoreNotice = false
+
+    private var storeOutcome: FilApp.StoreLoadOutcome { FilApp.storeLoadOutcome }
+
     var body: some View {
         ContentView()
+            // A store-recovery launch shows an empty app. Tell the user their fils survived, and
+            // steer them away from the delete-and-reinstall reflex that would actually lose them.
+            .task { showsStoreNotice = storeOutcome != .normal }
+            .alert(storeOutcome.noticeTitle, isPresented: $showsStoreNotice) {
+                Button("ok", role: .cancel) { }
+            } message: {
+                Text(storeOutcome.noticeMessage)
+            }
     }
 }
 
@@ -90,7 +137,9 @@ private extension FilApp {
             if shouldResetStore(after: error) {
                 do {
                     try moveStoreAside(at: storeURL)
-                    return try ModelContainer(for: schema, configurations: [configuration])
+                    let recovered = try ModelContainer(for: schema, configurations: [configuration])
+                    storeLoadOutcome = .recoveredWithFreshStore
+                    return recovered
                 } catch {
                     // Fall through to the in-memory fallback below.
                 }
@@ -101,6 +150,7 @@ private extension FilApp {
             // on-disk store (moved aside above, if any) is preserved for recovery.
             let inMemory = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             if let memoryContainer = try? ModelContainer(for: schema, configurations: [inMemory]) {
+                storeLoadOutcome = .inMemory
                 return memoryContainer
             }
 
