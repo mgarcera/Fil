@@ -33,7 +33,7 @@ enum LockScreenActivity: String, CaseIterable, Identifiable {
 
 /// One fil rendered as a gradient blob on a Lock Screen surface. Carries only the gradient + shape
 /// seed — never any fil text — so the widget can draw the real blob without the body leaving the app.
-struct FilActivityBlob: Codable, Hashable {
+nonisolated struct FilActivityBlob: Codable, Hashable {
     var startHex: String
     var endHex: String
     var seed: Double

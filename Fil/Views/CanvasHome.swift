@@ -475,7 +475,7 @@ struct CanvasHome: View {
             onRecordVoice: startVoiceCapture,
             onRemoveStagedImage: { index in
                 if pendingPhotos.indices.contains(index) {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { pendingPhotos.remove(at: index) }
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { _ = pendingPhotos.remove(at: index) }
                 }
             },
             onCapturePhoto: { data in stageCapturedPhoto(data) },
@@ -816,7 +816,7 @@ struct CanvasHome: View {
         SoundscapeManager.shared.playLandfilSound(); Haptics.destructive()
         // Timeline-style deletion: the fil shrinks + blurs away first, then it's removed + deleted.
         withAnimation(.easeOut(duration: 0.45)) {
-            landfillingIDs.insert(id)
+            _ = landfillingIDs.insert(id)
         }
         Task {
             try? await Task.sleep(for: .milliseconds(450))
@@ -833,7 +833,7 @@ struct CanvasHome: View {
     /// Toggle a surfaced fil's to-do: shared model mutation + this surface's sound + animation.
     private func toggleTodo(_ note: Note, _ index: Int) {
         SoundscapeManager.shared.playTodoArticleToggleSound(); Haptics.toggle()
-        withAnimation(.snappy) { note.toggleCompletedTodo(at: index) }
+        withAnimation(.snappy) { _ = note.toggleCompletedTodo(at: index) }
     }
     private var resultsHeader: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {

@@ -671,7 +671,7 @@ struct FilFullScreenPlayer: View {
     // MARK: - To-dos
 
     private func toggleTodo(_ item: FilTodoItem) {
-        withAnimation(.snappy) { note.toggleCompletedTodo(at: item.index) }
+        withAnimation(.snappy) { _ = note.toggleCompletedTodo(at: item.index) }
         Haptics.toggle()
     }
 
