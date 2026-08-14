@@ -234,7 +234,9 @@ struct FoldersHomeSection: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button(action: onSettings) {
-                Image("FilLogo").resizable().scaledToFit().frame(width: 22, height: 22)
+                // Matches the leading new-folder button's size and weight so the two
+                // toolbar corners read as a pair.
+                Image(systemName: "gearshape").font(.system(size: 18, weight: .semibold))
             }
             .accessibilityLabel("Settings")
         }
