@@ -3,7 +3,8 @@
 
   "state": {
     "pinnedFolder": "Yosemite",
-    "appearance": "dark"
+    "appearance": "dark",
+    "screensaverMode": "liquid"
   },
 
   "folders": [

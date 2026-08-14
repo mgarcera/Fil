@@ -111,6 +111,21 @@ struct FilFullScreenPlayer: View {
         .sheet(item: $browserLink) { bl in
             InAppBrowserView(url: bl.url).ignoresSafeArea()
         }
+        // Screenshot mode: keep a voice fil playing for as long as the capture runs. Starting
+        // playback once isn't enough — the demo clip is about five seconds and a capture only
+        // begins recording after the launch animation settles, so a one-shot start is already
+        // over by the first frame, leaving a paused transport parked at 0:00. Inert in normal
+        // use, where whether audio plays is the user's call.
+        .task {
+            guard DemoLibrary.isEnabled, isVoice else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(400))
+                if !audio.isPlaying {
+                    audio.seek(to: 0)
+                    audio.togglePlayback()
+                }
+            }
+        }
         #if canImport(UIKit)
         .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false; audio.stop(); performPendingLandfil() }

@@ -17,8 +17,13 @@
 # Edit the content of the shots in Fil/Resources/DemoLibrary.json — not here, and not in
 # the UI. Edit which shots get taken in the SHOTS array below.
 #
-# NOT captured here: the lock screen, Dynamic Island, Today view, and Control Center.
-# Simulators can't lock, so those surfaces have to come from a real device.
+# Produces both stills (PNG) and clips (MOV, via `simctl io recordVideo`). The clips feed the
+# website's frame rows, where a still sits dead next to four moving ones.
+#
+# NOT captured here: the lock screen, Dynamic Island, Today view, and Control Center. Those are
+# recorded by hand today. An earlier version of this comment claimed simulators can't show a lock
+# screen and that a device was required — that is wrong (Simulator ⌘L locks), so the boundary is
+# "not automated yet", not "impossible". See docs/v1-route.md.
 
 set -euo pipefail
 
@@ -29,13 +34,27 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/AppStore/screenshots"
 SETTLE="${FIL_SETTLE:-7}"   # seconds to let the launch animation and reveals finish
 
-# name|screen argument ("" = home)
+# Stills. name|screen argument ("" = home)
 SHOTS=(
   "01-home|"
   "02-folder-yosemite|folder:Yosemite"
   "03-folder-move|folder:The move"
   "04-bin|bin"
   "05-compose|compose"
+)
+
+# Clips for the website's frame rows, where a still would sit dead. name|screen|seconds.
+# `player` opens the first seeded fil that has audio and starts it playing; `canvas` raises
+# the screensaver named in DemoLibrary.json without waiting out the 60s idle timer.
+#
+# ONLY MOVING SCREENS CAN BE RECORDED. `simctl io recordVideo` emits frames on display change,
+# so a screen that holds still yields a ~0.06s file rather than a static clip of the right
+# length. Measured over 5s: player 5.8s, screensaver 7.8s, compose 4.8s, home 4.8s — and a
+# folder interior 0.06s, because nothing in it moves. A folder therefore has to be a still.
+CLIPS=(
+  "06-player|player|6"
+  "07-screensaver|canvas|8"
+  "08-home-canvas||5"
 )
 
 cd "$ROOT"
@@ -79,5 +98,29 @@ for entry in "${SHOTS[@]}"; do
   echo "  ✓ $name.png"
 done
 
-echo "▸ $(ls -1 "$OUT"/*.png | wc -l | tr -d ' ') shots in AppStore/screenshots/"
+for entry in "${CLIPS[@]}"; do
+  name="${entry%%|*}"; rest="${entry#*|}"
+  screen="${rest%%|*}"; secs="${rest##*|}"
+  xcrun simctl terminate "$SIM" "$BID" 2>/dev/null || true
+  xcrun simctl launch "$SIM" "$BID" --args -FilScreenshotMode -FilScreenshotScreen "$screen" > /dev/null
+  sleep "$SETTLE"
+  # recordVideo runs until interrupted, so it goes to the background and takes a SIGINT.
+  # --force overwrites a previous take rather than failing the run.
+  xcrun simctl io "$SIM" recordVideo --codec h264 --force "$OUT/$name.mov" > /dev/null 2>&1 &
+  rec=$!
+  sleep "$secs"
+  kill -INT "$rec" 2>/dev/null || true
+  wait "$rec" 2>/dev/null || true
+  # recordVideo finalizes the container after the signal. Starting the next take immediately
+  # produced a 0.06s file, so give the encoder a beat to let go before the next launch.
+  sleep 2
+  dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT/$name.mov" 2>/dev/null | cut -c1-4)
+  echo "  ✓ $name.mov (${dur}s)"
+  # A clip far shorter than asked for means the recorder never really started — worth failing
+  # loudly, because the file still exists and looks like a successful capture.
+  awk -v d="${dur:-0}" -v w="$secs" 'BEGIN { if (d < w * 0.5) exit 1 }' \
+    || echo "    ⚠ expected ~${secs}s — recorder likely did not start"
+done
+
+echo "▸ $(ls -1 "$OUT"/*.png 2>/dev/null | wc -l | tr -d ' ') stills, $(ls -1 "$OUT"/0[6-8]-*.mov 2>/dev/null | wc -l | tr -d ' ') clips in AppStore/screenshots/"
 sips -g pixelWidth -g pixelHeight "$OUT/01-home.png" 2>/dev/null | tail -2

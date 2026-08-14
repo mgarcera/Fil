@@ -23,14 +23,33 @@ enum DemoLibrary {
         ProcessInfo.processInfo.arguments.contains(launchArgument)
     }
 
+    /// What a capture run should be showing when the shot is taken.
+    ///
+    /// Most screens are reachable through the production deep link. The player and the
+    /// screensaver are not — and widening `HomeDeepLink` with routes that exist only for
+    /// screenshots would put screenshot concerns into a production enum the Lock Screen
+    /// widget and Control Center also use. So those two get their own cases here, and
+    /// `ContentView` drives the state it already owns for them.
+    enum Stage: Equatable {
+        case deepLink(HomeDeepLink)
+        /// Open the folder, then the fil inside it. Two ids because the full-screen player has no
+        /// route of its own: it is reached by tapping a fil *within* a folder interior, which is
+        /// also the state this frame is meant to show. Playback starts on its own, since a paused
+        /// player has nothing moving in it and this frame is recorded rather than stilled.
+        case player(folder: UUID, note: UUID)
+        /// Raise a screensaver immediately, by mode raw value.
+        case canvas(String)
+    }
+
     /// Which screen a capture run should open on, e.g. `-FilScreenshotScreen folder:Yosemite`.
     ///
     /// Routed in-process rather than through `simctl openurl`, because opening a `fil://` URL from
     /// outside the app makes iOS show an "Open in Fil?" confirmation — which can't be dismissed
     /// unattended and lands in the middle of the screenshot.
     ///
-    /// Values: `bin`, `compose`, `voice`, `folder:<name>`. Anything else (or absent) stays home.
-    static func initialScreen(folderIDsByName: [String: UUID]) -> HomeDeepLink? {
+    /// Values: `bin`, `compose`, `voice`, `folder:<name>`, `player`, `canvas`, `canvas:<mode>`.
+    /// Anything else (or absent) stays home.
+    static func initialStage(folderIDsByName: [String: UUID]) -> Stage? {
         guard isEnabled else { return nil }
         let args = ProcessInfo.processInfo.arguments
         guard
@@ -40,29 +59,63 @@ enum DemoLibrary {
 
         let value = args[flagIndex + 1]
         switch value {
-        case "bin": return .bin
-        case "compose": return .compose
-        case "voice": return .voice
+        case "bin": return .deepLink(.bin)
+        case "compose": return .deepLink(.compose)
+        case "voice": return .deepLink(.voice)
+        case "player":
+            guard
+                let spec = seededVoiceFil(),
+                let folderName = spec.folder,
+                let folderID = folderIDsByName[folderName]
+            else {
+                FilLog.data.error("DemoLibrary: 'player' needs a seeded fil that has audio and sits in a folder")
+                return nil
+            }
+            return .player(folder: folderID, note: spec.uuid)
         default:
+            if value == "canvas" || value.hasPrefix("canvas:") {
+                // Bare `canvas` takes the mode from the seed file so the screen is content,
+                // not a script argument. `canvas:<mode>` overrides for a one-off.
+                let override = value.hasPrefix("canvas:") ? String(value.dropFirst("canvas:".count)) : nil
+                return .canvas(override ?? decodedPayload()?.state?.screensaverMode ?? "liquid")
+            }
             guard value.hasPrefix("folder:") else { return nil }
             let name = String(value.dropFirst("folder:".count))
             guard let id = folderIDsByName[name] else {
                 FilLog.data.error("DemoLibrary: no seeded folder named '\(name, privacy: .public)'")
                 return nil
             }
-            return .folder(id)
+            return .deepLink(.folder(id))
         }
     }
 
     /// Folder name → id, from the seed file. Lets the screen argument name a folder rather than
     /// carry a UUID around.
     static func seededFolderIDsByName() -> [String: UUID] {
+        guard let payload = decodedPayload() else { return [:] }
+        return Dictionary(uniqueKeysWithValues: payload.folders.map { ($0.name, $0.id) })
+    }
+
+    /// The first fil in the seed file that has audio. `player` opens this one, so which fil the
+    /// player screen shows is a property of the content rather than of the capture script.
+    private static func seededVoiceFil() -> FilSpec? {
+        decodedPayload()?.fils.first(where: { $0.audio != nil })
+    }
+
+    /// The fil a `player` capture should open, read by the folder interior that holds it.
+    /// Nil in every other case, including normal use.
+    static var screenshotPlayerNoteID: UUID? {
+        guard case .player(_, let noteID)? = initialStage(folderIDsByName: seededFolderIDsByName())
+        else { return nil }
+        return noteID
+    }
+
+    private static func decodedPayload() -> Payload? {
         guard
             let url = Bundle.main.url(forResource: "DemoLibrary", withExtension: "json"),
-            let data = try? Data(contentsOf: url),
-            let payload = try? JSONDecoder().decode(Payload.self, from: data)
-        else { return [:] }
-        return Dictionary(uniqueKeysWithValues: payload.folders.map { ($0.name, $0.id) })
+            let data = try? Data(contentsOf: url)
+        else { return nil }
+        return try? JSONDecoder().decode(Payload.self, from: data)
     }
 
     /// Wipes the store and reseeds it from the bundled JSON. No-op unless the launch argument is set.
@@ -234,6 +287,9 @@ enum DemoLibrary {
         let pinnedFolder: String?
         /// "auto", "light", or "dark".
         let appearance: String?
+        /// Which screensaver the `canvas` capture raises: "liquid", "wave", "auroraLeaves",
+        /// or "auroraRibbons". Defaults to liquid.
+        let screensaverMode: String?
     }
 
     private struct FolderSpec: Decodable {

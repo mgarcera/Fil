@@ -736,6 +736,17 @@ struct FolderInteriorView: View {
         .sheet(item: $playerSelection) { sel in
             FilFullScreenPlayer(notes: sel.notes, startID: sel.startID) { playerSelection = nil }
         }
+        .task {
+            // Screenshot mode only: a `player` capture opens this folder, and the fil it wants is
+            // opened here because this is where `playerSelection` lives. Inert in normal use.
+            guard
+                let id = DemoLibrary.screenshotPlayerNoteID,
+                let note = notes.first(where: { $0.uuid == id })
+            else { return }
+            // Let the interior's own push settle first, or the sheet presents onto a moving view.
+            try? await Task.sleep(for: .milliseconds(600))
+            playerSelection = FilPagerSelection(notes: playerDeck, startID: note.uuid)
+        }
     }
 
     /// The folder identity for the large-title slot — mirrors the original header layout: blob on the

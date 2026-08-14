@@ -130,11 +130,23 @@ struct ContentView: View {
         // Screenshot mode opens straight onto the screen being captured. In-process, because
         // `simctl openurl` would put an "Open in Fil?" system prompt in the frame.
         .task {
-            if let screen = DemoLibrary.initialScreen(folderIDsByName: DemoLibrary.seededFolderIDsByName()) {
-                // Let the folders section mount first. Setting the link before it exists drops it
-                // on a cold launch, which is exactly when a capture run happens.
-                try? await Task.sleep(for: .milliseconds(700))
-                homeDeepLink = screen
+            guard let stage = DemoLibrary.initialStage(folderIDsByName: DemoLibrary.seededFolderIDsByName())
+            else { return }
+            // Let the folders section mount first. Setting the link before it exists drops it
+            // on a cold launch, which is exactly when a capture run happens.
+            try? await Task.sleep(for: .milliseconds(700))
+            switch stage {
+            case .deepLink(let link):
+                homeDeepLink = link
+            case .player(let folderID, _):
+                // Only the folder is opened from here. The folder interior owns `playerSelection`
+                // and picks the fil up itself, so nothing has to be threaded down three views.
+                homeDeepLink = .folder(folderID)
+            case .canvas(let rawMode):
+                // Set the state directly rather than calling `launchScreensaver`, which waits on
+                // the 60s idle timer and on a fil-count threshold. A capture run should satisfy
+                // neither: it has no touches to go idle from, and its library is fixed.
+                activeScreensaverMode = FilScreensaverView.Mode(rawValue: rawMode) ?? .liquid
             }
         }
         .onChange(of: scenePhase) { _, newPhase in
