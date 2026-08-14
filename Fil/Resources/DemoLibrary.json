@@ -1,0 +1,149 @@
+{
+  "_comment": "Demo content for screenshot mode. Loaded only when the app is launched with -FilScreenshotMode. UUIDs are pinned on purpose: a fil's blob shape is a hash of its uuid, so changing one changes how it looks. Gradients are from Fil's own palette. `daysAgo` is relative to launch so the library always reads as recently used. Edit freely — this is content, not code.",
+
+  "folders": [
+    {
+      "id": "9E1B2C3D-0001-4A00-9C00-000000000001",
+      "name": "Yosemite",
+      "summary": "Four days in the valley. Permits, packing, and the drive up.",
+      "gradientStartHex": "#33BF99",
+      "gradientEndHex": "#8A4FD9",
+      "sortIndex": 0
+    },
+    {
+      "id": "9E1B2C3D-0002-4A00-9C00-000000000002",
+      "name": "The move",
+      "summary": "Boxes, the landlord, and everything that has to be switched over.",
+      "gradientStartHex": "#F24D59",
+      "gradientEndHex": "#6659CC",
+      "sortIndex": 1
+    },
+    {
+      "id": "9E1B2C3D-0003-4A00-9C00-000000000003",
+      "name": "Reading",
+      "summary": "Things worth going back to.",
+      "gradientStartHex": "#D9A626",
+      "gradientEndHex": "#E8196A",
+      "sortIndex": 2
+    }
+  ],
+
+  "fils": [
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000001",
+      "transcript": "pack for the valley\nnights are colder than the forecast says",
+      "folder": "Yosemite",
+      "daysAgo": 1.2,
+      "gradientStartHex": "#33BF99",
+      "gradientEndHex": "#8A4FD9",
+      "todos": ["sleeping bags", "headlamp + spare batteries", "water filter", "trail map, paper one"],
+      "completedTodos": [true, true, false, false],
+      "sortIndex": 0
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000002",
+      "transcript": "half dome permit\nlottery opens in march, need it before we book anything else",
+      "folder": "Yosemite",
+      "daysAgo": 2.4,
+      "gradientStartHex": "#4F7C72",
+      "gradientEndHex": "#33B5D9",
+      "sourceURLString": "https://www.nps.gov/yose/planyourvisit/hdpermits.htm",
+      "sourceTitle": "Half Dome Permits - Yosemite National Park",
+      "sortIndex": 1
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000003",
+      "transcript": "tunnel view at sunrise\nthe whole valley opens at once and nobody is there yet",
+      "folder": "Yosemite",
+      "daysAgo": 3.1,
+      "gradientStartHex": "#E67333",
+      "gradientEndHex": "#9E2B6E",
+      "sortIndex": 2
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000004",
+      "transcript": "call the ranger station about fire restrictions before we pack the stove",
+      "folder": "Yosemite",
+      "daysAgo": 0.4,
+      "gradientStartHex": "#A8CC33",
+      "gradientEndHex": "#1E5265",
+      "sortIndex": 3
+    },
+
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000010",
+      "transcript": "boxes\nkitchen is always more than you think",
+      "folder": "The move",
+      "daysAgo": 1.8,
+      "gradientStartHex": "#F24D59",
+      "gradientEndHex": "#6659CC",
+      "todos": ["book the elevator", "kitchen", "the closet nobody opens", "label the fragile ones"],
+      "completedTodos": [true, false, false, false],
+      "sortIndex": 0
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000011",
+      "transcript": "landlord thursday at four\nask about the deposit timeline and whether the walls need repainting",
+      "folder": "The move",
+      "daysAgo": 0.9,
+      "gradientStartHex": "#E85B9C",
+      "gradientEndHex": "#6E4B6E",
+      "sortIndex": 1
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000012",
+      "transcript": "utilities to switch over",
+      "folder": "The move",
+      "daysAgo": 4.2,
+      "gradientStartHex": "#4DB366",
+      "gradientEndHex": "#2E4FB3",
+      "todos": ["power", "internet — book the install early", "mail forwarding"],
+      "completedTodos": [true, false, false],
+      "sortIndex": 2
+    },
+
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000020",
+      "transcript": "the part about attention\nhe argues you can't reclaim it by scheduling it. worth rereading the middle chapter.",
+      "folder": "Reading",
+      "daysAgo": 5.6,
+      "gradientStartHex": "#B9A5E6",
+      "gradientEndHex": "#B5379E",
+      "sortIndex": 0
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000021",
+      "transcript": "keep this one\nthe bit about building for the person you were last year",
+      "folder": "Reading",
+      "daysAgo": 8.3,
+      "gradientStartHex": "#D9A626",
+      "gradientEndHex": "#E8196A",
+      "sortIndex": 1
+    },
+
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000030",
+      "transcript": "the door and the room\nthe fast way in matters as much as what's behind it",
+      "daysAgo": 0.1,
+      "gradientStartHex": "#408CD9",
+      "gradientEndHex": "#6659CC",
+      "sortIndex": 0
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000031",
+      "transcript": "dentist, sometime before the trip",
+      "daysAgo": 0.3,
+      "gradientStartHex": "#33BF99",
+      "gradientEndHex": "#8A4FD9",
+      "sortIndex": 1
+    },
+    {
+      "uuid": "A1000000-0000-4000-8000-000000000032",
+      "transcript": "something about how a thought you can see is easier to keep than one you filed",
+      "daysAgo": 0.6,
+      "gradientStartHex": "#E67333",
+      "gradientEndHex": "#9E2B6E",
+      "sortIndex": 2
+    }
+  ]
+}

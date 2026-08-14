@@ -46,6 +46,8 @@ struct FilApp: App {
         Self.registerBundledFonts()
         modelContainer = Self.makeModelContainer()
         Self.protectStoreFiles()
+        // Inert unless launched with -FilScreenshotMode (see DemoLibrary).
+        DemoLibrary.seedIfRequested(into: modelContainer.mainContext)
     }
 
     /// Encrypt the SwiftData store (and its -wal/-shm sidecars) at rest.
