@@ -354,7 +354,12 @@ Design in `docs/onboarding/onboarding-design.md` (research in `onboarding-resear
   shelved. Bonus: "notes stay on your device" copy stays 100% true. Gating build is now the
   **summaries feature**, not a migration.
 
-### #25 — outbound share cards (audit #25) ✅
+### #25 — outbound share cards (audit #25) ✅ shipped, then **removed on purpose (2026-08)**
+> `Fil/Views/FilShareCard.swift` no longer exists and `ArticleView` has no `ShareLink` — the share
+> card was deliberately cut during the August rework, not lost. Recorded here 2026-08-13 so the
+> worklog stops claiming a feature the codebase doesn't have. The original entry stands below as
+> the record of what was built.
+
 - New `Fil/Views/FilShareCard.swift`: `FilShareCard` (a branded 1080² card — the fil's gradient
   blob + title + excerpt + "fil · let thoughts be" wordmark on a fixed dark canvas) and
   `FilShareCardData`, a `nonisolated` `Transferable` value that renders to PNG **on demand at share
