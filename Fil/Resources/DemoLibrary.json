@@ -51,7 +51,7 @@
       "daysAgo": 0.5,
       "gradientStartHex": "#A8CC33",
       "gradientEndHex": "#1E5265",
-      "images": ["demo-photo-1.jpg", "demo-photo-2.jpg"],
+      "images": ["demo-photo-1.jpg"],
       "sortIndex": 1
     },
     {
