@@ -136,6 +136,8 @@ all — and organize sends up to 200 fils, the largest payload in the system. Se
 | **Zero Data Retention** | reassess | **Value dropped.** Privacy is no longer the wedge, so a stronger privacy claim buys much less than it would have in July. The 30-day wording is honest and already shipped in `PaywallView.swift:87`. Not worth chasing before launch. |
 | **Mirelo spike** | banked | One role, four variants, trimmed, judged against an existing Fil sound. |
 | **Gating numbers** | Mason | Which screensavers stay free, and the folder cap. The Lock Screen half of this question is now answered (#18: free). |
+| **Lifetime unlock** | folded into the monetization hold | Explored 2026-08-13 and left unresolved rather than rejected. $39.99 read as too high against the Droppy reference point ($6.99); $9.99 alongside $2.99/mo Pro asks buyers to purchase twice for overlapping value. The unresolved question is what a lifetime tier *contains* when the recurring cost is inference. Reopen with the PCC result, not before — free on-device inference changes the arithmetic completely. |
+| **Illinois DBA** | Mason | An individual Apple account shows the developer's legal name as seller unless a DBA is approved. Gates how the listing reads, not whether it ships. Was still being explored when the account was created. |
 
 ### What the positioning decision unlocked
 
