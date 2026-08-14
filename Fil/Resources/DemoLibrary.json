@@ -1,5 +1,5 @@
 {
-  "_comment": "Demo content for screenshot mode. Loaded only when the app is launched with -FilScreenshotMode. UUIDs are pinned on purpose: a fil's blob shape is a hash of its uuid, so changing one changes how it looks. Gradients are from Fil's own palette. `daysAgo` is relative to launch so the library always reads as recently used. Edit freely — this is content, not code. `state` controls what isn't stored as content: which folder is pinned to the Lock Screen, and the appearance override. `summary` is the caption in the folder list; `summaryParts` are the handwritten stamps on the pinned hero — a folder can have one without the other. `audio` and `images` name files bundled in Fil/Resources. Asset provenance: demo-voice.m4a is generated locally with `say`; demo-photo-1.jpg is from Unsplash (unsplash.com/photos/qMf0Qf6p1-g), free for commercial use.",
+  "_comment": "Demo content for screenshot mode. Loaded only when the app is launched with -FilScreenshotMode. UUIDs are pinned on purpose: a fil's blob shape is a hash of its uuid, so changing one changes how it looks. Gradients are from Fil's own palette. `daysAgo` is relative to launch so the library always reads as recently used. Edit freely, this is content, not code. `state` controls what isn't stored as content: which folder is pinned to the Lock Screen, and the appearance override. `summary` is the caption in the folder list; `summaryParts` are the handwritten stamps on the pinned hero, and a folder can have one without the other. No em dashes anywhere in this file: every string here is copy a user reads, and Fil's voice bans them. `audio` and `images` name files bundled in Fil/Resources. Asset provenance: demo-voice.m4a is generated locally with `say`; demo-photo-1.jpg is from Unsplash (unsplash.com/photos/qMf0Qf6p1-g), free for commercial use.",
 
   "state": {
     "pinnedFolder": "Yosemite",
@@ -18,7 +18,7 @@
     {
       "id": "9E1B2C3D-0002-4A00-9C00-000000000002",
       "name": "The move",
-      "summary": "Boxes, the landlord, and everything that has to be switched over.",
+      "summary": "Six weeks of small decisions.",
       "gradientStartHex": "#E85B9C",
       "gradientEndHex": "#6E4B6E",
       "sortIndex": 1
@@ -88,33 +88,31 @@
 
     {
       "uuid": "A1000000-0000-4000-8000-000000000010",
-      "transcript": "boxes\nkitchen is always more than you think",
+      "transcript": "the elevator only books before ten on saturday",
       "folder": "The move",
-      "daysAgo": 1.8,
+      "daysAgo": 1.1,
       "gradientStartHex": "#F24D59",
       "gradientEndHex": "#6659CC",
-      "todos": ["book the elevator", "kitchen", "the closet nobody opens", "label the fragile ones"],
-      "completedTodos": [true, false, false, false],
       "sortIndex": 0
     },
     {
       "uuid": "A1000000-0000-4000-8000-000000000011",
-      "transcript": "landlord thursday at four\nask about the deposit timeline and whether the walls need repainting",
+      "transcript": "walked through it empty this morning\nit looks smaller with nothing in it",
       "folder": "The move",
-      "daysAgo": 0.9,
+      "daysAgo": 0.3,
       "gradientStartHex": "#D9A626",
       "gradientEndHex": "#E8196A",
       "sortIndex": 1
     },
     {
       "uuid": "A1000000-0000-4000-8000-000000000012",
-      "transcript": "utilities to switch over",
+      "transcript": "before the 30th",
       "folder": "The move",
-      "daysAgo": 4.2,
+      "daysAgo": 2.6,
       "gradientStartHex": "#4DB366",
       "gradientEndHex": "#2E4FB3",
-      "todos": ["power", "internet — book the install early", "mail forwarding"],
-      "completedTodos": [true, false, false],
+      "todos": ["book the elevator", "measure the couch against the new stairs", "deposit back", "keys by noon"],
+      "completedTodos": [true, false, false, false],
       "sortIndex": 2
     },
 
