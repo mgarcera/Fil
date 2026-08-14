@@ -127,6 +127,16 @@ struct ContentView: View {
             }
         }
         .onOpenURL(perform: handleIncomingURL)
+        // Screenshot mode opens straight onto the screen being captured. In-process, because
+        // `simctl openurl` would put an "Open in Fil?" system prompt in the frame.
+        .task {
+            if let screen = DemoLibrary.initialScreen(folderIDsByName: DemoLibrary.seededFolderIDsByName()) {
+                // Let the folders section mount first. Setting the link before it exists drops it
+                // on a cold launch, which is exactly when a capture run happens.
+                try? await Task.sleep(for: .milliseconds(700))
+                homeDeepLink = screen
+            }
+        }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
