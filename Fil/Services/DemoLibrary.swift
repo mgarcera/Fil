@@ -48,6 +48,7 @@ enum DemoLibrary {
         try? context.delete(model: Folder.self)
 
         var foldersByName: [String: Folder] = [:]
+        var notesByFolderName: [String: [Note]] = [:]
         for spec in payload.folders {
             let folder = Folder(
                 id: spec.id,
@@ -79,6 +80,7 @@ enum DemoLibrary {
             note.sortIndex = spec.sortIndex ?? 0
             if let name = spec.folder {
                 note.folder = foldersByName[name]
+                notesByFolderName[name, default: []].append(note)
             }
             context.insert(note)
         }
@@ -88,9 +90,46 @@ enum DemoLibrary {
         UserDefaults.standard.set(true, forKey: "didSeedWelcomeFil")
         UserDefaults.standard.set(Date.now.timeIntervalSince1970, forKey: "firstUserFilAt")
 
+        applyState(payload.state, foldersByName: foldersByName, notesByFolderName: notesByFolderName)
+
         context.saveOrLog()
         FilLog.data.info(
             "DemoLibrary: seeded \(payload.folders.count, privacy: .public) folders, \(payload.fils.count, privacy: .public) fils"
+        )
+    }
+
+    /// App state that isn't stored in SwiftData — which folder is pinned to the Lock Screen, and
+    /// the appearance override. Kept in the same JSON so the data file is the only thing anyone
+    /// has to edit to change what a screenshot shows.
+    private static func applyState(
+        _ state: StateSpec?,
+        foldersByName: [String: Folder],
+        notesByFolderName: [String: [Note]]
+    ) {
+        if let appearance = state?.appearance, AppearanceMode(rawValue: appearance) != nil {
+            UserDefaults.standard.set(appearance, forKey: AppearanceMode.storageKey)
+        }
+
+        guard let name = state?.pinnedFolder, let folder = foldersByName[name] else { return }
+
+        // Newest first, capped to match LockScreenActivityCoordinator's blob peek. Built from the
+        // notes we just inserted rather than folder.notes, which isn't materialised before a save.
+        let blobs = (notesByFolderName[name] ?? [])
+            .sorted { $0.timestamp > $1.timestamp }
+            .prefix(8)
+            .map(\.activityBlob)
+
+        PinnedFolderStore.shared.pin(
+            id: folder.id,
+            name: folder.name,
+            count: notesByFolderName[name]?.count ?? 0,
+            blobs: Array(blobs),
+            gradientStartHex: folder.gradientStartHex,
+            gradientEndHex: folder.gradientEndHex
+        )
+        UserDefaults.filAppGroup.set(
+            LockScreenActivity.pinnedFolder.rawValue,
+            forKey: LockScreenActivity.storageKey
         )
     }
 
@@ -99,6 +138,14 @@ enum DemoLibrary {
     private struct Payload: Decodable {
         let folders: [FolderSpec]
         let fils: [FilSpec]
+        let state: StateSpec?
+    }
+
+    private struct StateSpec: Decodable {
+        /// Folder name to pin to the Lock Screen. Omit for the un-pinned hint state.
+        let pinnedFolder: String?
+        /// "auto", "light", or "dark".
+        let appearance: String?
     }
 
     private struct FolderSpec: Decodable {

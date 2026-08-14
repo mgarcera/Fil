@@ -1,5 +1,10 @@
 {
-  "_comment": "Demo content for screenshot mode. Loaded only when the app is launched with -FilScreenshotMode. UUIDs are pinned on purpose: a fil's blob shape is a hash of its uuid, so changing one changes how it looks. Gradients are from Fil's own palette. `daysAgo` is relative to launch so the library always reads as recently used. Edit freely — this is content, not code.",
+  "_comment": "Demo content for screenshot mode. Loaded only when the app is launched with -FilScreenshotMode. UUIDs are pinned on purpose: a fil's blob shape is a hash of its uuid, so changing one changes how it looks. Gradients are from Fil's own palette. `daysAgo` is relative to launch so the library always reads as recently used. Edit freely — this is content, not code. `state` controls what isn't stored as content: which folder is pinned to the Lock Screen, and the appearance override.",
+
+  "state": {
+    "pinnedFolder": "Yosemite",
+    "appearance": "dark"
+  },
 
   "folders": [
     {
