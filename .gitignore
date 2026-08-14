@@ -3,3 +3,9 @@
 # Claude Code personal settings
 .claude/settings.local.json
 .claude/settings.json
+
+# Captured screenshots — reproducible in one command via
+# Scripts/capture-screenshots.sh, and every run produces different bytes
+# (timestamps in the UI change), so versioning them just bloats the repo.
+# The recipe and the seed data are what's worth keeping.
+AppStore/screenshots/
