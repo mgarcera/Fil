@@ -39,6 +39,10 @@ enum DemoLibrary {
         case player(folder: UUID, note: UUID)
         /// Raise a screensaver immediately, by mode raw value.
         case canvas(String)
+        /// Move the Lock Screen pin from folder to folder on a timer, so a capture shows the act
+        /// of pinning rather than a pinned state. Possible because pinning is stored state, not a
+        /// gesture — nothing here simulates a tap.
+        case pinning
     }
 
     /// Which screen a capture run should open on, e.g. `-FilScreenshotScreen folder:Yosemite`.
@@ -62,6 +66,7 @@ enum DemoLibrary {
         case "bin": return .deepLink(.bin)
         case "compose": return .deepLink(.compose)
         case "voice": return .deepLink(.voice)
+        case "pinning": return .pinning
         case "player":
             guard
                 let spec = seededVoiceFil(),
@@ -109,6 +114,15 @@ enum DemoLibrary {
         else { return nil }
         return noteID
     }
+
+    /// Whether this run is the pinning capture, read by the folders view that owns `togglePin`.
+    static var isPinningCapture: Bool {
+        if case .pinning? = initialStage(folderIDsByName: seededFolderIDsByName()) { return true }
+        return false
+    }
+
+    /// How long each folder holds the pin during a pinning capture.
+    static let pinningDwell: Duration = .milliseconds(1600)
 
     private static func decodedPayload() -> Payload? {
         guard

@@ -142,6 +142,9 @@ struct ContentView: View {
                 // Only the folder is opened from here. The folder interior owns `playerSelection`
                 // and picks the fil up itself, so nothing has to be threaded down three views.
                 homeDeepLink = .folder(folderID)
+            case .pinning:
+                // Driven by the folders view, which owns `togglePin` and the folder list.
+                break
             case .canvas(let rawMode):
                 // Set the state directly rather than calling `launchScreensaver`, which waits on
                 // the 60s idle timer and on a fil-count threshold. A capture run should satisfy

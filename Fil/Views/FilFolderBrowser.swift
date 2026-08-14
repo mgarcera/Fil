@@ -128,6 +128,7 @@ struct FoldersHomeSection: View {
             }
             .onChange(of: deepLink) { _, _ in applyDeepLink() }
             .onChange(of: folders.map(\.id)) { _, _ in applyDeepLink() }   // retry once folders load (cold launch)
+            .task { await runPinningCaptureIfRequested() }
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .folder(let folder):
@@ -452,6 +453,27 @@ struct FoldersHomeSection: View {
             UserDefaults.filAppGroup.set(LockScreenActivity.pinnedFolder.rawValue, forKey: LockScreenActivity.storageKey)
         }
         Task { await LockScreenActivityCoordinator.sync(modelContext: context) }
+    }
+
+    /// Screenshot mode only: walk the pin from folder to folder so a capture shows pinning as an
+    /// act rather than a state. Reuses `togglePin`, so the clip exercises the real path — the
+    /// hero swap, the Lock Screen setting, the activity sync — instead of a staged imitation.
+    /// Inert in normal use, and it ends on the folder the seed file pinned so a run leaves the
+    /// library the way it found it.
+    private func runPinningCaptureIfRequested() async {
+        guard DemoLibrary.isPinningCapture else { return }
+        // Let the folders section mount and settle before the first swap.
+        try? await Task.sleep(for: .milliseconds(900))
+        while !Task.isCancelled {
+            for folder in folders {
+                guard !PinnedFolderStore.shared.isPinned(folder.id) else { continue }
+                if let current = folders.first(where: { PinnedFolderStore.shared.isPinned($0.id) }) {
+                    togglePin(current)
+                }
+                togglePin(folder)
+                try? await Task.sleep(for: DemoLibrary.pinningDwell)
+            }
+        }
     }
 
     /// New folders draw a gradient from the full range the fils use.

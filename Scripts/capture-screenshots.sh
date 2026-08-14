@@ -55,6 +55,7 @@ CLIPS=(
   "06-player|player|6"
   "07-screensaver|canvas|8"
   "08-home-canvas||5"
+  "09-pinning|pinning|8"
 )
 
 cd "$ROOT"
