@@ -1,5 +1,10 @@
 .appstore/
 
+# macOS + Xcode per-user state. None of these are tracked today; ignoring them
+# keeps one `git add -A` from making that permanent.
+.DS_Store
+xcuserdata/
+
 # Claude Code personal settings
 .claude/settings.local.json
 .claude/settings.json
