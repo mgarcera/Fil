@@ -164,6 +164,43 @@ is in `docs/features/export-import.md`.
 
 ---
 
+## Moved on 2026-08-14
+
+A long website + capture session. Three sequenced items below advanced; the
+entries there are annotated rather than rewritten, so the original plan stays
+readable next to what actually happened.
+
+**Capture harness (#4) — the in-app half is built and proven.**
+`Fil/Services/DemoLibrary.swift` seeds a fixed library from
+`Fil/Resources/DemoLibrary.json` behind `-FilScreenshotMode`;
+`Scripts/capture-screenshots.sh` drives dark appearance, a 9:41 status bar, and
+one shot per screen. Content and app state (pinned folder, appearance) live in
+the JSON, so changing a screenshot never touches UI code. Screen selection uses
+a launch argument rather than `simctl openurl`, which raises an undismissable
+"Open in Fil?" prompt that lands in frame. Still open: the compose layer for
+App Store frames, and the skill — deliberately last, so it documents a pipeline
+that has actually run.
+
+**Website (#6) — substantially rewritten and live-ready.** Sections are now:
+hero → *Four places that aren't the app* (Lock screen, Dynamic Island, Home
+screen, Today view, one clip playing at a time) → *No two thoughts look alike* →
+*Great outside. Better inside.* Cut: the "Don't go looking." section (arguing by
+negation) and the five caption pairs. The capture surfaces (Control Center,
+Action button) were split off — they run the opposite direction from the four,
+which show a pinned folder — and are parked with their clips retained. Legal
+pages remain staged behind `{{ENTITY}}`.
+
+**Hero shot — decision drifted, unresolved.** This doc names *the expanded
+Dynamic Island* as the hero. The site's hero is the blob, and the Dynamic Island
+is one of four equal frames. Both are defensible; they are not the same claim,
+and the App Store hero still has to be chosen.
+
+**New rule from the session:** an unused file carries its reason in code, or it
+goes. Applies directly to the two orphaned sounds under *Small tasks* — still on
+disk, still shipping, flagged here on 2026-08-13 and untouched since.
+
+---
+
 ## Open work, sequenced
 
 1. **Accessory lock-screen widget** (#20) — the positioning's central claim
@@ -210,4 +247,7 @@ is in `docs/features/export-import.md`.
   `cache_control`, so `organize`, `describe`, and whatever comes next inherit it
   by construction.
 - **Delete the orphaned sound assets** `addparagraph.mp3` /
-  `addparagraphrefil.mp3` (no method references them).
+  `addparagraphrefil.mp3` (no method references them). *Re-verified 2026-08-14:
+  both still on disk, 168K, zero references — and because the project uses
+  file-system synchronized groups, they ship to every user. Same class as the
+  564K of demo assets: nothing gates a resource but target membership.*
