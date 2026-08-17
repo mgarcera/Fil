@@ -10,7 +10,7 @@ the ASC + capture gate.
 
 ## 1. Host the three web pages (rootcause.ltd) — ✅ DONE
 All four URLs verified live (HTTP 200) on 2026-08-13:
-`rootcause.ltd/fil`, `/fil/privacy`, `/fil/terms`, `/fil/support`.
+`smidgecraft.com/fil`, `/fil/privacy`, `/fil/terms`, `/fil/support`.
 
 ⚠️ **They will need re-publishing** once the positioning reset lands — the hosted
 privacy policy and terms both carry July's privacy-as-positioning language. See
@@ -27,8 +27,8 @@ enter or confirm:
   launch" as the old checklist said.
 
 ## 3. App Store Connect — privacy & URLs
-- **Privacy Policy URL:** `https://rootcause.ltd/fil/privacy`
-- **Support URL:** `https://rootcause.ltd/fil/support`
+- **Privacy Policy URL:** `https://smidgecraft.com/fil/privacy`
+- **Support URL:** `https://smidgecraft.com/fil/support`
 - **App Privacy nutrition label:** **User Content › Other User Content**, used for
   **App Functionality**, **not linked** to identity, **not** used for tracking.
   Tracking = **No**. Answers in `AppStore/app-privacy.md`.

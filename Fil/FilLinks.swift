@@ -6,10 +6,10 @@ import Foundation
 ///
 /// Draft page content lives in the repo under `docs/legal/` and `docs/support/`.
 enum FilLinks {
-    static let website = URL(string: "https://rootcause.ltd/fil")!
-    static let privacyPolicy = URL(string: "https://rootcause.ltd/fil/privacy")!
-    static let termsOfService = URL(string: "https://rootcause.ltd/fil/terms")!
-    static let support = URL(string: "https://rootcause.ltd/fil/support")!
+    static let website = URL(string: "https://smidgecraft.com/fil")!
+    static let privacyPolicy = URL(string: "https://smidgecraft.com/fil/privacy")!
+    static let termsOfService = URL(string: "https://smidgecraft.com/fil/terms")!
+    static let support = URL(string: "https://smidgecraft.com/fil/support")!
 
     /// Contact / feedback address (also the App Store Connect support contact).
     static let contactEmail = URL(string: "mailto:mason@smidgecraft.com")!
