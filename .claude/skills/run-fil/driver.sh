@@ -142,6 +142,31 @@ if missing:
 PY
 }
 
+# Marketing status bar: 9:41, full bars, charged, no carrier name.
+#
+# This drives the LOCK SCREEN's big clock too, not just the status bar strip — which is
+# not what the command's name suggests, and is the only way to get 9:41 onto a locked
+# screenshot. What it will NOT do is set the date: it forces a "Sat Jan 1" placeholder,
+# and every ISO form the --help text promises is rejected outright (see SKILL.md). For a
+# shot needing a believable date, clear this and set the Mac's clock instead — the
+# simulator has no clock of its own.
+cmd_statusbar() {
+    local udid
+    udid=$(sim_udid)
+    if [ "${1:-on}" = "clear" ]; then
+        xcrun simctl status_bar "$udid" clear
+        echo "status bar overrides cleared — lock screen shows the host's real date and time"
+        return
+    fi
+    # These exact flags are known-good together. Passing an ISO string to --time makes the
+    # whole call fail with EINVAL, taking the battery and signal flags down with it.
+    xcrun simctl status_bar "$udid" override \
+        --time "9:41" --batteryState charged --batteryLevel 100 \
+        --cellularMode active --cellularBars 4 --wifiMode active --wifiBars 3 \
+        --operatorName ""
+    echo "status bar: 9:41, full bars, charged, no carrier (date will read 'Sat Jan 1')"
+}
+
 cmd_logs() {
     local udid
     udid=$(sim_udid)
@@ -165,14 +190,15 @@ cmd_up() {
 }
 
 case "${1:-up}" in
-    boot)     cmd_boot ;;
-    build)    cmd_build ;;
-    install)  cmd_install ;;
-    launch)   cmd_launch "${2:-}" ;;
-    shot)     cmd_shot "${2:-}" ;;
-    snapshot) cmd_snapshot ;;
-    logs)     cmd_logs "${2:-1m}" ;;
-    stop)     cmd_stop ;;
-    up)       cmd_up "${2:-}" ;;
-    *)        die "unknown command '$1' (boot|build|install|launch|shot|snapshot|logs|stop|up)" ;;
+    boot)      cmd_boot ;;
+    build)     cmd_build ;;
+    install)   cmd_install ;;
+    launch)    cmd_launch "${2:-}" ;;
+    shot)      cmd_shot "${2:-}" ;;
+    snapshot)  cmd_snapshot ;;
+    statusbar) cmd_statusbar "${2:-on}" ;;
+    logs)      cmd_logs "${2:-1m}" ;;
+    stop)      cmd_stop ;;
+    up)        cmd_up "${2:-}" ;;
+    *)         die "unknown command '$1' (boot|build|install|launch|shot|snapshot|statusbar|logs|stop|up)" ;;
 esac

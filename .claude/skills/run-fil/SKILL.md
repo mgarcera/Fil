@@ -41,6 +41,8 @@ Then drive it:
 .claude/skills/run-fil/driver.sh shot /tmp/fil.png      # screenshot -> prints the path
 .claude/skills/run-fil/driver.sh launch "folder:The move"  # jump to a screen
 .claude/skills/run-fil/driver.sh snapshot               # widget data contract only
+.claude/skills/run-fil/driver.sh statusbar              # 9:41 marketing status bar
+.claude/skills/run-fil/driver.sh statusbar clear        # back to the host's real clock
 .claude/skills/run-fil/driver.sh logs 30s               # app log lines
 .claude/skills/run-fil/driver.sh stop                   # terminate app, leave sim booted
 ```
@@ -53,6 +55,35 @@ Screens accepted by `launch`, from `Scripts/capture-screenshots.sh`: `` (home),
 
 Overrides: `FIL_SIM_UDID` (target a specific simulator), `FIL_SIM` (device name,
 default `iPhone 17 Pro Max`), `FIL_SETTLE` (post-launch seconds, default 6).
+
+## Marketing screenshots: the clock
+
+`driver.sh statusbar` sets 9:41, full bars, charged, no carrier name.
+
+**It also drives the lock screen's big clock**, which the command's name does not suggest —
+and it is the only way to get 9:41 onto a locked screenshot.
+
+**It cannot set the date.** The override forces a `Sat Jan 1` placeholder. The `--help` text
+claims *"If the string is a valid ISO date string it will also set the date on relevant
+devices"* — **that is false on this runtime.** Every one of these was rejected outright:
+
+```
+2026-08-17T09:41:00Z         rejected
+2026-08-17T09:41:00+00:00    rejected
+2026-08-17 09:41:00          rejected
+2026-08-17T09:41             rejected
+Mon Aug 17 9:41              rejected
+```
+
+`--time` takes a bare clock string and nothing else. Worse, an ISO string doesn't degrade —
+it fails the *whole* call with EINVAL, silently taking the battery and signal flags with it,
+so you get no overrides at all rather than a partial set.
+
+**For a shot that needs a believable date:** run `statusbar clear` and set the **Mac's** clock
+(System Settings → General → Date & Time → turn off "Set automatically"). The simulator has
+no clock of its own — it reads the host's, so the lock screen then shows exactly what you set.
+Put the Mac's clock back afterwards; while it's wrong, TLS validation and git timestamps are
+too.
 
 ## Verifying widget work without any UI
 
@@ -111,6 +142,8 @@ anything scripted.
 | `no pinnedFolderSnapshot.json yet` | Nothing is pinned. Launch with `-FilScreenshotMode` (the driver does) — the seed pins Yosemite. |
 | `unbound variable` from the driver after an edit | A `$VAR` was followed by a multi-byte character (e.g. `…`), which gets absorbed into the variable name under `set -u`. Brace it: `${VAR}`. |
 | Screenshot is blank / all black | The app didn't finish launching. Raise `FIL_SETTLE`. |
+| `status_bar override` fails with `Invalid argument` / EINVAL | An ISO date string was passed to `--time`. Use a bare clock string (`"9:41"`). The whole call fails, so no overrides get set at all. |
+| Lock screen date reads `Sat Jan 1` | A status bar override is active. `driver.sh statusbar clear`, then set the Mac's clock if you need a specific date. |
 | `command not found: timeout` | macOS has no `timeout(1)`. Use a background process and `sleep`. |
 
 ## Test
