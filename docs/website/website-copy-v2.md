@@ -183,7 +183,7 @@ it must read at thumbnail size, and it's the one thing no competitor's listing s
 >
 > [ App Store ] · [ privacy ] · [ terms ] · [ support ]
 >
-> made by mason · mason@rootcause.ltd
+> made by mason · mason@smidgecraft.com
 > `© 2026`
 
 ---

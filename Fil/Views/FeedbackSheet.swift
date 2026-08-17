@@ -107,7 +107,7 @@ struct FeedbackSheet: View {
         .alert("Couldn't send", isPresented: alertBinding(.failed)) {
             Button("OK") {}
         } message: {
-            Text("Something went wrong. Please try again, or email mason@rootcause.ltd.")
+            Text("Something went wrong. Please try again, or email mason@smidgecraft.com.")
         }
     }
 
