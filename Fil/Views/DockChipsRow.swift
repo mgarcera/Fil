@@ -97,9 +97,10 @@ struct DockChipsRow: View {
 
     // MARK: - File chip
 
-    /// Shown on the folders home whenever there is something to act on — a selection to file, or
-    /// a Bin to clear. Hidden inside a folder interior, where "the Bin" isn't on screen.
-    private var canFile: Bool { showBin && (hasBin || hasSelection) }
+    /// Shown whenever there is something to act on: a selection anywhere, or the Bin on the
+    /// folders home. Inside a folder interior a selection is the only valid input — the Bin
+    /// isn't on screen there, and acting on something you can't see reads as a bug.
+    private var canFile: Bool { hasSelection || (showBin && hasBin) }
 
     /// With no folders yet there is nothing to file INTO, and that is smart organize's job — it's
     /// the mode that invents folders. Same slot, honest label, no dead end.

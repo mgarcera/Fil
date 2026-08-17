@@ -8,8 +8,9 @@
 import SwiftUI
 import SwiftData
 
-/// What the sheet is presented with: the fils to file, decided by the caller (a selection if
-/// there is one, otherwise the whole Bin). Identity so `.sheet(item:)` can drive it.
+/// What the sheet is presented with: the fils to file, decided by the caller — a selection if
+/// there is one, otherwise the Bin. A selection can come from inside a folder, so nothing here
+/// may assume these fils were loose. Identity so `.sheet(item:)` can drive it.
 struct BinFilingProposal: Identifiable {
     let id = UUID()
     let notes: [Note]
@@ -67,7 +68,7 @@ struct BinFilingSheet: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle("File the Bin")
+                .navigationTitle("File")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -77,7 +78,7 @@ struct BinFilingSheet: View {
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         if case .ready = phase {
-                            Button(filedCount == 0 ? "File" : "File \(filedCount)") { commit() }
+                            Button("Proceed") { commit() }
                                 .disabled(filedCount == 0)
                         }
                     }
@@ -105,7 +106,7 @@ struct BinFilingSheet: View {
                 // Not a failure: the model is told that leaving a fil loose beats filing it
                 // wrongly, so "none of these fit" is a real answer and gets said plainly.
                 if filedCount == 0 {
-                    Text("None of these matched a folder you already have. Pick one yourself, or leave them in the Bin.")
+                    Text("None of these matched a folder you already have. Pick one yourself or leave it where it is.")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -139,7 +140,9 @@ struct BinFilingSheet: View {
                     .padding(.vertical, 2)
                 }
             } footer: {
-                Text("Reading your Bin…")
+                // Not "Reading your Bin" — these fils may have come from a folder's selection,
+                // and naming a place they were never in is the same slip as the old title.
+                Text("Reading…")
             }
         }
         .listStyle(.insetGrouped)
@@ -152,7 +155,7 @@ struct BinFilingSheet: View {
                     row($proposal)
                 }
             } footer: {
-                Text("Anything left on \(Text("Leave in Bin").bold()) stays where it is.")
+                Text("Anything left on \(Text("Leave it").bold()) stays where it is.")
             }
         }
         .listStyle(.insetGrouped)
@@ -185,11 +188,11 @@ struct BinFilingSheet: View {
                     }
                     Divider()
                     Button(role: .destructive) { proposal.wrappedValue.destination = nil } label: {
-                        Label("Leave in Bin", systemImage: "tray")
+                        Label("Leave it", systemImage: "tray")
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(proposal.wrappedValue.destination?.name ?? "Leave in Bin")
+                        Text(proposal.wrappedValue.destination?.name ?? "Leave it")
                             .font(.system(size: 13, weight: .medium))
                         Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
                     }

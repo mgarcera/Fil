@@ -1064,10 +1064,15 @@ struct CanvasHome: View {
         // it covers the chip, and the request lives inside it.
         guard binFiling == nil else { return }
 
-        // Scope: a selection if you made one, the whole Bin otherwise. Selecting first is how
-        // you file part of the Bin, reusing the selection model rather than inventing a second.
+        // Scope: a selection if you made one, the whole Bin otherwise. Selecting first is how you
+        // file part of the Bin, reusing the selection model rather than inventing a second.
+        //
+        // Inside a folder there is no Bin on screen, so a selection is the only thing that can be
+        // meant — falling back to the Bin there would file fils you can't see from a screen that
+        // never mentioned them.
         let selected = FilSelectionStore.shared.selectedNotes()
-        let loose = selected.isEmpty ? notes.filter { $0.folder == nil } : selected
+        let loose = !selected.isEmpty ? selected
+            : (folderInteriorOpen ? [] : notes.filter { $0.folder == nil })
         guard !loose.isEmpty else { return }
         guard !folders.isEmpty else {
             filingError = "Filing needs folders to file into. Make one first, or use Organize to have them made for you."
