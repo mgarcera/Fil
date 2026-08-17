@@ -117,6 +117,13 @@ struct CanvasHome: View {
     @State private var resultsPager: FilPagerSelection?
     @State private var showPaywall = false
     @State private var showFeedback = false
+    // Shake-to-file. `binFiling` non-nil presents the review tray; `filing` guards re-entry while
+    // Claude is working, since a second shake mid-request would spend a second call.
+    @State private var binFiling: BinFilingProposal?
+    @State private var filing = false
+    @State private var filingError: String?
+    /// Each filed fil's previous folder, kept so the batch can be undone.
+    @State private var lastFiling: [UUID: Folder?]?
     // Voice capture: the mic glyph starts recording; the gooey blob pulses while recording, then
     // flows into the same creation animation typed/link fils use.
     @State private var recorder = VoiceRecorderViewModel()
@@ -301,6 +308,26 @@ struct CanvasHome: View {
             PaywallView()
                 .presentationDetents([.large])
                 .presentationBackground(Theme.background)
+        }
+        // Shake to file the Bin. Only on the folders home — inside a folder interior there is no
+        // Bin on screen, and a gesture that acts on something you can't see is a gesture that
+        // feels like a bug.
+        .onShake { if !folderInteriorOpen { fileTheBin() } }
+        .sheet(item: $binFiling) { proposal in
+            BinFilingSheet(
+                folders: folders,
+                proposals: proposal.items,
+                onFiled: { previous in lastFiling = previous }
+            )
+            .presentationBackground(Theme.background)
+        }
+        .alert("Couldn't file the Bin", isPresented: .init(
+            get: { filingError != nil },
+            set: { if !$0 { filingError = nil } }
+        )) {
+            Button("OK", role: .cancel) { filingError = nil }
+        } message: {
+            Text(filingError ?? "")
         }
         .sheet(isPresented: $showFeedback) {
             FeedbackSheet(context: "smart search fell back to keyword for: “\(query)”")
@@ -982,6 +1009,61 @@ struct CanvasHome: View {
 
     /// Turn the pending photos (+ optional caption) into one image fil, flowing through the same
     /// gooey-blob creation animation typed fils use.
+    /// Shake → ask Claude where each loose fil belongs among the folders you already have, then
+    /// open the review tray. Nothing moves here; `BinFilingSheet` writes, and only on commit.
+    ///
+    /// Requires folders to file INTO. With none, there is nothing to propose — that is smart
+    /// organize's job (it invents folders), and sending an empty list is a 400 from the proxy.
+    private func fileTheBin() {
+        guard !filing, binFiling == nil else { return }
+
+        let loose = notes.filter { $0.folder == nil }
+        guard !loose.isEmpty else { return }
+        guard !folders.isEmpty else {
+            filingError = "Filing needs folders to file into. Make one first, or use Organize to have them made for you."
+            return
+        }
+        // The gesture and the tray are free; the Claude call is what costs, so the gate sits here.
+        guard StoreManager.shared.isPro else { showPaywall = true; return }
+
+        let targets = Array(loose.prefix(200))
+        let inputs = targets.map { note in
+            FilClusterInput(
+                id: note.uuid,
+                text: String((note.transcript.isEmpty ? note.title : note.transcript).prefix(240)),
+                keyword: note.displayBadgeText
+            )
+        }
+        let choices = folders.map {
+            ClaudeSurfacingService.FolderChoice(id: $0.id, name: $0.name, summary: $0.summary)
+        }
+        let txn = StoreManager.shared.proTransactionID ?? ""
+
+        filing = true
+        // Acknowledge the shake immediately — the Claude call takes a moment and an unanswered
+        // gesture reads as a gesture that didn't register.
+        Haptics.move()
+        Task {
+            do {
+                let filed = try await ClaudeSurfacingService.shared.fileIntoFolders(
+                    folders: choices, fils: inputs, transactionID: txn
+                )
+                let notesByID = Dictionary(targets.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+                let foldersByID = Dictionary(folders.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+                let items = filed.compactMap { assignment -> BinFilingSheet.Proposal? in
+                    guard let note = notesByID[assignment.filID] else { return nil }
+                    let destination = assignment.folderID.flatMap { foldersByID[$0] }
+                    return .init(id: assignment.filID, note: note, destination: destination, proposed: destination)
+                }
+                binFiling = BinFilingProposal(items: items)
+            } catch {
+                filingError = (error as? ClaudeSurfacingService.SurfacingError)?.errorDescription
+                    ?? error.localizedDescription
+            }
+            filing = false
+        }
+    }
+
     private func createImageFil(images: [Data], caption: String, todos: [String] = []) async {
         let caption = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         text = ""
