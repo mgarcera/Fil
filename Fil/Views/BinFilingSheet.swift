@@ -266,6 +266,10 @@ struct BinFilingSheet: View {
             previous[proposal.note.uuid] = proposal.note.folder
             proposal.note.folder = proposal.destination
             proposal.note.sortIndex = 0
+            // A filed fil is dealt with, so drop it from the selection — otherwise the dock keeps
+            // offering move/copy/landfil on something you just put away. Anything left on
+            // "Leave it" stays selected: it's still outstanding, and that's the useful remainder.
+            FilSelectionStore.shared.remove(proposal.note.uuid)
         }
         try? context.save()
         onFiled(previous)

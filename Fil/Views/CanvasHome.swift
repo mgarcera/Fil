@@ -1019,7 +1019,10 @@ struct CanvasHome: View {
     private var filingUndoBar: some View {
         if let filed = lastFiling, !filed.isEmpty {
             HStack(spacing: 12) {
-                Text("Filed \(filed.count) \(filed.count == 1 ? "fil" : "fils")")
+                // "thoughts", the word the rest of the app uses when it talks to you about them
+                // — "These thoughts will be deleted", "Your thoughts will return to the Bin".
+                // "fil" is the object's name; "thought" is what it is.
+                Text("Filed \(filed.count) \(filed.count == 1 ? "thought" : "thoughts")")
                     .font(.system(size: 14, weight: .medium))
                 Button("Undo") { undoFiling() }
                     .font(.system(size: 14, weight: .semibold))
