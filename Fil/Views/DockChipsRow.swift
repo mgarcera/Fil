@@ -18,7 +18,7 @@ struct DockChipsRow: View {
     @Binding var tab: DockTab
     /// The Bin segment shows only on the folders home (hidden inside a folder interior).
     var showBin: Bool = true
-    /// Tapped "File these" (or "Organize", when there's nowhere to file yet). The caller decides
+    /// Tapped "File for me" (or "Organize", when there's nowhere to file yet). The caller decides
     /// which of the two it runs — it re-checks the same folder count this row labels itself from.
     var onFile: () -> Void = {}
 
@@ -106,7 +106,10 @@ struct DockChipsRow: View {
     private var fileChip: some View {
         Button(action: onFile) {
             chipLabel(
-                allFolders.isEmpty ? "Organize" : "File these",
+                // "File for me" rather than "File these": it rhymes with the folder menu's
+                // "Caption for me", so the two Claude actions read as a pair and both say the
+                // work is being done on your behalf.
+                allFolders.isEmpty ? "Organize" : "File for me",
                 allFolders.isEmpty ? "wand.and.stars" : "folder.badge.plus",
                 destructive: false,
                 // Amber marks a Pro feature, the same signal "Caption for me" carries in the
