@@ -14,3 +14,7 @@ xcuserdata/
 # (timestamps in the UI change), so versioning them just bloats the repo.
 # The recipe and the seed data are what's worth keeping.
 AppStore/screenshots/
+
+# run-fil driver: the resolved simulator UUID is per-machine state
+.claude/skills/run-fil/.sim-udid
+.claude/skills/run-fil/shot.png
