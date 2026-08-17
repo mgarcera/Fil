@@ -124,6 +124,10 @@ struct CanvasHome: View {
     @State private var filingError: String?
     /// Each filed fil's previous folder, kept so the batch can be undone.
     @State private var lastFiling: [UUID: Folder?]?
+    /// Non-Pro shake says its piece once and then stays quiet forever — a repeating nag from an
+    /// accidental gesture is the ambush we're avoiding, just slower.
+    @AppStorage("filShakeProHintShown") private var shakeProHintShown = false
+    @State private var proHint: String?
     // Voice capture: the mic glyph starts recording; the gooey blob pulses while recording, then
     // flows into the same creation animation typed/link fils use.
     @State private var recorder = VoiceRecorderViewModel()
@@ -225,7 +229,11 @@ struct CanvasHome: View {
                     // + move/copy/delete chips when selected. Present whenever the dock has fils; hidden
                     // during search.
                     if (hasSelection || binHasItems) && !isSearching {
-                        DockChipsRow(tab: $dockTab, showBin: !folderInteriorOpen)
+                        DockChipsRow(
+                            tab: $dockTab,
+                            showBin: !folderInteriorOpen,
+                            onFile: fileOrOrganize
+                        )
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 2)
                             .transition(.scale.combined(with: .opacity))
@@ -312,7 +320,7 @@ struct CanvasHome: View {
         // Shake to file the Bin. Only on the folders home — inside a folder interior there is no
         // Bin on screen, and a gesture that acts on something you can't see is a gesture that
         // feels like a bug.
-        .onShake { if !folderInteriorOpen { fileTheBin() } }
+        .onShake { if !folderInteriorOpen { fileTheBin(deliberate: false) } }
         .sheet(item: $binFiling) { proposal in
             BinFilingSheet(
                 folders: folders,
@@ -1018,10 +1026,24 @@ struct CanvasHome: View {
     ///
     /// Requires folders to file INTO. With none, there is nothing to propose — that is smart
     /// organize's job (it invents folders), and sending an empty list is a 400 from the proxy.
-    /// "Filed 6 fils · Undo", shown after a commit and cleared on a timer.
+    /// "Filed 6 fils · Undo", shown after a commit and cleared on a timer. Shares its slot with
+    /// the one-time Pro hint — the two can't co-occur, since one follows a filing that happened
+    /// and the other a filing that couldn't.
     @ViewBuilder
     private var filingUndoBar: some View {
-        if let filed = lastFiling, !filed.isEmpty {
+        if let hint = proHint {
+            Text(hint)
+                .font(.system(size: 14, weight: .medium))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .task {
+                    try? await Task.sleep(for: .seconds(4))
+                    withAnimation(.snappy) { proHint = nil }
+                }
+        } else if let filed = lastFiling, !filed.isEmpty {
             HStack(spacing: 12) {
                 Text("Filed \(filed.count) \(filed.count == 1 ? "fil" : "fils")")
                     .font(.system(size: 14, weight: .medium))
@@ -1054,17 +1076,38 @@ struct CanvasHome: View {
         withAnimation(.snappy) { lastFiling = nil }
     }
 
-    private func fileTheBin() {
+    /// The chip's action. With no folders yet there is nothing to file into, and inventing
+    /// folders is smart organize's job — so the same control routes to whichever mode the
+    /// library can actually use, instead of erroring and telling you to go elsewhere.
+    private func fileOrOrganize() {
+        if folders.isEmpty { organizeRequest = true } else { fileTheBin(deliberate: true) }
+    }
+
+    /// - Parameter deliberate: true when a labelled control was tapped, false for the shake.
+    ///   Only a deliberate act may raise the paywall. Shake fires while walking or driving, and
+    ///   a paywall from a gesture you didn't know existed reads as an ambush rather than an
+    ///   offer — so an ambient trigger gets one quiet capsule, once, and nothing after that.
+    private func fileTheBin(deliberate: Bool) {
         guard !filing, binFiling == nil else { return }
 
-        let loose = notes.filter { $0.folder == nil }
+        // Scope: a selection if you made one, the whole Bin otherwise. Selecting first is how
+        // you file part of the Bin, reusing the selection model rather than inventing a second.
+        let selected = FilSelectionStore.shared.selectedNotes()
+        let loose = selected.isEmpty ? notes.filter { $0.folder == nil } : selected
         guard !loose.isEmpty else { return }
         guard !folders.isEmpty else {
             filingError = "Filing needs folders to file into. Make one first, or use Organize to have them made for you."
             return
         }
-        // The gesture and the tray are free; the Claude call is what costs, so the gate sits here.
-        guard StoreManager.shared.isPro else { showPaywall = true; return }
+        guard StoreManager.shared.isPro else {
+            if deliberate {
+                showPaywall = true
+            } else if !shakeProHintShown {
+                shakeProHintShown = true
+                withAnimation(.snappy) { proHint = "Filing the Bin is part of Pro" }
+            }
+            return
+        }
 
         let targets = Array(loose.prefix(200))
         let inputs = targets.map { note in

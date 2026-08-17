@@ -18,10 +18,14 @@ struct DockChipsRow: View {
     @Binding var tab: DockTab
     /// The Bin segment shows only on the folders home (hidden inside a folder interior).
     var showBin: Bool = true
+    /// Tapped "File these" (or "Organize", when there's nowhere to file yet). The caller decides
+    /// which of the two it runs — it re-checks the same folder count this row labels itself from.
+    var onFile: () -> Void = {}
 
     private let selection = FilSelectionStore.shared
     @Query(filter: #Predicate<Note> { $0.folder == nil }, sort: \Note.timestamp, order: .reverse)
     private var unfiled: [Note]
+    @Query private var allFolders: [Folder]
     @State private var showLandfil = false
     @State private var copied = false
 
@@ -36,6 +40,10 @@ struct DockChipsRow: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     switcher
+                    // The visible twin of the shake gesture. Shake is undiscoverable and
+                    // unavailable to anyone who can't shake a phone, so the feature needs a tap
+                    // target; this row already exists to hold exactly this kind of action.
+                    if canFile { fileChip }
                     if hasSelection {
                         moveChip
                         // Copy acts on the selection only, so hide it while browsing the Bin tab.
@@ -87,6 +95,28 @@ struct DockChipsRow: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - File chip
+
+    /// Shown on the folders home whenever there is something to act on — a selection to file, or
+    /// a Bin to clear. Hidden inside a folder interior, where "the Bin" isn't on screen.
+    private var canFile: Bool { showBin && (hasBin || hasSelection) }
+
+    /// With no folders yet there is nothing to file INTO, and that is smart organize's job — it's
+    /// the mode that invents folders. Same slot, honest label, no dead end.
+    private var fileChip: some View {
+        Button(action: onFile) {
+            chipLabel(
+                allFolders.isEmpty ? "Organize" : "File these",
+                allFolders.isEmpty ? "wand.and.stars" : "folder.badge.plus",
+                destructive: false,
+                // Amber marks a Pro feature, the same signal "Caption for me" carries in the
+                // folder menu. Shown to everyone: it's what the lock looks like before you tap.
+                tint: Theme.filProAmber
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Action chips
 
     private var moveChip: some View {
@@ -111,10 +141,13 @@ struct DockChipsRow: View {
     }
 
     /// A liquid-glass chip label; delete carries a red-tinted glass with a white label.
-    private func chipLabel(_ text: String, _ icon: String, destructive: Bool) -> some View {
+    /// `tint` colours the icon only — used to mark a Pro action without shouting.
+    private func chipLabel(_ text: String, _ icon: String, destructive: Bool, tint: Color? = nil) -> some View {
         let fg: Color = destructive ? .white : Theme.primaryText
         return HStack(spacing: 6) {
-            Image(systemName: icon).font(.system(size: 13, weight: .semibold))
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tint ?? fg)
             Text(text).font(Theme.dmSans(14, weight: .semibold))
         }
         .foregroundStyle(fg)
