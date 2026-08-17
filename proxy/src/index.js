@@ -119,6 +119,32 @@ ${VOICE_RULES}
 Respond with ONLY a JSON object, no prose or code fences:
 {"groups": [{"name": "Folder Name", "description": "...", "fils": [note numbers]}]}`;
 
+// File mode: put loose notes into folders the person ALREADY has. Organize's opposite number —
+// organize proposes new folders and never sees the existing ones, so it will cheerfully invent
+// an "Apartment" beside the Apartment folder you already keep. This one may not invent at all.
+//
+// Deliberately conservative: null (leave it in the Bin) is a better answer than a confident wrong
+// folder, because the cost is asymmetric. A note left loose is visible and one tap from filed; a
+// note filed wrongly is a note you will not find again.
+const FILE_PROMPT = `You file someone's private notes (they call each one a "fil") into folders they already have.
+
+The folders are listed as:
+  - Folder Name — what that folder holds
+
+Each note is listed as:
+  N. (when it was made, its type, whether it has open to-dos) title: snippet
+
+For each note, choose the ONE existing folder it belongs in, or null if none of them fit.
+
+Rules:
+- Only ever use a folder name exactly as it appears in the list. Never invent a folder, never rename one, never merge two.
+- null is the right answer whenever you are unsure. A note left loose costs the person one tap; a note filed into the wrong folder is a note they will not find again.
+- File by SUBJECT — what the note is about — not by mood or tone. Two notes that feel similar but concern different things go to different folders (or to null).
+- Every note gets exactly one entry, in the order given.
+
+Respond with ONLY a JSON object, no prose or code fences:
+{"assignments": [{"fil": 1, "folder": "Folder Name"}, {"fil": 2, "folder": null}]}`;
+
 // Snippets mode: the notes below all live in one folder; capture what's in it as a few short
 // fragments (like quick handwritten labels on scraps of paper), not sentences.
 const SNIPPETS_PROMPT = `You help someone explore their own private notes (they call each one a "fil"). The notes below all live in ONE folder. Capture what the folder holds as 2 to 4 SHORT fragments, each just a few words (aim for 3 to 6 words, never a full sentence), like quick handwritten labels on scraps of paper. Each fragment names a distinct thread, kind, or recurring thing in the folder. Order them most prominent first.
@@ -192,7 +218,14 @@ export default {
     const snippets = body.snippets === true;
     // Describe mode: caption one folder (query = the folder's name) in a sentence or two.
     const describe = body.describe === true;
-    if (!fils || (!organize && !snippets && !describe && !query)) return json({ error: "Expected { query, fils: [...] }." }, 400);
+    // File mode: assign loose notes to folders that already exist. Needs those folders, so an
+    // empty list is a client bug — the app is expected to fall through to organize instead.
+    const file = body.file === true;
+    const folders = Array.isArray(body.folders) ? body.folders : [];
+    if (file && folders.length === 0) {
+      return json({ error: "File mode needs { folders: [...] }; use organize when there are none." }, 400);
+    }
+    if (!fils || (!organize && !snippets && !describe && !file && !query)) return json({ error: "Expected { query, fils: [...] }." }, 400);
 
     // Summarize-only mode: the app supplies the notes it already chose (a keyword match) and just wants
     // a reflection — no selection. Returns { summary } and never touches `relevant`.
@@ -209,21 +242,43 @@ export default {
       .join("\n");
 
     const noQuery = organize || snippets;   // these modes reflect the whole list, no query
+
+    /**
+     * The corpus block, with `cache_control` attached by construction.
+     *
+     * v1-route's "make cache control structural": the payload used to be a ternary chain where
+     * every new mode was a fresh chance to forget the breakpoint, and organize and describe had
+     * already forgotten it. Anything varying (a query, a folder name) goes in a SEPARATE block
+     * after this one, so the cached prefix stays stable across calls.
+     *
+     * Caching only actually engages above 4,096 tokens on Haiku and fails silently below it —
+     * so this buys nothing on small libraries. It is correct-by-construction, not a cost lever.
+     */
+    const corpus = (text) => ({ type: "text", text, cache_control: { type: "ephemeral" } });
+
+    const folderList = folders
+      .map((f) => (typeof f === "string" ? `- ${f}` : `- ${f.name}${f.description ? ` — ${f.description}` : ""}`))
+      .join("\n");
+
     const anthropicBody = {
       model: MODEL,
-      max_tokens: organize ? ORGANIZE_MAX_TOKENS : (snippets || describe ? 300 : MAX_TOKENS),
-      system: organize ? ORGANIZE_PROMPT : snippets ? SNIPPETS_PROMPT : describe ? DESCRIBE_PROMPT : (summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT),
+      max_tokens: organize || file ? ORGANIZE_MAX_TOKENS : (snippets || describe ? 300 : MAX_TOKENS),
+      system: organize ? ORGANIZE_PROMPT : file ? FILE_PROMPT : snippets ? SNIPPETS_PROMPT : describe ? DESCRIBE_PROMPT : (summarizeOnly ? summarizeSystem(window) : SYSTEM_PROMPT),
       messages: [
         {
           role: "user",
-          content: describe
-            ? [{ type: "text", text: `Folder${query ? ` named "${query}"` : ""}:\n${numbered}` }]
-            : noQuery
-              ? [{ type: "text", text: `Notes:\n${numbered}` }]
-              : [
-                  { type: "text", text: `Notes:\n${numbered}`, cache_control: { type: "ephemeral" } },
-                  { type: "text", text: `Query: ${query}` },
-                ],
+          content: file
+            // Notes first and cached; the folder list is the varying suffix, since folders get
+            // renamed and added far more often than the Bin's contents change mid-session.
+            ? [corpus(`Notes:\n${numbered}`), { type: "text", text: `Folders:\n${folderList}` }]
+            : describe
+              // Left uncached on purpose: the folder's name is interleaved with the notes here,
+              // so the prefix varies per call anyway. Splitting it would reshape a prompt that
+              // is live and Pro-gated — worth doing, but not as a side effect of adding a mode.
+              ? [{ type: "text", text: `Folder${query ? ` named "${query}"` : ""}:\n${numbered}` }]
+              : noQuery
+                ? [corpus(`Notes:\n${numbered}`)]
+                : [corpus(`Notes:\n${numbered}`), { type: "text", text: `Query: ${query}` }],
         },
       ],
     };
@@ -260,6 +315,15 @@ export default {
       if (!groups) return json({ error: "Couldn't read the model's response." }, 502);
       console.log(`organize: ${fils.length} fils -> ${groups.length} folders | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
       return json({ groups }, 200);
+    }
+
+    if (file) {
+      const names = folders.map((f) => (typeof f === "string" ? f : f.name));
+      const assignments = parseAssignments(text, fils.length, names);
+      if (!assignments) return json({ error: "Couldn't read the model's response." }, 502);
+      const placed = assignments.filter((a) => a.folder).length;
+      console.log(`file: ${fils.length} fils -> ${placed} placed, ${fils.length - placed} left loose | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
+      return json({ assignments }, 200);
     }
 
     if (summarizeOnly) {
@@ -444,6 +508,49 @@ function parseGroups(text) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Parse the file-mode response: {"assignments":[{"fil":1,"folder":"Work"|null}]} → one entry per
+ * note, in note order.
+ *
+ * Every proposal is checked back against the real folder list, case-insensitively. The prompt
+ * forbids inventing a folder, but a model that invents one anyway would otherwise have its
+ * invention flow through to a UI that files notes — so an unrecognised name is downgraded to
+ * null (leave it in the Bin) rather than trusted. Same reasoning as organize's out-of-range
+ * note-number drop.
+ *
+ * Missing entries are filled with null so the caller can always index by note, and the count
+ * always matches what was sent.
+ */
+function parseAssignments(text, count, folderNames) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return null;
+  let obj;
+  try {
+    obj = JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(obj.assignments)) return null;
+
+  const canonical = new Map(folderNames.map((n) => [n.toLowerCase(), n]));
+  const byFil = new Map();
+  let invented = 0;
+  for (const a of obj.assignments) {
+    if (!Number.isInteger(a?.fil) || a.fil < 1 || a.fil > count) continue;
+    const raw = typeof a.folder === "string" ? a.folder.trim() : "";
+    const match = raw ? canonical.get(raw.toLowerCase()) : null;
+    if (raw && !match) invented++;
+    byFil.set(a.fil, match ?? null);
+  }
+  if (invented) console.log(`file: dropped ${invented} invented folder name(s)`);
+
+  return Array.from({ length: count }, (_, i) => ({
+    fil: i + 1,
+    folder: byFil.get(i + 1) ?? null,
+  }));
 }
 
 /** Parse the snippets-mode response: {"parts":["...", "..."]} → up to 4 trimmed fragments. */
