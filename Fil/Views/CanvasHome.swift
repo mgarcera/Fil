@@ -117,10 +117,10 @@ struct CanvasHome: View {
     @State private var resultsPager: FilPagerSelection?
     @State private var showPaywall = false
     @State private var showFeedback = false
-    // Shake-to-file. `binFiling` non-nil presents the review tray; `filing` guards re-entry while
-    // Claude is working, since a second shake mid-request would spend a second call.
+    // `binFiling` non-nil presents the review tray, which then makes the request itself. The
+    // sheet being up is also what stops a second tap starting a second billed call — it covers
+    // the chip before you could press it again.
     @State private var binFiling: BinFilingProposal?
-    @State private var filing = false
     @State private var filingError: String?
     /// Each filed fil's previous folder, kept so the batch can be undone.
     @State private var lastFiling: [UUID: Folder?]?
@@ -314,12 +314,8 @@ struct CanvasHome: View {
                 .presentationBackground(Theme.background)
         }
         .sheet(item: $binFiling) { proposal in
-            BinFilingSheet(
-                folders: folders,
-                proposals: proposal.items,
-                onFiled: { previous in lastFiling = previous }
-            )
-            .presentationBackground(Theme.background)
+            BinFilingSheet(input: proposal, onFiled: { previous in lastFiling = previous })
+                .presentationBackground(Theme.background)
         }
         .alert("Couldn't file the Bin", isPresented: .init(
             get: { filingError != nil },
@@ -1064,7 +1060,9 @@ struct CanvasHome: View {
     /// Reached only from the "File for me" chip, which is a labelled, deliberate tap — so the
     /// paywall here is always answering something the person asked for.
     private func fileTheBin() {
-        guard !filing, binFiling == nil else { return }
+        // Two taps in the same frame are the only double-tap left to guard: once the sheet is up
+        // it covers the chip, and the request lives inside it.
+        guard binFiling == nil else { return }
 
         // Scope: a selection if you made one, the whole Bin otherwise. Selecting first is how
         // you file part of the Bin, reusing the selection model rather than inventing a second.
@@ -1077,42 +1075,14 @@ struct CanvasHome: View {
         }
         guard StoreManager.shared.isPro else { showPaywall = true; return }
 
-        let targets = Array(loose.prefix(200))
-        let inputs = targets.map { note in
-            FilClusterInput(
-                id: note.uuid,
-                text: String((note.transcript.isEmpty ? note.title : note.transcript).prefix(240)),
-                keyword: note.displayBadgeText
-            )
-        }
-        let choices = folders.map {
-            ClaudeSurfacingService.FolderChoice(id: $0.id, name: $0.name, summary: $0.summary)
-        }
-        let txn = StoreManager.shared.proTransactionID ?? ""
-
-        filing = true
-        // Acknowledge the tap immediately — the Claude call takes a moment, and a control that
-        // does nothing for a second reads as a control that didn't register the press.
+        // Acknowledge the tap, then hand everything to the sheet — it owns the request so it can
+        // open immediately and fill in, rather than making you watch the dock for two seconds.
         Haptics.move()
-        Task {
-            do {
-                let filed = try await ClaudeSurfacingService.shared.fileIntoFolders(
-                    folders: choices, fils: inputs, transactionID: txn
-                )
-                let notesByID = Dictionary(targets.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
-                let foldersByID = Dictionary(folders.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-                let items = filed.compactMap { assignment -> BinFilingSheet.Proposal? in
-                    guard let note = notesByID[assignment.filID] else { return nil }
-                    let destination = assignment.folderID.flatMap { foldersByID[$0] }
-                    return .init(id: assignment.filID, note: note, destination: destination, proposed: destination)
-                }
-                binFiling = BinFilingProposal(items: items)
-            } catch {
-                filingError = (error as? ClaudeSurfacingService.SurfacingError)?.errorDescription
-                    ?? error.localizedDescription
-            }
-            filing = false
-        }
+        binFiling = BinFilingProposal(
+            notes: Array(loose.prefix(200)),
+            folders: folders,
+            transactionID: StoreManager.shared.proTransactionID ?? ""
+        )
     }
 
     private func createImageFil(images: [Data], caption: String, todos: [String] = []) async {

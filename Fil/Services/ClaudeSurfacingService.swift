@@ -238,6 +238,9 @@ actor ClaudeSurfacingService {
         guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
         // The proxy rejects an empty folder list; the caller is expected to run organize instead.
         guard !folders.isEmpty else { throw SurfacingError.empty }
+        // Timed because the wait drives the UI decision: under a second a spinner would do, over
+        // two the sheet has to fill in progressively. Measure rather than guess.
+        let started = ContinuousClock.now
 
         let payload = RequestBody(
             query: "",
@@ -276,7 +279,8 @@ actor ClaudeSurfacingService {
             if folderID != nil { placed += 1 }
             return FiledFil(filID: fils[index].id, folderID: folderID)
         }
-        log.notice("file: \(placed, privacy: .public)/\(result.count, privacy: .public) placed")
+        let ms = Int((ContinuousClock.now - started) / .milliseconds(1))
+        log.notice("file: \(placed, privacy: .public)/\(result.count, privacy: .public) placed in \(ms, privacy: .public)ms")
         return result
     }
 
