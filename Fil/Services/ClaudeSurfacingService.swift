@@ -24,6 +24,28 @@ actor ClaudeSurfacingService {
         let filIDs: [UUID]
     }
 
+    /// A folder that already exists, offered to the model as a filing destination. The caption
+    /// rides along because a folder's name alone is often too thin to file against — "Move" and
+    /// "Reading" mean much more with the sentence the folder already carries.
+    struct FolderChoice: Sendable {
+        let id: UUID
+        let name: String
+        let summary: String
+
+        init(id: UUID, name: String, summary: String = "") {
+            self.id = id
+            self.name = name
+            self.summary = summary
+        }
+    }
+
+    /// Where one loose fil is proposed to go. `folderID` nil means "leave it in the Bin", which
+    /// is a real answer here rather than a failure — see `fileIntoFolders`.
+    struct FiledFil: Sendable {
+        let filID: UUID
+        let folderID: UUID?
+    }
+
     enum SurfacingError: LocalizedError {
         case notSubscribed, http(Int, String), empty, badJSON
 
@@ -202,6 +224,62 @@ actor ClaudeSurfacingService {
         return folders
     }
 
+    /// Pro "file the Bin": propose which of the folders you already have each loose fil belongs
+    /// in. Returns one entry per fil, in the order sent — `folder` is nil for "leave it loose",
+    /// which the proxy also substitutes for any folder name the model invented.
+    ///
+    /// Callers must handle an all-nil result: the model is told that nil beats a wrong guess, so
+    /// "nothing fit" is a real outcome and not an error.
+    func fileIntoFolders(
+        folders: [FolderChoice],
+        fils: [FilClusterInput],
+        transactionID: String
+    ) async throws -> [FiledFil] {
+        guard !transactionID.isEmpty else { throw SurfacingError.notSubscribed }
+        // The proxy rejects an empty folder list; the caller is expected to run organize instead.
+        guard !folders.isEmpty else { throw SurfacingError.empty }
+
+        let payload = RequestBody(
+            query: "",
+            fils: fils.map { RequestFil(text: $0.text, metadata: $0.metadata) },
+            file: true,
+            folders: folders.map { RequestFolder(name: $0.name, description: $0.summary) }
+        )
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "content-type")
+        request.setValue(transactionID, forHTTPHeaderField: "X-Fil-Transaction-Id")
+        request.httpBody = try JSONEncoder().encode(payload)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw SurfacingError.empty }
+        guard http.statusCode == 200 else {
+            let body = errorMessage(from: data) ?? String(data: data, encoding: .utf8) ?? ""
+            log.notice("file http \(http.statusCode, privacy: .public)")
+            throw SurfacingError.http(http.statusCode, String(body.prefix(200)))
+        }
+
+        guard let decoded = try? JSONDecoder().decode(FileResponse.self, from: data) else {
+            throw SurfacingError.badJSON
+        }
+
+        // Map back to real identities. A name the proxy let through still has to match a folder
+        // we hold, so a rename racing the request drops that one fil to loose rather than
+        // filing it somewhere arbitrary.
+        let byName = Dictionary(folders.map { ($0.name, $0.id) }, uniquingKeysWith: { first, _ in first })
+        var placed = 0
+        let result: [FiledFil] = decoded.assignments.compactMap { assignment in
+            let index = assignment.fil - 1
+            guard fils.indices.contains(index) else { return nil }
+            let folderID = assignment.folder.flatMap { byName[$0] }
+            if folderID != nil { placed += 1 }
+            return FiledFil(filID: fils[index].id, folderID: folderID)
+        }
+        log.notice("file: \(placed, privacy: .public)/\(result.count, privacy: .public) placed")
+        return result
+    }
+
     /// Pull the proxy's `{ "error": "..." }` message out of a non-200 body, if present.
     private func errorMessage(from data: Data) -> String? {
         struct ErrorBody: Decodable { let error: String }
@@ -218,6 +296,19 @@ actor ClaudeSurfacingService {
         var organize: Bool? = nil
         var snippets: Bool? = nil
         var describe: Bool? = nil
+        var file: Bool? = nil
+        var folders: [RequestFolder]? = nil
+    }
+    private struct RequestFolder: Encodable {
+        let name: String
+        let description: String
+    }
+    private struct FileResponse: Decodable {
+        struct Assignment: Decodable {
+            let fil: Int
+            let folder: String?
+        }
+        let assignments: [Assignment]
     }
     private struct SnippetsResponse: Decodable {
         let parts: [String]
