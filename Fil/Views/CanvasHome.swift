@@ -329,6 +329,10 @@ struct CanvasHome: View {
         } message: {
             Text(filingError ?? "")
         }
+        // The undo the gesture owes you. Shake is the system's undo, and this moved a batch of
+        // fils at once, so the reversal has to be one tap and it has to be visible without
+        // hunting. Sits at the top: the Bin and composer own the bottom of this screen.
+        .overlay(alignment: .top) { filingUndoBar }
         .sheet(isPresented: $showFeedback) {
             FeedbackSheet(context: "smart search fell back to keyword for: “\(query)”")
         }
@@ -1014,6 +1018,42 @@ struct CanvasHome: View {
     ///
     /// Requires folders to file INTO. With none, there is nothing to propose — that is smart
     /// organize's job (it invents folders), and sending an empty list is a 400 from the proxy.
+    /// "Filed 6 fils · Undo", shown after a commit and cleared on a timer.
+    @ViewBuilder
+    private var filingUndoBar: some View {
+        if let filed = lastFiling, !filed.isEmpty {
+            HStack(spacing: 12) {
+                Text("Filed \(filed.count) \(filed.count == 1 ? "fil" : "fils")")
+                    .font(.system(size: 14, weight: .medium))
+                Button("Undo") { undoFiling() }
+                    .font(.system(size: 14, weight: .semibold))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(.ultraThinMaterial, in: Capsule())
+            .padding(.top, 8)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .task(id: filed.count) {
+                // Long enough to notice and reach, short enough not to loiter. Keyed to .task so
+                // it cancels automatically when the bar is replaced or dismissed.
+                try? await Task.sleep(for: .seconds(6))
+                withAnimation(.snappy) { lastFiling = nil }
+            }
+        }
+    }
+
+    /// Put every fil in the last batch back where it was — including back to the Bin (nil).
+    private func undoFiling() {
+        guard let filed = lastFiling else { return }
+        let byID = Dictionary(notes.map { ($0.uuid, $0) }, uniquingKeysWith: { first, _ in first })
+        for (filID, previousFolder) in filed {
+            byID[filID]?.folder = previousFolder
+        }
+        modelContext.saveOrLog()
+        Haptics.success()
+        withAnimation(.snappy) { lastFiling = nil }
+    }
+
     private func fileTheBin() {
         guard !filing, binFiling == nil else { return }
 
