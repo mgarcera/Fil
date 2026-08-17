@@ -72,14 +72,53 @@ struct FilPinnedWidgetEntryView: View {
 
     var body: some View {
         Group {
-            if let snapshot = entry.snapshot {
-                pinnedContent(snapshot)
-            } else {
-                emptyState
+            switch family {
+            case .accessoryRectangular:
+                AccessoryRectangular(snapshot: entry.snapshot)
+            case .accessoryCircular:
+                AccessoryCircular(snapshot: entry.snapshot)
+            case .accessoryInline:
+                AccessoryInline(snapshot: entry.snapshot)
+            default:
+                if let snapshot = entry.snapshot {
+                    pinnedContent(snapshot)
+                } else {
+                    emptyState
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(
+            maxWidth: .infinity,
+            maxHeight: .infinity,
+            alignment: isAccessory ? .center : .topLeading
+        )
         .widgetURL(destinationURL)
+        // Applied here rather than in the Widget body because the right background depends on the
+        // family, and the family is only in scope inside the view.
+        .containerBackground(for: .widget) {
+            switch family {
+            case .accessoryCircular:
+                // The system's own translucent disc. Painting our own would fight the lock screen's
+                // material instead of sitting in it.
+                AccessoryWidgetBackground()
+            case .accessoryRectangular, .accessoryInline:
+                Color.clear
+            default:
+                ZStack {
+                    Color(red: 0.06, green: 0.06, blue: 0.07)
+                    if let snapshot = entry.snapshot {
+                        FilLiveActivityBottomGlow(
+                            startHex: snapshot.gradientStartHex,
+                            endHex: snapshot.gradientEndHex
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var isAccessory: Bool {
+        family == .accessoryRectangular || family == .accessoryCircular || family == .accessoryInline
     }
 
     private var destinationURL: URL? {
@@ -128,31 +167,140 @@ struct FilPinnedWidgetEntryView: View {
     }
 }
 
+// MARK: - Lock-screen accessories
+
+/// The permanent door.
+///
+/// The Live Activity is capped near eight hours *and* shares a single system slot, so a delivery or
+/// a timer evicts it — it can carry the loud transient moment but not the standing one. These can.
+///
+/// What they cannot carry is colour. iOS renders accessory widgets into a vibrant monochrome
+/// material, so the folder's gradient — the app's loudest identity signal everywhere else —
+/// collapses to one luminance ramp. Shape survives: `FolderShape` is a silhouette, and a blob's
+/// seed is precisely what makes it *that* fil and not another. So these lean on shape where the
+/// systemSmall widget leans on colour, and fill flat rather than with a gradient that would only be
+/// flattened into mud.
+
+/// Name, count, and the fils themselves as silhouettes — the closest thing to the Live Activity's
+/// peek that survives on a locked screen.
+private struct AccessoryRectangular: View {
+    let snapshot: PinnedFolderWidgetSnapshot?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            if let snapshot {
+                HStack(spacing: 5) {
+                    FolderShape()
+                        .fill(.primary)
+                        .frame(width: 12, height: 12)
+                    Text(snapshot.name)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
+                Text("\(snapshot.count) \(snapshot.count == 1 ? "fil" : "fils")")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+
+                // Capped at five: the row is ~160pt wide and these are identity, not inventory.
+                HStack(spacing: 3) {
+                    ForEach(Array(snapshot.blobs.prefix(5).enumerated()), id: \.offset) { _, blob in
+                        LiveActivityBlobShape(seed: blob.seed)
+                            .fill(.primary.opacity(0.75))
+                            .frame(width: 9, height: 9)
+                    }
+                }
+                .accessibilityHidden(true)
+            } else {
+                Text("No pinned folder")
+                    .font(.headline)
+                Text("Pin one to see it here")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
+/// Folder glyph over the count. Too small for a name, so it answers "how much is in there" only.
+private struct AccessoryCircular: View {
+    let snapshot: PinnedFolderWidgetSnapshot?
+
+    var body: some View {
+        VStack(spacing: 1) {
+            FolderShape()
+                .fill(.primary)
+                .frame(width: 17, height: 17)
+            if let snapshot {
+                Text("\(snapshot.count)")
+                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .contentTransition(.numericText())
+            }
+        }
+        .opacity(snapshot == nil ? 0.5 : 1)
+        .accessibilityLabel(
+            snapshot.map { "\($0.name), \($0.count) fils" } ?? "No pinned folder"
+        )
+    }
+}
+
+/// A single line beside the clock. Inline accepts only text and an SF Symbol — no custom shape —
+/// so this is the one accessory where the folder is named rather than drawn.
+private struct AccessoryInline: View {
+    let snapshot: PinnedFolderWidgetSnapshot?
+
+    var body: some View {
+        if let snapshot {
+            Label(
+                "\(snapshot.name) · \(snapshot.count)",
+                systemImage: "folder.fill"
+            )
+        } else {
+            Label("No pinned folder", systemImage: "folder")
+        }
+    }
+}
+
 struct FilPinnedWidget: Widget {
     let kind: String = "FilPinnedWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             FilPinnedWidgetEntryView(entry: entry)
-                .containerBackground(for: .widget) {
-                    ZStack {
-                        Color(red: 0.06, green: 0.06, blue: 0.07)
-                        if let snapshot = entry.snapshot {
-                            FilLiveActivityBottomGlow(
-                                startHex: snapshot.gradientStartHex,
-                                endHex: snapshot.gradientEndHex
-                            )
-                        }
-                    }
-                }
         }
         .configurationDisplayName("Pinned Folder")
         .description("Your pinned folder at a glance.")
-        .supportedFamilies([.systemSmall])
+        .supportedFamilies([
+            .systemSmall,
+            .accessoryRectangular,
+            .accessoryCircular,
+            .accessoryInline
+        ])
     }
 }
 
 #Preview(as: .systemSmall) {
+    FilPinnedWidget()
+} timeline: {
+    PinnedFolderEntry(date: .now, snapshot: .sample)
+    PinnedFolderEntry(date: .now, snapshot: nil)
+}
+
+#Preview(as: .accessoryRectangular) {
+    FilPinnedWidget()
+} timeline: {
+    PinnedFolderEntry(date: .now, snapshot: .sample)
+    PinnedFolderEntry(date: .now, snapshot: nil)
+}
+
+#Preview(as: .accessoryCircular) {
+    FilPinnedWidget()
+} timeline: {
+    PinnedFolderEntry(date: .now, snapshot: .sample)
+    PinnedFolderEntry(date: .now, snapshot: nil)
+}
+
+#Preview(as: .accessoryInline) {
     FilPinnedWidget()
 } timeline: {
     PinnedFolderEntry(date: .now, snapshot: .sample)
