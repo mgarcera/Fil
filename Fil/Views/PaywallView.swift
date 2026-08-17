@@ -62,20 +62,28 @@ struct PaywallView: View {
     /// invites, it never pressures.
     private var marketingHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
-            AnimatedGradientRevealText(text: "A smarter search.")
+            // "A smarter search" described half of Pro. Smart organize, folder captions and
+            // "File for me" were all already behind this paywall and none of them were named —
+            // the page sold finding and quietly withheld filing.
+            AnimatedGradientRevealText(text: "Find it, and put it away.")
                 .font(Theme.fredoka(26, weight: .bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             blobRow
-            Text("Find exactly what you were thinking.")
-                .font(Theme.fredoka(15, weight: .semibold))
-                .foregroundStyle(.white)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .fixedSize(horizontal: false, vertical: true)
+            // Two claims, so two lines. Both are the same promise from opposite ends: you don't
+            // have to remember where a thought went, or decide where it goes.
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Ask in your own words, and Fil shows you the thoughts that answer, not a list of keyword hits.")
+                Text("Or hand it a pile and let it file, with every choice yours to change before anything moves.")
+            }
+            .font(Theme.fredoka(15, weight: .semibold))
+            .foregroundStyle(.white)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
             // Keeps the paywall lean; the full free-vs-Pro capability list lives on the web.
             Link(destination: Self.smartSearchURL) {
                 HStack(spacing: 4) {
-                    Text("See everything smart search finds")
+                    Text("See everything Pro can do")
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 11, weight: .semibold))
                 }
@@ -84,7 +92,10 @@ struct PaywallView: View {
             .tint(Theme.filProAmber)
             .frame(maxWidth: .infinity, alignment: .leading)
             // Plain-language data disclosure, shown at the moment of opting in.
-            Text("To answer your search, smart search sends relevant text to our AI provider (Anthropic). It's never used to train models and is deleted within 30 days. Free keyword search stays on your device.")
+            // Must name every Pro path that leaves the device, not just search. Filing sends text
+            // too, and a disclosure that says "to answer your search" while a second feature also
+            // sends is inaccurate rather than merely incomplete.
+            Text("To search or file for you, Fil sends the relevant text to our AI provider (Anthropic). It's never used to train models and is deleted within 30 days. Free keyword search stays on your device.")
                 .font(Theme.fredoka(15, weight: .regular))
                 .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.leading)
