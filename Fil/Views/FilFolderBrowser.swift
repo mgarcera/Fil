@@ -158,14 +158,14 @@ struct FoldersHomeSection: View {
             Button("Save") { commitFolderRename() }
             Button("Cancel", role: .cancel) { pendingRenameFolder = nil }
         }
-        .alert("Summarize folder", isPresented: .init(
+        .alert("Replace caption", isPresented: .init(
             get: { pendingSummarizeFolder != nil },
             set: { if !$0 { pendingSummarizeFolder = nil } }
         ), presenting: pendingSummarizeFolder) { folder in
             Button("Proceed") { runSummarize(folder) }
             Button("Cancel", role: .cancel) { pendingSummarizeFolder = nil }
         } message: { _ in
-            Text("This will overwrite your caption with a summary of your folder.")
+            Text("This will overwrite the caption you wrote with one written from your fils.")
         }
         .landfilConfirmation(item: $pendingLandfilFolder, message: { _ in
             "This folder is removed. Your thoughts will return to the Bin."
@@ -679,12 +679,15 @@ struct FolderInteriorView: View {
             Button { onRename() } label: { Label("Rename", systemImage: "pencil") }
             // Pro accent: a system menu won't tint the title, but a pre-tinted (alwaysOriginal) image
             // renders in color — so the Summarize icon carries the amber to signal it's a Pro feature.
+            // "Caption for me" rather than "Summarize": the thing it writes is the folder's
+            // caption, and the old label named the mechanism instead of the result. Internals
+            // still say summarize; the proxy mode has always been `describe`.
             Button { onSummarize() } label: {
                 if let amber = UIImage(systemName: "text.append")?
                     .withTintColor(UIColor(Theme.filProAmber), renderingMode: .alwaysOriginal) {
-                    Label { Text("Summarize") } icon: { Image(uiImage: amber) }
+                    Label { Text("Caption for me") } icon: { Image(uiImage: amber) }
                 } else {
-                    Label("Summarize", systemImage: "text.append")
+                    Label("Caption for me", systemImage: "text.append")
                 }
             }
         } label: {
