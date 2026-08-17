@@ -23,7 +23,7 @@ struct FilApp: App {
         var noticeTitle: String {
             switch self {
             case .normal: ""
-            case .recoveredWithFreshStore: "your fils are still here"
+            case .recoveredWithFreshStore: "your thoughts are still here"
             case .inMemory: "fil couldn't open your library"
             }
         }
@@ -33,9 +33,9 @@ struct FilApp: App {
             case .normal:
                 ""
             case .recoveredWithFreshStore:
-                "fil couldn't open your library this time and started a fresh one. your old fils are still on this device — please don't delete the app. reopening fil will usually load them again."
+                "fil couldn't open your library this time and started a fresh one. your old thoughts are still on this device — please don't delete the app. reopening fil will usually load them again."
             case .inMemory:
-                "your fils are still on this device, but they aren't loaded right now — anything you add this session won't be saved. please don't delete the app; reopen fil and it will usually load them again."
+                "your thoughts are still on this device, but they aren't loaded right now — anything you add this session won't be saved. please don't delete the app; reopen fil and it will usually load them again."
             }
         }
     }

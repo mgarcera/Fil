@@ -80,7 +80,7 @@ private struct FilBasketLockScreenView: View {
 
     private var headline: String {
         let n = state.count
-        return "\(n) \(n == 1 ? "item" : "items") in your Bin"
+        return "\(n) \(n == 1 ? "thought" : "thoughts") in your Bin"
     }
 }
 

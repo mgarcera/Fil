@@ -16,7 +16,7 @@ import AppIntents
 /// isn't readable out of process — the next app-active sync corrects it from SwiftData.
 struct AddToFilIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Add to Fil"
-    static let description = IntentDescription("Drop a thought straight into your fil basket.")
+    static let description = IntentDescription("Drop a thought straight into your basket.")
 
     /// Supplied by Shortcuts / Dictate Text / the Action Button. When invoked with no value
     /// (e.g. a bare Siri phrase), the system prompts with this dialog and captures the reply.
@@ -60,6 +60,9 @@ struct FilAppShortcuts: AppShortcutsProvider {
             intent: AddToFilIntent(),
             phrases: [
                 "Add to \(.applicationName)",
+                "New thought in \(.applicationName)",
+                // Kept alongside the "thought" phrasing rather than replaced. These are voice
+                // invocations, so an extra phrase only adds a way in — dropping one takes a way out.
                 "Fil this in \(.applicationName)",
                 "New fil in \(.applicationName)"
             ],

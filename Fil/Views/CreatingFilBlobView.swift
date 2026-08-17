@@ -42,7 +42,7 @@ struct CreatingFilBlobView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .accessibilityLabel("Creating fil")
+        .accessibilityLabel("Creating thought")
     }
 }
 

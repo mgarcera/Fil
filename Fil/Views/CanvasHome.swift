@@ -1622,7 +1622,7 @@ struct CanvasHome: View {
         case (false, false): text = "\(title): \(String(body.prefix(140)))"
         case (false, true):  text = title
         case (true, false):  text = String(body.prefix(140))
-        case (true, true):   text = "fil"
+        case (true, true):   text = "thought"
         }
         // Include filament content so Claude can surface a fil by what's attached to it (a linked
         // note, a link, a PDF), capped so per-fil payload cost stays bounded.
@@ -1692,7 +1692,7 @@ struct CanvasHome: View {
         let trimmed = note.displayBadgeText.trimmingCharacters(in: .whitespacesAndNewlines)
         let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         // Text fils no longer carry a title, so fall back to a snippet of the thought itself.
-        let title = !trimmed.isEmpty ? trimmed : (body.isEmpty ? "fil" : String(body.prefix(80)))
+        let title = !trimmed.isEmpty ? trimmed : (body.isEmpty ? "thought" : String(body.prefix(80)))
         return title
     }
 }

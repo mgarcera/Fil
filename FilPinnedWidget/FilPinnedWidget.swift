@@ -143,7 +143,7 @@ struct FilPinnedWidgetEntryView: View {
                 .foregroundStyle(.white)
                 .lineLimit(1)
 
-            Text("\(snapshot.count) \(snapshot.count == 1 ? "fil" : "fils")")
+            Text("\(snapshot.count) \(snapshot.count == 1 ? "thought" : "thoughts")")
                 .font(.system(size: 12, weight: .regular))
                 .foregroundStyle(.white.opacity(0.6))
         }
@@ -197,7 +197,7 @@ private struct AccessoryRectangular: View {
                         .font(.headline)
                         .lineLimit(1)
                 }
-                Text("\(snapshot.count) \(snapshot.count == 1 ? "fil" : "fils")")
+                Text("\(snapshot.count) \(snapshot.count == 1 ? "thought" : "thoughts")")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
@@ -239,7 +239,7 @@ private struct AccessoryCircular: View {
         }
         .opacity(snapshot == nil ? 0.5 : 1)
         .accessibilityLabel(
-            snapshot.map { "\($0.name), \($0.count) fils" } ?? "No pinned folder"
+            snapshot.map { "\($0.name), \($0.count) thoughts" } ?? "No pinned folder"
         )
     }
 }

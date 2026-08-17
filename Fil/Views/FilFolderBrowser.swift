@@ -165,7 +165,7 @@ struct FoldersHomeSection: View {
             Button("Proceed") { runSummarize(folder) }
             Button("Cancel", role: .cancel) { pendingSummarizeFolder = nil }
         } message: { _ in
-            Text("This will overwrite the caption you wrote with one written from your fils.")
+            Text("This will overwrite the caption you wrote with one written from your thoughts.")
         }
         .landfilConfirmation(item: $pendingLandfilFolder, message: { _ in
             "This folder is removed. Your thoughts will return to the Bin."

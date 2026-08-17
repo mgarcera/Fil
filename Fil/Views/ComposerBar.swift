@@ -274,7 +274,7 @@ struct ComposerBar: View {
             Button(action: sendWithDissolve) {
                 beamedCircle(symbol: "arrow.up", weight: .bold).opacity(canSend ? 1 : 0.4)
             }
-            .buttonStyle(.plain).disabled(isProcessing || !canSend).accessibilityLabel("send fil")
+            .buttonStyle(.plain).disabled(isProcessing || !canSend).accessibilityLabel("send thought")
         } else {
             Button(action: onEnterSearch) {
                 Image(systemName: "magnifyingglass")

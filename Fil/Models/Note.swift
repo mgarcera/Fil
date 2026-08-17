@@ -183,7 +183,7 @@ final class Note {
         if isImageFil { return "photo" }
         // Empty transcript fallback (legacy fils / edge cases).
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedTitle.isEmpty ? (keyword.isEmpty ? "fil" : keyword) : trimmedTitle
+        return trimmedTitle.isEmpty ? (keyword.isEmpty ? "thought" : keyword) : trimmedTitle
     }
 
     private var sourceDomainBadge: String? {

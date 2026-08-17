@@ -25,7 +25,7 @@ struct CaptureAnywhereView: View {
                     )
                     section(
                         "Siri", "mic.badge.plus",
-                        "Say “Add to Fil,” “Fil this in Fil,” or “New fil in Fil,” and Siri captures what you say next."
+                        "Say “Add to Fil” or “New thought in Fil,” and Siri captures what you say next."
                     )
 
                     VStack(alignment: .leading, spacing: 10) {

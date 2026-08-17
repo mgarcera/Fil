@@ -103,7 +103,7 @@ final class FilSelectionStore {
         if note.isImageFil { blocks.append("(photo)") }
         if !note.audioFilePath.isEmpty { blocks.append("(voice note)") }
 
-        return blocks.isEmpty ? "(empty fil)" : blocks.joined(separator: "\n\n")
+        return blocks.isEmpty ? "(empty thought)" : blocks.joined(separator: "\n\n")
     }
 
     /// One fil as a Markdown block: optional `## title`, link URL, thought body, and to-dos as
@@ -128,7 +128,7 @@ final class FilSelectionStore {
         if note.isImageFil { blocks.append("_(photo)_") }
         if !note.audioFilePath.isEmpty { blocks.append("_(voice note)_") }
 
-        return blocks.isEmpty ? "_(empty fil)_" : blocks.joined(separator: "\n\n")
+        return blocks.isEmpty ? "_(empty thought)_" : blocks.joined(separator: "\n\n")
     }
 }
 

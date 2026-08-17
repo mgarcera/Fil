@@ -86,7 +86,7 @@ private struct PinnedFolderLockScreenView: View {
 
     private var countLabel: String {
         let n = state.count
-        return "\(n) \(n == 1 ? "item" : "items")"
+        return "\(n) \(n == 1 ? "thought" : "thoughts")"
     }
 }
 

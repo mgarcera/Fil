@@ -420,7 +420,7 @@ struct ScreensaverOption: Identifiable {
     let systemImage: String
     let description: String     // one-line sub-description shown in the vertical list
     let isUnlocked: Bool
-    let requirement: String     // e.g. "10 fils" (shown when locked)
+    let requirement: String     // e.g. "10 thoughts" (shown when locked)
     let action: () -> Void
 }
 
