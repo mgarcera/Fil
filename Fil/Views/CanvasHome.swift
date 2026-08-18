@@ -752,8 +752,8 @@ struct CanvasHome: View {
     /// gradient. The full sentence lays out (and wraps) normally in secondary text; the gradient is
     /// masked to show through only the "fil pro" glyphs via an aligned overlay.
     private var filProInviteLine: some View {
-        let full = "Check out Fil Pro for a smarter search."
-        let word = "Fil Pro"
+        let full = "Check out Fil Extra for a smarter search."
+        let word = "Fil Extra"
 
         // Base sentence: gray, with the wordmark punched out (clear) so the gradient overlay shows.
         var base = AttributedString(full)

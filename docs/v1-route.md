@@ -70,6 +70,31 @@ exists (`appStoreID` is a real ID). Nothing has been submitted.
 | 27 | **Export / import spec** | Four open decisions settled — see `docs/features/export-import.md`. |
 | 2b | **Device verification** | Revised from "done" to **partial**: daily use, never deliberate testing. The August surface (both Live Activities, both Control Center controls, player audio, sound and haptics) has not had a cold-install, locked-device, or activity-eviction pass. |
 
+### Extra — the paid tier, settled 2026-08-17
+
+**Renamed from "Fil Pro" to "Fil Extra."** "Pro" promises professional-grade and frames the free
+tier as amateur; "Extra" says more-on-top, which is the model. Done now because the ASC record is
+being recreated under the new account, so the subscription group, product display names and the
+listing get written once. After launch a live product cannot be renamed.
+
+**Extra contains:** the four AI features (smart search, File for me, smart organize, Caption for
+me), the screensavers, a sound pack, and alternate app icons.
+
+**Never gated:** capture types, export/import, and the **folder count**. The folder cap in #11b is
+**reversed** — it is the filament argument wearing a hat. Folders are how a person tidies their own
+thoughts, and capping them says "you may not organize your library without paying."
+
+**Multiple pinned folders: rejected**, after being scoped. One pin, one Live Activity, one widget.
+Live Activities cap near eight hours and share a single evictable system slot, so several would
+compete and which survives is not the app's to choose. More importantly the single slot **is the
+product**: it focuses the behaviour on one folder, which is what "pin what you're in the middle of"
+means. The constraint is the thesis, not a limitation to engineer around.
+
+**Correction that drove this:** the "additive gating" in #11b was never implemented. Nothing in the
+screensaver system reads `isPro` — all five unlock on thought count (three at 10, then 25 and 33),
+and the auto-screensaver at 10. Every `isPro` gate in the app is search, filing, organize, and
+captions. So Extra's non-AI half has to be **built**, not merely described.
+
 ### Pro gating (decision detail)
 
 Everything gated today is cloud-cost-bearing and nothing else: AI surfacing +

@@ -28,14 +28,14 @@
           },
           "localizations" : [
             {
-              "description" : "Intelligently surface your thoughts when you ask.",
-              "displayName" : "Fil Pro (Monthly)",
+              "description" : "Find a thought by what you meant, and let Fil file the loose ones for you.",
+              "displayName" : "Fil Extra (Monthly)",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.masongarcera.Fil.pro.monthly",
+          "productID" : "com.masongarcera.Fil.extra.monthly",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Fil Pro Monthly",
+          "referenceName" : "Fil Extra Monthly",
           "subscriptionGroupID" : "21000000",
           "type" : "RecurringSubscription"
         },
@@ -53,14 +53,14 @@
           },
           "localizations" : [
             {
-              "description" : "Intelligently surface your thoughts when you ask.",
-              "displayName" : "Fil Pro (Annual)",
+              "description" : "Find a thought by what you meant, and let Fil file the loose ones for you.",
+              "displayName" : "Fil Extra (Annual)",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.masongarcera.Fil.pro.annual",
+          "productID" : "com.masongarcera.Fil.extra.annual",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Fil Pro Annual",
+          "referenceName" : "Fil Extra Annual",
           "subscriptionGroupID" : "21000000",
           "type" : "RecurringSubscription"
         }

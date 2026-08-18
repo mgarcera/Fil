@@ -298,7 +298,7 @@ struct ContentView: View {
     private var filSetupSheet: some View {
         SettingsView(
             screensaverOptions: screensaverOptions,
-            autoScreensaverUnlocked: notes.count >= koiPondUnlockThreshold
+            autoScreensaverUnlocked: StoreManager.shared.isPro && notes.count >= koiPondUnlockThreshold
         )
             .presentationDetents([.fraction(0.6), .large])
             .presentationBackground(Theme.background)
@@ -306,14 +306,29 @@ struct ContentView: View {
 
     /// Screensaver launchers for Settings → Appearance. Each dismisses settings, then launches.
     private var screensaverOptions: [ScreensaverOption] {
-        func option(_ title: String, _ image: String, _ description: String, unlockAt: Int, launch: @escaping () -> Void) -> ScreensaverOption {
-            ScreensaverOption(title: title, systemImage: image, description: description, isUnlocked: notes.count >= unlockAt, requirement: "\(unlockAt) thoughts") {
+        // Two gates. The first screensaver is earned by writing, so every free user reaches one and
+        // the count-unlock charm survives. The rest come with Fil Extra.
+        //
+        // v1-route #11b described exactly this split and it was never built — nothing in the
+        // screensaver system read isPro, so all five were free. Extra's non-AI half had to be
+        // made, not just written down.
+        let isExtra = StoreManager.shared.isPro
+        func option(_ title: String, _ image: String, _ description: String,
+                    unlockAt: Int, extraOnly: Bool = true,
+                    launch: @escaping () -> Void) -> ScreensaverOption {
+            let earned = notes.count >= unlockAt
+            let unlocked = extraOnly ? (isExtra && earned) : earned
+            let requirement = extraOnly && !isExtra
+                ? "Comes with Fil Extra"
+                : "Unlocks at \(unlockAt) thoughts"
+            return ScreensaverOption(title: title, systemImage: image, description: description,
+                                     isUnlocked: unlocked, requirement: requirement) {
                 showFilSetup = false
                 launch()
             }
         }
         return [
-            option("Filosophy", "camera.filters", "A lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid)) { launchScreensaver(.liquid) },
+            option("Filosophy", "camera.filters", "A lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid), extraOnly: false) { launchScreensaver(.liquid) },
             option("Filharmonic", "wave.3.left", "Let your thoughts ripple.", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
             option("Filanthropy", "wind", "Watch your thoughts drift and swirl.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
             option("Chlorofil", "rainbow", "Your thoughts in streaks of light. Uses your latest thoughts, so they'll always change color.", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },

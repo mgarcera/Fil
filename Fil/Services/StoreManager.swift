@@ -13,9 +13,12 @@ import OSLog
 final class StoreManager {
     static let shared = StoreManager()
 
+    /// IDs say `extra`, matching the tier's name. Changed 2026-08-17, which was the last free
+    /// moment: a product ID is immutable once it exists in App Store Connect, and ASC's products
+    /// had not been created yet (v1-route #5). **ASC must be created with these exact IDs.**
     enum ProductID {
-        static let monthly = "com.masongarcera.Fil.pro.monthly"
-        static let annual = "com.masongarcera.Fil.pro.annual"
+        static let monthly = "com.masongarcera.Fil.extra.monthly"
+        static let annual = "com.masongarcera.Fil.extra.annual"
         static let all: [String] = [monthly, annual]
     }
 

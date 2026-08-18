@@ -285,7 +285,7 @@ struct SettingsView: View {
                                 .foregroundStyle(.white.opacity(0.6))
                         }
                     }
-                    Text(option.isUnlocked ? option.description : "Unlocks at \(option.requirement)")
+                    Text(option.isUnlocked ? option.description : option.requirement)
                         .font(Theme.fredoka(13, weight: .regular))
                         .foregroundStyle(.white.opacity(0.7))
                         .fixedSize(horizontal: false, vertical: true)
@@ -420,7 +420,9 @@ struct ScreensaverOption: Identifiable {
     let systemImage: String
     let description: String     // one-line sub-description shown in the vertical list
     let isUnlocked: Bool
-    let requirement: String     // e.g. "10 thoughts" (shown when locked)
+    /// The whole locked sentence, not a fragment — two gates exist now ("Unlocks at 10
+    /// thoughts" and "Comes with Fil Extra") and they do not share a prefix.
+    let requirement: String
     let action: () -> Void
 }
 
@@ -434,7 +436,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .appearance: "Appearance"
-        case .subscription: "Fil Pro"
+        case .subscription: "Fil Extra"
         case .about: "About"
         }
     }

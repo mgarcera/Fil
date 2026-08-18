@@ -51,7 +51,7 @@ actor ClaudeSurfacingService {
 
         var errorDescription: String? {
             switch self {
-            case .notSubscribed:         return "Check out Fil Pro for a smarter search."
+            case .notSubscribed:         return "Check out Fil Extra for a smarter search."
             case let .http(code, body):  return "Surfacing request failed (\(code)). \(body)"
             case .empty:                 return "The proxy returned an empty response."
             case .badJSON:               return "Couldn't read the proxy's response."
