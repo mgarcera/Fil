@@ -241,13 +241,22 @@ struct SettingsView: View {
 
     /// App icon: the default plus the Fil Extra styles, as a vertical list matching Screensavers.
     /// Locked rows use the same dimmed + lock-glyph treatment as `screensaverRow`.
+    ///
+    /// The footnote is load-bearing: the set is deliberately open-ended, and saying so is what makes
+    /// four icons read as a beginning rather than as all there is. Adding art needs no copy change.
     private var appIconSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             settingLabel("App icon", icon: "app.badge")
             // Indent rows so their thumbnails line up under the word "App icon"
             // (header icon frame width 22 + HStack spacing 12), exactly as Screensavers does.
-            ForEach(appIconOptions) { appIconRow($0) }
-                .padding(.leading, 34)
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(appIconOptions) { appIconRow($0) }
+                Text("More icons arrive with updates.")
+                    .font(Theme.fredoka(13, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.leading, 34)
         }
     }
 

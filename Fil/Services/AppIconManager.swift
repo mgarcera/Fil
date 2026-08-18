@@ -1,9 +1,9 @@
 import UIKit
 import OSLog
 
-/// Switches the home-screen app icon between the default and the six Fil Extra styles.
+/// Switches the home-screen app icon between the default and the Fil Extra styles.
 ///
-/// # How the alternates are wired (read this before adding a seventh)
+/// # How the alternates are wired (read this before adding another)
 ///
 /// Two ways exist to ship alternate icons. Fil uses the **asset catalog** one:
 ///
@@ -12,11 +12,11 @@ import OSLog
 ///    Every icon set other than `ASSETCATALOG_COMPILER_APPICON_NAME` (`AppIcon`) is then compiled
 ///    into `Assets.car` and registered as an alternate automatically: actool writes the
 ///    `CFBundleIcons` → `CFBundleAlternateIcons` dictionary into the built Info.plist for us.
-///    Verified in the Debug build — the product's Info.plist contains all six entries, each a
+///    Verified in the Debug build — the product's Info.plist contains an entry per set, each a
 ///    `CFBundleIconName` pointing at its asset. Nothing about alternates is hand-written in
 ///    `Fil/Info.plist`, and nothing needs to be.
 ///
-/// 2. **Loose PNGs (not chosen).** The old way: drop `Letterpress@2x.png` etc. at the bundle root
+/// 2. **Loose PNGs (not chosen).** The old way: drop `NobleGas@2x.png` etc. at the bundle root
 ///    and hand-author `CFBundleAlternateIcons` with `CFBundleIconFiles` arrays in Info.plist. It
 ///    means maintaining per-scale PNGs by hand, keeping a plist in sync with a folder of files, and
 ///    losing dark/tinted icon variants entirely, which the asset catalog gives us for free the day
@@ -24,9 +24,10 @@ import OSLog
 ///
 /// The catalog route was picked because it makes adding an icon a one-folder change: create
 /// `AppIcon-Foo.appiconset`, add it to `choices` below, done. No plist edit, no scale ladder.
+/// That matters here: the set is deliberately open-ended and Settings tells people so.
 ///
 /// **Adding an alternate:** the string passed to `setAlternateIconName` is the *asset set name*
-/// (e.g. `AppIcon-Riso`), not a filename. Keep the two in step or the call fails at runtime with
+/// (e.g. `AppIcon-NobleGas`), not a filename. Keep the two in step or the call fails at runtime with
 /// "The requested alternate icon is not found".
 ///
 /// # The system alert
@@ -47,30 +48,22 @@ final class AppIconManager {
         var id: String { assetName ?? "default" }
     }
 
-    // TODO: PLACEHOLDER ART. All six alternates are currently a copy of the default icon
-    // (`AppIcon.appiconset/fillogo.png`), so the picker is wired end to end but every option looks
-    // identical. Replace these six with real 1024x1024 opaque PNGs (no alpha, no rounded corners,
-    // sRGB) at exactly these paths, keeping the filenames:
-    //
-    //   Fil/Assets.xcassets/AppIcon-Letterpress.appiconset/fil-icon-letterpress.png
-    //   Fil/Assets.xcassets/AppIcon-Riso.appiconset/fil-icon-riso.png
-    //   Fil/Assets.xcassets/AppIcon-Neon.appiconset/fil-icon-neon.png
-    //   Fil/Assets.xcassets/AppIcon-Clay.appiconset/fil-icon-clay.png
-    //   Fil/Assets.xcassets/AppIcon-Glass.appiconset/fil-icon-glass.png
-    //   Fil/Assets.xcassets/AppIcon-Felt.appiconset/fil-icon-felt.png
-    //
-    // Each set's Contents.json already points at its filename, so dropping the art in is the only
-    // step. Optional afterwards: add dark + tinted variants to each Contents.json the way
-    // AppIcon.appiconset does.
-    /// Every icon Fil offers, in the order Settings shows them. Names are final.
+    /// Every icon Fil offers, in the order Settings shows them.
+    ///
+    /// Ordered light to dark — Acrylic Slate, Ice Cubes, Paint Pop, Noble Gas — so the list reads as
+    /// a range rather than a pile. Each is a 1024x1024 opaque sRGB PNG (no alpha, no pre-rounded
+    /// corners; iOS applies its own mask) sitting in the matching `*.appiconset`.
+    ///
+    /// **This list is expected to grow.** Settings says as much under the picker, so adding one is
+    /// a folder plus a line here, with no copy to rewrite. New art wants checking at 60px before it
+    /// lands: value contrast between mark and ground is what survives that far down, and fine
+    /// texture is decorative only — it is gone by 120px.
     static let choices: [Choice] = [
         Choice(title: "Default", assetName: nil),
-        Choice(title: "Letterpress", assetName: "AppIcon-Letterpress"),
-        Choice(title: "Riso", assetName: "AppIcon-Riso"),
-        Choice(title: "Neon", assetName: "AppIcon-Neon"),
-        Choice(title: "Clay", assetName: "AppIcon-Clay"),
-        Choice(title: "Glass", assetName: "AppIcon-Glass"),
-        Choice(title: "Felt", assetName: "AppIcon-Felt"),
+        Choice(title: "Acrylic Slate", assetName: "AppIcon-AcrylicSlate"),
+        Choice(title: "Ice Cubes", assetName: "AppIcon-IceCubes"),
+        Choice(title: "Paint Pop", assetName: "AppIcon-PaintPop"),
+        Choice(title: "Noble Gas", assetName: "AppIcon-NobleGas"),
     ]
 
     /// The asset name of the icon in use, or nil when the default is showing. Observable, so the

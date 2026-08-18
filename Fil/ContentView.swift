@@ -338,7 +338,7 @@ struct ContentView: View {
     }
 
     /// App icon choices for Settings → Appearance. One gate only: the default icon is always
-    /// selectable and always free, and the six styles come with Fil Extra. Nothing here is earned
+    /// selectable and always free, and every style comes with Fil Extra. Nothing here is earned
     /// by writing, so unlike the screensavers there is no count threshold.
     private var appIconOptions: [AppIconOption] {
         let isExtra = StoreManager.shared.isPro
