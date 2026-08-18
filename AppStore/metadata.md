@@ -80,6 +80,10 @@ Fil Extra adds:
 
 - File for me: Hand it a pile of loose thoughts and it proposes which of your folders each one belongs in, and you can change any of it before a single one moves. It also organizes a whole library into folders and can write a folder's caption from what's inside it.
 
+- Screensavers: The rest of the ambient screensavers open up, each one made out of your own thoughts.
+
+- App icons: A set of alternate icons, the same word rendered in different materials, with more arriving over time.
+
 No account, no ads, no tracking. Your thoughts stay on your phone. Fil Extra is the one thing that leaves to AI, and only when you ask. That text is never used to train the model and is deleted within 30 days.
 
 (Fil Extra is an optional auto-renewing subscription, monthly or yearly, and it starts with a free trial. Payment is charged to your Apple Account and renews unless canceled at least 24 hours before the period ends. Manage it in iOS Settings.)
