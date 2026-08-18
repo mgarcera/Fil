@@ -40,8 +40,7 @@ plurals, so singulars are fine.
 
 ## Promotional text (170)
 ```
-pin what you're in the middle of to your lock screen, dynamic island, home screen. glance without
-unlocking. every thought arrives as its own shape. no account, no ads.
+Pin what you're in the middle of to your Lock Screen, Dynamic Island, Home Screen. Glance without unlocking. Every thought arrives as its own shape. No account, no ads.
 ```
 
 ## Description
@@ -63,7 +62,7 @@ And four ways in, without opening anything:
 - The Action Button, one press and you're recording
 - Siri, say "new thought in Fil" and it takes what you say next
 
-No two thoughts look alike. Every thought arrives with its own colour, its own shape, its own gradient. You don't pick it and you can't change it. It's given, the way the thought was. So you know a thought on sight: you don't read your folder, you recognise it.
+No two thoughts look alike. Every thought arrives with its own color, its own shape, its own gradient. You don't pick it and you can't change it. It's given, the way the thought was. So you know a thought on sight: you don't read your folder, you recognize it.
 
 And then you go in. A voice thought has a waveform and a transport. Photos become a carousel. Links, PDFs, and to-dos each get their own surface. Every action has its own sound and its own feel. Slow drifting gradients and an ambient screensaver, an app you can leave open.
 
@@ -76,7 +75,7 @@ What you can keep:
 
 Finding it again. Keyword search stays on your device, and it understands a time or a kind, so "photos from last week" works without asking anyone.
 
-Fil Extra adds the parts that read your thoughts back to you. Smart search: ask in your own words and Fil goes by what you meant rather than by matching words, then tells you what it found. File for me: hand it a pile of loose thoughts and it proposes which of your folders each one belongs in, and you can change any of it before a single one moves. It also organises a whole library into folders, writes a folder's caption from what's inside it, and opens the rest of the screensavers.
+Fil Extra adds the parts that read your thoughts back to you. Smart search: ask in your own words and Fil goes by what you meant rather than by matching words, then tells you what it found. File for me: hand it a pile of loose thoughts and it proposes which of your folders each one belongs in, and you can change any of it before a single one moves. It also organizes a whole library into folders, writes a folder's caption from what's inside it, and opens the rest of the screensavers.
 
 No inbox to clear, no tags to maintain, no streaks, no system to keep up with.
 
@@ -93,7 +92,7 @@ Questions or ideas? mason@smidgecraft.com
 ## What's New (version 1.0)
 ```
 the first Fil. pin what you're working on to your lock screen, dynamic island, or home screen, and
-glance at it without unlocking. every thought arrives with its own colour and shape, so you know it
+glance at it without unlocking. every thought arrives with its own color and shape, so you know it
 on sight. send anything in from any app. no account, no ads. tell me what to build next:
 mason@smidgecraft.com
 ```
