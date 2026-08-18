@@ -46,62 +46,48 @@ unlocking. every thought arrives as its own shape. no account, no ads.
 
 ## Description
 ```
-what you're working on, already out there.
+What you're working on, already out there.
 
-pin the thing you're in the middle of, the trip, the move, the dinner you're planning, and it lives
-on your lock screen, in your dynamic island, on your home screen. glance and it's there. open Fil
-when you want to dig in.
+Pin the thing you're in the middle of, the trip, the move, the dinner you're planning, and it lives on your Lock Screen, in your Dynamic Island, on your Home Screen. Glance and it's there. Open Fil when you want to dig in.
 
-five places that aren't the app:
-- lock screen widget, your pinned folder sitting there whenever you look
-- lock screen live activity, the same folder for the hours it's the loud thing
-- dynamic island, tap it and you're straight into what you're working on
-- home screen, a widget that shows the folder, not a button that opens an app
-- today view, the same widget one swipe away
+Five places that aren't the app:
+- Lock Screen widget, your pinned folder sitting there whenever you look
+- Lock Screen Live Activity, the same folder for the hours it's the loud thing
+- Dynamic Island, tap it and you're straight into what you're working on
+- Home Screen, a widget that shows the folder, not a button that opens an app
+- Today View, the same widget one swipe away
 
-and four ways in, without opening anything:
-- control center, start a voice thought or a written one from anywhere
-- the share sheet, send a link, a photo, a paragraph from any app straight into Fil
-- the action button, one press and you're recording
-- siri, say "new thought in Fil" and it takes what you say next
+And four ways in, without opening anything:
+- Control Center, start a voice thought or a written one from anywhere
+- The share sheet, send a link, a photo, a paragraph from any app straight into Fil
+- The Action Button, one press and you're recording
+- Siri, say "new thought in Fil" and it takes what you say next
 
-no two thoughts look alike. every thought arrives with its own colour, its own shape, its own
-gradient. you don't pick it and you can't change it. it's given, the way the thought was. so you
-know a thought on sight: you don't read your folder, you recognise it.
+No two thoughts look alike. Every thought arrives with its own colour, its own shape, its own gradient. You don't pick it and you can't change it. It's given, the way the thought was. So you know a thought on sight: you don't read your folder, you recognise it.
 
-and then you go in. a voice thought has a waveform and a transport. photos become a carousel.
-links, pdfs, and to-dos each get their own surface. every action has its own sound and its own
-feel. slow drifting gradients and an ambient screensaver, an app you can leave open.
+And then you go in. A voice thought has a waveform and a transport. Photos become a carousel. Links, PDFs, and to-dos each get their own surface. Every action has its own sound and its own feel. Slow drifting gradients and an ambient screensaver, an app you can leave open.
 
-what you can keep:
-- speak or type a thought, and your voice becomes a note transcribed on your device.
-- add a photo, save a link, jot a to-do.
-- attach a filament to any word: a note, a link, a photo, a pdf, or another thought.
-- file what you want into folders. pin the one you're living in.
-- as many thoughts, folders, and filaments as you like. there is no limit on any of them.
+What you can keep:
+- Speak or type a thought, and your voice becomes a note transcribed on your device.
+- Add a photo, save a link, jot a to-do.
+- Attach a filament to any word: a note, a link, a photo, a PDF, or another thought.
+- File what you want into folders. Pin the one you're living in.
+- As many thoughts, folders, and filaments as you like. There is no limit on any of them.
 
-finding it again. keyword search stays on your device, and it understands a time or a kind, so
-"photos from last week" works without asking anyone.
+Finding it again. Keyword search stays on your device, and it understands a time or a kind, so "photos from last week" works without asking anyone.
 
-Fil Extra adds the parts that read your thoughts back to you. smart search: ask in your own words
-and Fil goes by what you meant rather than by matching words, then tells you what it found. file
-for me: hand it a pile of loose thoughts and it proposes which of your folders each one belongs in,
-and you can change any of it before a single one moves. it also organises a whole library into
-folders, writes a folder's caption from what's inside it, and opens the rest of the screensavers.
+Fil Extra adds the parts that read your thoughts back to you. Smart search: ask in your own words and Fil goes by what you meant rather than by matching words, then tells you what it found. File for me: hand it a pile of loose thoughts and it proposes which of your folders each one belongs in, and you can change any of it before a single one moves. It also organises a whole library into folders, writes a folder's caption from what's inside it, and opens the rest of the screensavers.
 
-no inbox to clear, no tags to maintain, no streaks, no system to keep up with.
+No inbox to clear, no tags to maintain, no streaks, no system to keep up with.
 
-no account, no ads, no tracking. your thoughts stay on your phone. Fil Extra is the one thing that
-leaves, and only when you ask. that text is never used to train ai and is deleted within 30 days.
+No account, no ads, no tracking. Your thoughts stay on your phone. Fil Extra is the one thing that leaves, and only when you ask. That text is never used to train AI and is deleted within 30 days.
 
-Fil Extra is an optional auto-renewing subscription, monthly or yearly, and it starts with a free
-trial. payment is charged to your apple account and renews unless canceled at least 24 hours before
-the period ends. manage it in ios settings.
+Fil Extra is an optional auto-renewing subscription, monthly or yearly, and it starts with a free trial. Payment is charged to your Apple Account and renews unless canceled at least 24 hours before the period ends. Manage it in iOS Settings.
 
-terms: https://smidgecraft.com/fil/terms
-privacy: https://smidgecraft.com/fil/privacy
+Terms: https://smidgecraft.com/fil/terms
+Privacy: https://smidgecraft.com/fil/privacy
 
-questions or ideas? mason@smidgecraft.com
+Questions or ideas? mason@smidgecraft.com
 ```
 
 ## What's New (version 1.0)
