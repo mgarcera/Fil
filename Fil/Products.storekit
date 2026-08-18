@@ -28,7 +28,7 @@
           },
           "localizations" : [
             {
-              "description" : "Find a thought by what you meant, and let Fil file the loose ones for you.",
+              "description" : "Smart search and filing, extra icons and screensavers.",
               "displayName" : "Fil Extra (Monthly)",
               "locale" : "en_US"
             }
@@ -53,7 +53,7 @@
           },
           "localizations" : [
             {
-              "description" : "Find a thought by what you meant, and let Fil file the loose ones for you.",
+              "description" : "Smart search and filing, extra icons and screensavers.",
               "displayName" : "Fil Extra (Annual)",
               "locale" : "en_US"
             }

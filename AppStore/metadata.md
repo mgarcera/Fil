@@ -19,7 +19,8 @@ titles (it doesn't — titles are the first line of the user's own text).
 *Copy these into App Store Connect. Character counts are noted; Apple's limits in parentheses.
 Verify counts in ASC (it's the source of truth).*
 
-- **App name** (30): `Fil — Folders Outside the App` — 29 chars
+- **App name** (30): `Fil: Folders Outside the App` — 28 chars. Colon, not an em dash: the dash
+  renders cramped at App Store card sizes, and the colon reads as a label rather than an aside.
 - **Subtitle** (30): `Lock screen & dynamic island` — 28 chars
 - **Primary category:** Lifestyle   ·   **Secondary category:** Utilities
 - **Bundle ID:** `com.smidgecraft.Fil` — registered fresh on the new individual account, 2026-08-17.
