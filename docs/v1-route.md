@@ -55,7 +55,7 @@ exists (`appStoreID` is a real ID). Nothing has been submitted.
 | 17c | **The claim, precisely** | **Not** "no app to open" — untrue, since you open Fil to read, add, and rearrange. The honest claim is that it's *already there when you context-switch*; you never open it just to check. Written into the copy guardrails. |
 | 18 | **The door is free** | **Reverses part of 11b.** All six non-app surfaces stay in the free tier — lock screen, Dynamic Island, home screen widget, Today View, Control Center controls, share sheet. The door is how the habit forms; a free user who never installs it never gets far enough to want the room. |
 | 19 | **Onboarding scope** | Was "needs polish, scope TBD." Now defined: **first run ends with the door installed**, not with a fil created — Live Activity started, plus instructions to go look at the lock screen or tap the Dynamic Island. Consider seeding a *situational* example folder (the Yosemite pattern: a trip with a to-do list, photos, links) so the utility is visible before the user has built anything. |
-| 20 | **Accessory lock-screen widget** | **New v1 item.** `FilPinnedWidget` is `systemSmall` only — there is no `accessoryRectangular`/`accessoryCircular` widget, so the lock-screen surface today is Live-Activity-only. Live Activities are capped around 8 hours *and* share a single slot, so a delivery or a timer evicts Fil's door. Permanent surface = accessory widget; Live Activity keeps the transient loud moment. **The positioning depends on this shipping.** |
+| 20 | **Accessory lock-screen widget** | **DONE — shipped, verified 2026-08-18.** `FilPinnedWidget` declares `.systemSmall`, `.accessoryRectangular`, `.accessoryCircular` and `.accessoryInline` in `supportedFamilies` (FilPinnedWidget.swift:273), each with its own view. The permanent lock-screen surface exists, so the positioning's central claim holds and the App Store description's "Lock Screen Accessory: Your pinned folder, always on" is accurate. Live Activity keeps the transient role. |
 | 21 | **Export / import** | **New v1 item, free tier.** Spec'd in `docs/features/export-import.md`. Makes the "landscape after six months" claim honest and covers the delete-and-reinstall case that device backup cannot. |
 | 22 | **Store-recovery notice** | ✅ **Shipped** (`d0f614d`). The container recovery paths never destroyed data, but presented as an empty app — indistinguishable from total loss, and the natural reaction (delete and reinstall) was the one thing that would make it real. Now says so on launch. |
 
@@ -230,9 +230,9 @@ disk, still shipping, flagged here on 2026-08-13 and untouched since.
 
 ## Open work, sequenced
 
-1. **Accessory lock-screen widget** (#20) — the positioning's central claim
-   depends on a permanent lock-screen surface. Nothing else on this list is
-   worth doing if the door closes after eight hours.
+1. ~~**Accessory lock-screen widget** (#20)~~ — **done.** Shipped with all three
+   accessory families; verified against the code 2026-08-18. This entry sat
+   stale long enough to mislead an agent into reporting the door as missing.
 2. **Onboarding to the door** (#19) — first run ends with the Live Activity
    started and the user told to go look; optionally a seeded situational folder.
 3. **Export / import** (#21) — spec'd, free tier. Makes the six-month claim
