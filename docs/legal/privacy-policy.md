@@ -1,17 +1,19 @@
 <!--
-STAGED — revised 2026-08-13, NOT publishable as-is.
+STAGED — revised 2026-08-13, entity and date resolved 2026-08-18.
 
-Three things must resolve before this goes live, all marked inline:
+Resolved:
 
-1. {{ENTITY}} — the contracting party. Rootcause LLC is being dissolved. Replace with either
-   Mason Garcera personally, or the Illinois DBA if it lands and Apple accepts it. The same
-   name must appear in the terms and in the App Store copyright line.
-2. {{DATE}} — the publication date.
-3. The "Smart search" and "Subscriptions" sections assume Fil Pro ships as an Anthropic-backed
-   subscription. Both are on hold pending the Private Cloud Compute test. If Fil ships without a
-   paywall, the Subscriptions section is deleted and smart search stops being described as paid.
-   If Fil ships on Apple's Private Cloud Compute instead of Anthropic, the processor, the
-   retention wording, and the training claim all change — Apple's terms, not Anthropic's.
+1. Contracting party: **Mason Garcera d/b/a Smidgecraft**. Must stay in step with the privacy
+   policy and with the App Store copyright line, which reads "© 2026 Mason Garcera" — the same
+   legal party, since a DBA is a trade name rather than a separate entity.
+2. Publication date: August 18, 2026.
+3. The subscription ships. Pricing settled 2026-08-17 at $2.99/mo + $24.99/yr, so the Fil Extra
+   section stays. Vocabulary is "Fil Extra" throughout, matching the app and the live pages.
+
+Still open:
+
+4. The fair-use clause under "Acceptable use" only makes sense while smart search is metered on
+   our side; revisit if the AI moves to Apple's Private Cloud Compute, where the cost isn't ours.
 
 Live copy is served from src/app/fil/privacy/page.tsx in the website repo; update both together
 during the migration sweep. See docs/entity-migration.md.
@@ -19,11 +21,11 @@ during the migration sweep. See docs/entity-migration.md.
 
 # Fil Privacy Policy
 
-*Last updated: {{DATE}}*
+*Last updated: August 18, 2026*
 
 Fil is built to keep your thoughts yours. It is a **local-first** app: your fils (voice
 recordings, transcripts, text, images, links, and titles) live on your device, not on our
-servers. {{ENTITY}} (the maker of Fil) does not run a server that collects your content,
+servers. Mason Garcera d/b/a Smidgecraft (the maker of Fil) does not run a server that collects your content,
 and Fil has no account to sign into.
 
 There is one optional exception, and we want to be upfront about it: **smart search**, which sends
@@ -58,7 +60,7 @@ example, "what am I forgetting?"), the text of your fils is sent securely to our
 
 ## Subscriptions
 <!-- CONDITIONAL: delete this section entirely if v1 ships without a paywall. -->
-Fil Pro is an auto-renewing subscription sold through Apple's App Store. Apple handles the payment;
+Fil Extra is an auto-renewing subscription sold through Apple's App Store. Apple handles the payment;
 we never see your payment details. To verify that smart search is available to you, Fil confirms your
 subscription status with Apple. Manage or cancel anytime in **iOS Settings › Apple Account ›
 Subscriptions**.

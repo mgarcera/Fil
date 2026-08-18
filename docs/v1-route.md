@@ -215,7 +215,7 @@ screen, Today view, one clip playing at a time) → *No two thoughts look alike*
 negation) and the five caption pairs. The capture surfaces (Control Center,
 Action button) were split off — they run the opposite direction from the four,
 which show a pinned folder — and are parked with their clips retained. Legal
-pages remain staged behind `{{ENTITY}}`.
+pages resolved 2026-08-18: contracting party is Mason Garcera d/b/a Smidgecraft.
 
 **Hero shot — decision drifted, unresolved.** This doc names *the expanded
 Dynamic Island* as the hero. The site's hero is the blob, and the Dynamic Island

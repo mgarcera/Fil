@@ -2,7 +2,7 @@
 STAGED — rewritten 2026-08-13 against the new positioning. NOT ready to paste into ASC.
 
 Pending, all marked inline:
-1. {{ENTITY}} — the contracting party and copyright holder. Rootcause LLC is dissolving.
+1. Entity resolved 2026-08-18: ASC copyright `Mason Garcera`; legal pages `Mason Garcera d/b/a Smidgecraft`.
 2. URLs are written as smidgecraft.com, but the live pages are still served from rootcause.ltd.
    They switch together during the migration sweep — see docs/entity-migration.md.
 3. The subscription ships. Pricing settled 2026-08-17 at $2.99/mo + $24.99/yr; the CONDITIONAL
@@ -99,7 +99,9 @@ mason@smidgecraft.com
 ```
 
 ## Also set in App Store Connect
-- **Legal entity / copyright:** {{ENTITY}}. Set the app's copyright to `© 2026 {{ENTITY}}`.
+- **Legal entity / copyright:** `Mason Garcera`. Set the app's copyright to `© 2026 Mason Garcera`.
+  The legal pages name `Mason Garcera d/b/a Smidgecraft` — the same legal party, since a DBA is a trade name
+  rather than a separate entity, so the two lines do not conflict.
 - **Support contact email (App Review Information):** `mason@smidgecraft.com`.
 - **Privacy Policy URL:** `https://smidgecraft.com/fil/privacy` (must match `FilLinks.privacyPolicy`).
 - **Support URL:** `https://smidgecraft.com/fil/support` (must match `FilLinks.support`).
