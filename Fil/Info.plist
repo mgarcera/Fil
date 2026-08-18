@@ -20,7 +20,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.masongarcera.Fil.draft</string>
+			<string>com.smidgecraft.Fil.draft</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>fil</string>

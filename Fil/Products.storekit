@@ -33,7 +33,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.masongarcera.Fil.extra.monthly",
+          "productID" : "com.smidgecraft.Fil.extra.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Fil Extra Monthly",
           "subscriptionGroupID" : "21000000",
@@ -58,7 +58,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.masongarcera.Fil.extra.annual",
+          "productID" : "com.smidgecraft.Fil.extra.annual",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Fil Extra Annual",
           "subscriptionGroupID" : "21000000",

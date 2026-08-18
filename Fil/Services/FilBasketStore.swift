@@ -28,7 +28,7 @@ struct FilBasketItem: Codable, Equatable, Identifiable {
 final class FilBasketStore {
     static let shared = FilBasketStore()
 
-    static let appGroupIdentifier = "group.com.masongarcera.Fil"
+    static let appGroupIdentifier = "group.com.smidgecraft.Fil"
     private static let fileName = "filBasket.json"
 
     private(set) var items: [FilBasketItem]

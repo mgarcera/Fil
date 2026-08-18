@@ -4,7 +4,7 @@ import SwiftData
 
 /// App-wide loggers. Grouped by category so failures are filterable in Console / the device log.
 enum FilLog {
-    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil"
+    private static let subsystem = Bundle.main.bundleIdentifier ?? "com.smidgecraft.Fil"
     static let data = Logger(subsystem: subsystem, category: "data")
 
     /// Smart-search tracing: the cloud payload, the model's picks, the keyword fallback, and the

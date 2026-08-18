@@ -62,7 +62,7 @@ actor ClaudeSurfacingService {
     /// The surfacing proxy. A URL isn't secret, so it's compiled in; the proxy verifies the caller's
     /// Fil Pro subscription (via the transaction id) and holds the Anthropic key server-side.
     private let endpoint = URL(string: "https://fil-surfacing-proxy.mason-2fe.workers.dev")!
-    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "surfacing")
+    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.smidgecraft.Fil", category: "surfacing")
 
     /// - Parameter transactionID: the active Fil Pro subscription's transaction id, which the proxy
     ///   verifies with Apple before serving.

@@ -29,7 +29,7 @@ set -euo pipefail
 
 SIM="${FIL_SIM:-iPhone 17 Pro Max}"
 SCHEME="Fil"
-BID="com.masongarcera.Fil"
+BID="com.smidgecraft.Fil"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/AppStore/screenshots"
 SETTLE="${FIL_SETTLE:-7}"   # seconds to let the launch animation and reveals finish

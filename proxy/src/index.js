@@ -20,8 +20,8 @@ const MAX_TOKENS = 800;
 // Organizing a whole library into folders can emit many group→note lists, so allow more output.
 const ORGANIZE_MAX_TOKENS = 2000;
 
-const BUNDLE_ID = "com.masongarcera.Fil";
-const PRODUCT_IDS = ["com.masongarcera.Fil.pro.monthly", "com.masongarcera.Fil.pro.annual"];
+const BUNDLE_ID = "com.smidgecraft.Fil";
+const PRODUCT_IDS = ["com.smidgecraft.Fil.extra.monthly", "com.smidgecraft.Fil.extra.annual"];
 // Apple subscription status codes that grant entitlement: 1 = active, 4 = billing grace period.
 const ENTITLED_STATUSES = [1, 4];
 const APPSTORE_PROD = "https://api.storekit.itunes.apple.com";

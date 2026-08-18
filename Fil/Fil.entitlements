@@ -4,7 +4,7 @@
 <dict>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.com.masongarcera.Fil</string>
+		<string>group.com.smidgecraft.Fil</string>
 	</array>
 </dict>
 </plist>

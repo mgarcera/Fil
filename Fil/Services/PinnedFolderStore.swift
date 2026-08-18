@@ -40,7 +40,7 @@ struct PinnedFolderSnapshot: Codable, Equatable, Identifiable {
 final class PinnedFolderStore {
     static let shared = PinnedFolderStore()
 
-    static let appGroupIdentifier = "group.com.masongarcera.Fil"
+    static let appGroupIdentifier = "group.com.smidgecraft.Fil"
     private static let fileName = "pinnedFolderSnapshot.json"
 
     private(set) var pinnedFolder: PinnedFolderSnapshot?

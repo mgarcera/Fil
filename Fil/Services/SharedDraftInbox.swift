@@ -7,7 +7,7 @@ import Foundation
 /// Foundation-only so it compiles cleanly into both the app and the extension target.
 enum SharedDraftInbox {
     /// Must match the App Groups capability enabled on both the app and the extension.
-    static let appGroupIdentifier = "group.com.masongarcera.Fil"
+    static let appGroupIdentifier = "group.com.smidgecraft.Fil"
 
     /// One piece of content shared into Fil, with any accompanying images loaded.
     struct InboundDraft: Identifiable {

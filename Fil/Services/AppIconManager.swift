@@ -74,7 +74,7 @@ final class AppIconManager {
     /// rather than offering taps that silently do nothing.
     var supportsAlternateIcons: Bool { UIApplication.shared.supportsAlternateIcons }
 
-    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil",
+    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.smidgecraft.Fil",
                              category: "appicon")
 
     private init() {

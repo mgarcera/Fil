@@ -28,7 +28,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 STATE="$ROOT/.claude/skills/run-fil/.sim-udid"
 
 SCHEME="${FIL_SCHEME:-Fil}"
-BID="${FIL_BID:-com.masongarcera.Fil}"
+BID="${FIL_BID:-com.smidgecraft.Fil}"
 SIM_NAME="${FIL_SIM:-iPhone 17 Pro Max}"
 SETTLE="${FIL_SETTLE:-6}"
 

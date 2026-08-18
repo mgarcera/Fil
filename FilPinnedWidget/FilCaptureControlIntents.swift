@@ -24,7 +24,7 @@ enum FilCaptureTarget: String, AppEnum {
 
 /// App-group signalling for the capture controls.
 nonisolated enum FilCaptureLaunch {
-    static let suite = "group.com.masongarcera.Fil"
+    static let suite = "group.com.smidgecraft.Fil"
     static let key = "pendingCapture"   // "voice" | "compose"
     static func set(_ target: FilCaptureTarget) {
         UserDefaults(suiteName: suite)?.set(target.rawValue, forKey: key)

@@ -13,12 +13,15 @@ import OSLog
 final class StoreManager {
     static let shared = StoreManager()
 
-    /// IDs say `extra`, matching the tier's name. Changed 2026-08-17, which was the last free
-    /// moment: a product ID is immutable once it exists in App Store Connect, and ASC's products
-    /// had not been created yet (v1-route #5). **ASC must be created with these exact IDs.**
+    /// IDs say `extra`, matching the tier's name, and sit under the `com.smidgecraft` namespace,
+    /// matching the bundle ID. Both changes landed 2026-08-17 while ASC's products still did not
+    /// exist, which was the last free moment: a product ID is immutable once App Store Connect has
+    /// it. **ASC must be created with these exact IDs**, and `Products.storekit` plus the proxy's
+    /// `PRODUCT_IDS` must stay in step — the proxy denies entitlement to any product not in its
+    /// list, which is invisible in the simulator because nothing there calls the proxy.
     enum ProductID {
-        static let monthly = "com.masongarcera.Fil.extra.monthly"
-        static let annual = "com.masongarcera.Fil.extra.annual"
+        static let monthly = "com.smidgecraft.Fil.extra.monthly"
+        static let annual = "com.smidgecraft.Fil.extra.annual"
         static let all: [String] = [monthly, annual]
     }
 
@@ -32,7 +35,7 @@ final class StoreManager {
     private(set) var isReady = false
 
     private var updatesTask: Task<Void, Never>?
-    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.masongarcera.Fil", category: "store")
+    private let log = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.smidgecraft.Fil", category: "store")
 
     private init() {}
 

@@ -8,7 +8,7 @@
 import WidgetKit
 import SwiftUI
 
-private let appGroupIdentifier = "group.com.masongarcera.Fil"
+private let appGroupIdentifier = "group.com.smidgecraft.Fil"
 private let pinnedFolderFileName = "pinnedFolderSnapshot.json"
 
 /// Mirrors the app's `PinnedFolderSnapshot`, decoded from the shared App Group container.

@@ -67,7 +67,7 @@ Fil uses only `.cascade` (✓ allowed) — no `.deny` to fix.
 
 ### `Fil/FilApp.swift` (container)
 - Switch `ModelConfiguration(schema:url:)` to include `cloudKitDatabase:`:
-  - **Pro + sync on:** `.private("iCloud.com.masongarcera.Fil")` (or `.automatic` to read the
+  - **Pro + sync on:** `.private("iCloud.com.smidgecraft.Fil")` (or `.automatic` to read the
     entitlement's first container).
   - **Free / sync off / in-memory fallback:** `.none` (explicitly local-only).
 - **Gating:** build the container from `isPro && syncEnabled` at launch. Changing the toggle at
@@ -79,7 +79,7 @@ Fil uses only `.cascade` (✓ allowed) — no `.deny` to fix.
 - Keep the graceful recovery from #19; the in-memory fallback path should use `.none`.
 
 ### `Fil/Fil.entitlements`
-- Add `com.apple.developer.icloud-container-identifiers` → `[iCloud.com.masongarcera.Fil]`.
+- Add `com.apple.developer.icloud-container-identifiers` → `[iCloud.com.smidgecraft.Fil]`.
 - Add `com.apple.developer.icloud-services` → `[CloudKit]`.
 - (Keep the existing app group.) Easiest via Xcode's **Signing & Capabilities → iCloud (CloudKit)**,
   which also creates the container + provisioning; hand-editing the plist skips provisioning setup.
@@ -135,5 +135,5 @@ the store into the app group without revisiting this.)
   `.externalStorage` Data or synced separately. **Important:** this means a synced voice fil could
   arrive on device B with a transcript but no playable audio. Decide: move audio into the model
   (heavier records) vs. accept "audio stays local, text syncs" for v1.
-- **Container id:** confirm `iCloud.com.masongarcera.Fil`.
+- **Container id:** confirm `iCloud.com.smidgecraft.Fil`.
 - **Sync default:** on-by-default toggle (recommended) vs auto-on for Pro.

@@ -63,7 +63,7 @@ screensavers stay free; purchased screensavers are *additional* variety, not a t
 ### A. StoreKit 2 plumbing
 - Add the **In-App Purchase** capability.
 - Define products in App Store Connect:
-  - `com.masongarcera.Fil.support` (non-consumable) — the Support bundle.
+  - `com.smidgecraft.Fil.support` (non-consumable) — the Support bundle.
   - à la carte non-consumables, e.g. `…icon.<name>`, `…sounds.<name>`, `…screensaver.<name>`.
   - optional `…tip.small` / `…tip.large` (consumables).
 - A `.storekit` config file for local testing.

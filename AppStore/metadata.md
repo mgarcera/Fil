@@ -6,7 +6,7 @@ Pending, all marked inline:
 2. URLs are written as smidgecraft.com, but the live pages are still served from rootcause.ltd.
    They switch together during the migration sweep — see docs/entity-migration.md.
 3. The subscription ships. Pricing settled 2026-08-17 at $2.99/mo + $24.99/yr; the CONDITIONAL
-   markers are gone. ASC products must use com.masongarcera.Fil.extra.monthly / .annual.
+   markers are gone. ASC products must use com.smidgecraft.Fil.extra.monthly / .annual.
 4. Bundle ID and App Store ID both change when Fil is recreated under the new individual account.
 
 Superseded from the July version: the name and subtitle (privacy/voice-led → surfaces-led), the
@@ -22,8 +22,11 @@ Verify counts in ASC (it's the source of truth).*
 - **App name** (30): `Fil — Folders Outside the App` — 29 chars
 - **Subtitle** (30): `Lock screen & dynamic island` — 28 chars
 - **Primary category:** Lifestyle   ·   **Secondary category:** Utilities
-- **Bundle ID:** `com.masongarcera.Fil` — *re-registers under the new developer account; confirm it
-  can be reused after the old record is deleted, or pick a new one before launch.*
+- **Bundle ID:** `com.smidgecraft.Fil` — registered fresh on the new individual account, 2026-08-17.
+  The old `com.masongarcera.Fil` is abandoned with the lapsing org account rather than transferred:
+  deleting an ASC record does not release its identifier, so reuse would have meant waiting on the
+  lapse. Extensions follow the namespace (`.FilPinnedWidget`, `.FilShareExtension`), as does the app
+  group `group.com.smidgecraft.Fil`. App Groups is the only capability any target needs.
 
 ## Keywords (100, comma-separated, no spaces)
 ```
@@ -127,7 +130,7 @@ mason@smidgecraft.com
   free trial in Monetization → Subscriptions, and add a review screenshot for each. Skip entirely if
   v1 ships without a paywall.
 - **Price:** free app with an optional Fil Extra auto-renewing subscription at $2.99/mo or
-  $24.99/yr. Create the products with the IDs `com.masongarcera.Fil.extra.monthly` and
+  $24.99/yr. Create the products with the IDs `com.smidgecraft.Fil.extra.monthly` and
   `.annual` — they must match `StoreManager.ProductID` exactly, and are immutable once created.
 
 ## App Review notes (draft)

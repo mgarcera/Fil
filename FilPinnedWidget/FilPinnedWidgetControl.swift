@@ -13,7 +13,7 @@ import SwiftUI
 import WidgetKit
 
 struct FilVoiceCaptureControl: ControlWidget {
-    static let kind = "com.masongarcera.Fil.VoiceCaptureControl"
+    static let kind = "com.smidgecraft.Fil.VoiceCaptureControl"
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
@@ -27,7 +27,7 @@ struct FilVoiceCaptureControl: ControlWidget {
 }
 
 struct FilComposeCaptureControl: ControlWidget {
-    static let kind = "com.masongarcera.Fil.ComposeCaptureControl"
+    static let kind = "com.smidgecraft.Fil.ComposeCaptureControl"
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
