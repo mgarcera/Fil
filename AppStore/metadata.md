@@ -40,53 +40,54 @@ plurals, so singulars are fine.
 
 ## Promotional text (170)
 ```
-Pin what you're in the middle of to your Lock Screen, Dynamic Island, Home Screen. Glance without unlocking. Every thought arrives as its own shape. No account, no ads.
+Pin what you're in the middle of to your Lock Screen, Dynamic Island, Home Screen, and more. See the shape of your thoughts at a glance without unlocking your screen.
 ```
 
 ## Description
 ```
-What you're working on, already out there.
-
-Pin the thing you're in the middle of, the trip, the move, the dinner you're planning, and it lives on your Lock Screen, in your Dynamic Island, on your Home Screen. Glance and it's there. Open Fil when you want to dig in.
+Pin the thing you're in the middle of (the trip, the move, the dinner you're planning) and it lives on your Lock Screen, in your Dynamic Island, on your Home Screen, and more. Glance and it's there. Open Fil when you want to dig in.
 
 Five places that aren't the app:
-- Lock Screen widget, your pinned folder sitting there whenever you look
-- Lock Screen Live Activity, the same folder for the hours it's the loud thing
-- Dynamic Island, tap it and you're straight into what you're working on
-- Home Screen, a widget that shows the folder, not a button that opens an app
-- Today View, the same widget one swipe away
 
-And four ways in, without opening anything:
-- Control Center, start a voice thought or a written one from anywhere
-- The share sheet, send a link, a photo, a paragraph from any app straight into Fil
-- The Action Button, one press and you're recording
-- Siri, say "new thought in Fil" and it takes what you say next
+- Lock Screen Live Activity: Your pinned folder at a glance.
+- Lock Screen Accessory: Your pinned folder, always on.
+- Dynamic Island: Tap it and you're straight into what you're working in.
+- Home Screen: A widget that changes depending on what you've pinned.
+- Today View: The same widget, one swipe away.
 
-No two thoughts look alike. Every thought arrives with its own color, its own shape, its own gradient. You don't pick it and you can't change it. It's given, the way the thought was. So you know a thought on sight: you don't read your folder, you recognize it.
+And open the app in four ways, without touching the actual icon:
 
-And then you go in. A voice thought has a waveform and a transport. Photos become a carousel. Links, PDFs, and to-dos each get their own surface. Every action has its own sound and its own feel. Slow drifting gradients and an ambient screensaver, an app you can leave open.
+- Control Center: Start a voice thought or a written one from anywhere.
+- Share Sheet: Send a paragraph, a link, or a photo from any app straight into Fil.
+- Action Button: One press and you're recording.
+- Siri: Say "New thought in Fil" and it takes what you say next.
 
-What you can keep:
+No two thoughts look alike. Every thought arrives with its own color, its own shape, its own gradient. You don't pick it and you can't change it; it's given, the way the thought was. You don't read your folder, you recognize it.
+
+It gets even better when you go in. A voice thought reads like a music player. Photos become a carousel. Links and to-dos each get their own function. Every action has its own sound and its own feel. Slow drifting gradients and an ambient screensaver. Fil is an app you can leave closed or open.
+
+What you can do:
+
 - Speak or type a thought, and your voice becomes a note transcribed on your device.
-- Add a photo, save a link, jot a to-do.
-- Attach a filament to any word: a note, a link, a photo, a PDF, or another thought.
+- Add a photo, save a link, write a note with to-dos.
+- Attach a filament (more info) to any word: a note, a link, a photo, a PDF, or another thought.
 - File what you want into folders. Pin the one you're living in.
 - As many thoughts, folders, and filaments as you like. There is no limit on any of them.
 
-Finding it again. Keyword search stays on your device, and it understands a time or a kind, so "photos from last week" works without asking anyone.
+Fil Extra adds:
 
-Fil Extra adds the parts that read your thoughts back to you. Smart search: ask in your own words and Fil goes by what you meant rather than by matching words, then tells you what it found. File for me: hand it a pile of loose thoughts and it proposes which of your folders each one belongs in, and you can change any of it before a single one moves. It also organizes a whole library into folders, writes a folder's caption from what's inside it, and opens the rest of the screensavers.
+- Smart search: Ask in your own words and Fil goes by what you meant rather than by matching words, then tells you what it found.
 
-No inbox to clear, no tags to maintain, no streaks, no system to keep up with.
+- File for me: Hand it a pile of loose thoughts and it proposes which of your folders each one belongs in, and you can change any of it before a single one moves. It also organizes a whole library into folders and can write a folder's caption from what's inside it.
 
-No account, no ads, no tracking. Your thoughts stay on your phone. Fil Extra is the one thing that leaves, and only when you ask. That text is never used to train AI and is deleted within 30 days.
+No account, no ads, no tracking. Your thoughts stay on your phone. Fil Extra is the one thing that leaves to AI, and only when you ask. That text is never used to train the model and is deleted within 30 days.
 
-Fil Extra is an optional auto-renewing subscription, monthly or yearly, and it starts with a free trial. Payment is charged to your Apple Account and renews unless canceled at least 24 hours before the period ends. Manage it in iOS Settings.
+(Fil Extra is an optional auto-renewing subscription, monthly or yearly, and it starts with a free trial. Payment is charged to your Apple Account and renews unless canceled at least 24 hours before the period ends. Manage it in iOS Settings.)
 
 Terms: https://smidgecraft.com/fil/terms
 Privacy: https://smidgecraft.com/fil/privacy
 
-Questions or ideas? mason@smidgecraft.com
+Questions, ideas, or feedback? mason@smidgecraft.com
 ```
 
 ## What's New (version 1.0)
