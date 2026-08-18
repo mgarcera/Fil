@@ -7,6 +7,9 @@ import SwiftData
 struct SettingsView: View {
     /// Screensaver launchers, supplied by ContentView (each dismisses settings, then launches).
     var screensaverOptions: [ScreensaverOption] = []
+    /// App icon choices, supplied by ContentView (which owns the Fil Extra gate). Applying one is
+    /// handled here, since every row does the same thing.
+    var appIconOptions: [AppIconOption] = []
     /// Whether the library has enough fils for auto-screensaver to actually run (else the toggle
     /// is disabled so it can't be switched on to no effect).
     var autoScreensaverUnlocked: Bool = true
@@ -118,6 +121,12 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 18) {
             appearanceSectionRow
 
+            if !appIconOptions.isEmpty, AppIconManager.shared.supportsAlternateIcons {
+                sectionDivider
+
+                appIconSection
+            }
+
             sectionDivider
 
             settingToggle("Sound effects", icon: "music.note", isOn: $soundEnabled)
@@ -228,6 +237,82 @@ struct SettingsView: View {
                 }
         }
         .buttonStyle(.plain)
+    }
+
+    /// App icon: the default plus the Fil Extra styles, as a vertical list matching Screensavers.
+    /// Locked rows use the same dimmed + lock-glyph treatment as `screensaverRow`.
+    private var appIconSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            settingLabel("App icon", icon: "app.badge")
+            // Indent rows so their thumbnails line up under the word "App icon"
+            // (header icon frame width 22 + HStack spacing 12), exactly as Screensavers does.
+            ForEach(appIconOptions) { appIconRow($0) }
+                .padding(.leading, 34)
+        }
+    }
+
+    /// One icon choice: thumbnail + name, a checkmark when it's the icon on the Home Screen, and
+    /// the lock treatment when it comes with Fil Extra. iOS puts up its own confirmation alert
+    /// after the change, which cannot be suppressed.
+    private func appIconRow(_ option: AppIconOption) -> some View {
+        let isSelected = AppIconManager.shared.currentIconName == option.assetName
+        return Button {
+            SoundscapeManager.shared.playLightModeSound()
+            Task { await AppIconManager.shared.setIcon(option.assetName) }
+        } label: {
+            HStack(spacing: 12) {
+                appIconThumbnail(option)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(option.title)
+                            .font(Theme.fredoka(17, weight: .regular))
+                            .foregroundStyle(.white)
+                        if !option.isUnlocked {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.white.opacity(0.6))
+                        }
+                    }
+                    if !option.isUnlocked {
+                        Text(option.requirement)
+                            .font(Theme.fredoka(13, weight: .regular))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 0)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+            }
+            .contentShape(Rectangle())
+            .opacity(option.isUnlocked ? 1 : 0.5)
+        }
+        .buttonStyle(.plain)
+        .disabled(!option.isUnlocked)
+    }
+
+    /// The icon art, in a 22pt-wide frame so it centers on the same axis as the SF Symbols in the
+    /// rows above. Overflows that frame symmetrically so the thumbnail can read at 28pt.
+    private func appIconThumbnail(_ option: AppIconOption) -> some View {
+        Group {
+            if let image = AppIconManager.shared.previewImage(for: option.choice) {
+                Image(uiImage: image).resizable()
+            } else {
+                // Placeholder art is in place today, so this only shows if a lookup misses.
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+            }
+        }
+        .frame(width: 28, height: 28)
+        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+        }
+        .frame(width: 22)
     }
 
     /// The hairline between settings options (matches the About section's dividers).
@@ -424,6 +509,20 @@ struct ScreensaverOption: Identifiable {
     /// thoughts" and "Comes with Fil Extra") and they do not share a prefix.
     let requirement: String
     let action: () -> Void
+}
+
+/// An app icon shown in Settings → Appearance. Built by ContentView (which owns the Fil Extra
+/// gate); the catalog of icons themselves lives in AppIconManager.
+struct AppIconOption: Identifiable {
+    let choice: AppIconManager.Choice
+    let isUnlocked: Bool
+    /// The whole locked sentence, matching ScreensaverOption's convention.
+    let requirement: String
+
+    var id: String { choice.id }
+    var title: String { choice.title }
+    /// nil means the default icon.
+    var assetName: String? { choice.assetName }
 }
 
 private enum SettingsSection: String, CaseIterable, Identifiable {

@@ -2,6 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!--
+	  Alternate app icons: there is deliberately no CFBundleIcons / CFBundleAlternateIcons here.
+	  Fil ships its alternates as *.appiconset folders in Fil/Assets.xcassets, with the build
+	  setting ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES on the Fil target. actool
+	  compiles every icon set other than the primary (ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon)
+	  into Assets.car and writes the CFBundleAlternateIcons dictionary into the *built* Info.plist
+	  itself. Hand-writing those keys here would duplicate, and eventually contradict, what the
+	  asset catalog already declares.
+
+	  The alternative (loose per-scale PNGs at the bundle root plus hand-authored CFBundleIconFiles
+	  arrays) was rejected: it means maintaining a scale ladder by hand and gives up dark and tinted
+	  icon variants. See Fil/Services/AppIconManager.swift for the full reasoning and for how to add
+	  an icon.
+	-->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

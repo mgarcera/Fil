@@ -298,6 +298,7 @@ struct ContentView: View {
     private var filSetupSheet: some View {
         SettingsView(
             screensaverOptions: screensaverOptions,
+            appIconOptions: appIconOptions,
             autoScreensaverUnlocked: StoreManager.shared.isPro && notes.count >= koiPondUnlockThreshold
         )
             .presentationDetents([.fraction(0.6), .large])
@@ -334,6 +335,20 @@ struct ContentView: View {
             option("Chlorofil", "rainbow", "Your thoughts in streaks of light. Uses your latest thoughts, so they'll always change color.", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
             option("Fillet", "fish.fill", "Your thoughts...as fish food.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
         ]
+    }
+
+    /// App icon choices for Settings → Appearance. One gate only: the default icon is always
+    /// selectable and always free, and the six styles come with Fil Extra. Nothing here is earned
+    /// by writing, so unlike the screensavers there is no count threshold.
+    private var appIconOptions: [AppIconOption] {
+        let isExtra = StoreManager.shared.isPro
+        return AppIconManager.choices.map { choice in
+            AppIconOption(
+                choice: choice,
+                isUnlocked: choice.assetName == nil || isExtra,
+                requirement: "Comes with Fil Extra"
+            )
+        }
     }
 
     /// Adds a placeholder blob to the grid's top slot and returns its id — used as the
