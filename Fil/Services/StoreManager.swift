@@ -44,17 +44,12 @@ final class StoreManager {
         guard updatesTask == nil else { return }
         updatesTask = Task { [weak self] in
             for await update in Transaction.updates {
-                await self?.noteUpdateDelivered()
                 await self?.handle(update)
             }
         }
         Task { await refresh() }
     }
 
-    /// TEMPORARY — see updatesDelivered.
-    func noteUpdateDelivered() {
-        updatesDelivered += 1
-    }
 
     /// Reload products and recompute entitlement.
     func refresh() async {
@@ -83,12 +78,8 @@ final class StoreManager {
         var active = false
         var txID: String?
         var seen: [String] = []
-        var unverified = 0
         for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else {
-                unverified += 1
-                continue
-            }
+            guard case .verified(let transaction) = result else { continue }
             seen.append(transaction.productID)
             if ProductID.all.contains(transaction.productID), transaction.revocationDate == nil {
                 active = true
@@ -97,113 +88,13 @@ final class StoreManager {
         }
         isPro = active
         proTransactionID = txID
-
-        // TEMPORARY DIAGNOSTIC — remove once the Extra gate is confirmed working.
-        // "Purchased and nothing unlocked" has three different causes that look identical from the
-        // outside: no entitlement arrives at all, one arrives under a product ID we do not
-        // recognise, or the entitlement is fine and the UI is not re-reading it. This records
-        // which, so the answer is legible in Settings instead of inferred.
-        // TEMPORARY — Transaction.all is every transaction StoreKit has recorded, entitled or not.
-        // If a verified purchase is missing from currentEntitlements, this says whether it exists
-        // at all: present here but absent there means it is recorded and not entitling (expired,
-        // revoked, wrong group); absent from both means it never persisted.
-        var all: [String] = []
-        for await result in Transaction.all {
-            if case .verified(let t) = result {
-                let exp = t.expirationDate.map { ISO8601DateFormatter().string(from: $0) } ?? "none"
-                let expired = t.expirationDate.map { $0 < Date() } ?? false
-                all.append("\(t.productID) env=\(t.environment.rawValue) own=\(t.ownershipType.rawValue) exp=\(exp)\(expired ? " PAST" : "")\(t.revocationDate != nil ? " REVOKED" : "")")
-            }
-        }
-
-        // Unfinished transactions block nothing by themselves, but their presence says the app
-        // never acknowledged the purchase.
-        var unfinished = 0
-        for await result in Transaction.unfinished {
-            if case .verified = result { unfinished += 1 }
-        }
-
-        // Ask per product rather than iterating the collection — a targeted answer, and it works
-        // even when the sequence yields nothing.
-        var direct: [String] = []
-        for id in ProductID.all {
-            if let r = await Transaction.currentEntitlement(for: id) {
-                switch r {
-                case .verified(let t): direct.append("\(id): verified")
-                    _ = t
-                case .unverified(_, let e): direct.append("\(id): UNVERIFIED \(e)")
-                }
-            } else {
-                direct.append("\(id): nil")
-            }
-        }
-
-        var statuses: [String] = []
-        if let anyProduct = products.first, let sub = anyProduct.subscription {
-            if let list = try? await sub.status {
-                for st in list {
-                    let name: String
-                    switch st.state {
-                    case .subscribed: name = "subscribed"
-                    case .expired: name = "expired"
-                    case .inBillingRetryPeriod: name = "inBillingRetry"
-                    case .inGracePeriod: name = "inGracePeriod"
-                    case .revoked: name = "revoked"
-                    default: name = "unknown(\(st.state.rawValue))"
-                    }
-                    statuses.append(name)
-                }
-            }
-        }
-
-        diagnostic = Diagnostic(
-            directEntitlements: direct,
-            unfinishedCount: unfinished,
-            allTransactions: all,
-            subscriptionStatuses: statuses,
-            entitlementsSeen: seen,
-            unverifiedCount: unverified,
-            expectedIDs: ProductID.all,
-            productsLoaded: products.map(\.id),
-            isPro: active,
-            checkedAt: Date()
-        )
-        log.notice("""
-            entitlement check: all=\(all, privacy: .public) status=\(statuses, privacy: .public) \
-            seen=\(seen, privacy: .public) \
-            unverified=\(unverified) expected=\(ProductID.all, privacy: .public) \
-            loaded=\(self.products.map(\.id), privacy: .public) isPro=\(active)
-            """)
-    }
-
-    /// TEMPORARY — see updateEntitlement().
-    struct Diagnostic {
-        let directEntitlements: [String]
-        let unfinishedCount: Int
-        let allTransactions: [String]
-        let subscriptionStatuses: [String]
-        let entitlementsSeen: [String]
-        let unverifiedCount: Int
-        let expectedIDs: [String]
-        let productsLoaded: [String]
-        let isPro: Bool
-        let checkedAt: Date
-    }
-
-    /// TEMPORARY — surfaced in Settings so the failure is readable without a debugger.
-    private(set) var diagnostic: Diagnostic?
-
-    /// TEMPORARY — what the purchase flow last reported, and whether Transaction.updates has ever
-    /// delivered anything. An empty currentEntitlements means no transaction exists; these two say
-    /// whether one was ever created.
-    private(set) var lastPurchaseOutcome: String = "no purchase attempted this launch"
-    private(set) var updatesDelivered: Int = 0
-
-    /// TEMPORARY — called from the paywall so the purchase result is recorded even though
-    /// SubscriptionStoreView runs the purchase itself.
-    func notePurchaseOutcome(_ text: String) {
-        lastPurchaseOutcome = text
-        log.notice("purchase outcome: \(text, privacy: .public)")
+        // Kept deliberately. When "I purchased and nothing unlocked" comes up again, this one line
+        // separates the three causes that look identical from outside: nothing in
+        // currentEntitlements, something under an unexpected product ID, or an entitlement that is
+        // live while the UI ignores it. It was a device carrying transactions from before the
+        // bundle ID changed — those survive deleting the app, and only a fresh simulator or a
+        // reset device clears them.
+        log.notice("entitlement: seen=\(seen, privacy: .public) expected=\(ProductID.all, privacy: .public) isPro=\(active)")
     }
 
     enum PurchaseOutcome { case success, pending, cancelled }

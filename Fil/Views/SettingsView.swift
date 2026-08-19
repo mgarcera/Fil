@@ -124,7 +124,6 @@ struct SettingsView: View {
             if !appIconOptions.isEmpty, AppIconManager.shared.supportsAlternateIcons {
                 sectionDivider
 
-                extraDiagnostic
                 appIconSection
             }
 
@@ -238,47 +237,6 @@ struct SettingsView: View {
                 }
         }
         .buttonStyle(.plain)
-    }
-
-    /// TEMPORARY diagnostic — remove with the StoreManager one once the Extra gate is confirmed.
-    /// Reads the raw entitlement state so "I bought it and nothing unlocked" resolves to one of
-    /// three answers on screen: no entitlement arrived, one arrived under an unexpected product
-    /// ID, or the entitlement is live and the UI is not reacting to it.
-    private var extraDiagnostic: some View {
-        let store = StoreManager.shared
-        let d = store.diagnostic
-        return VStack(alignment: .leading, spacing: 6) {
-            settingLabel("Extra diagnostic", icon: "ladybug")
-            VStack(alignment: .leading, spacing: 4) {
-                Text("isPro (live): \(String(store.isPro))")
-                Text("ready: \(String(store.isReady))  ·  products loaded: \(store.products.count)")
-                Text("purchase: \(store.lastPurchaseOutcome)")
-                Text("Transaction.updates delivered: \(store.updatesDelivered)")
-                if let d {
-                    Text("direct: \(d.directEntitlements.joined(separator: "  |  "))")
-                    Text("unfinished: \(d.unfinishedCount)")
-                    Text("all transactions: \(d.allTransactions.isEmpty ? "none" : d.allTransactions.joined(separator: ", "))")
-                    Text("subscription status: \(d.subscriptionStatuses.isEmpty ? "none" : d.subscriptionStatuses.joined(separator: ", "))")
-                    Text("entitlements seen: \(d.entitlementsSeen.isEmpty ? "none" : d.entitlementsSeen.joined(separator: ", "))")
-                    Text("unverified: \(d.unverifiedCount)")
-                    Text("expecting: \(d.expectedIDs.joined(separator: ", "))")
-                    Text("loaded: \(d.productsLoaded.isEmpty ? "none" : d.productsLoaded.joined(separator: ", "))")
-                } else {
-                    Text("no entitlement check has run yet")
-                }
-            }
-            .font(.system(size: 11, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.75))
-            .textSelection(.enabled)
-            .padding(.leading, 34)
-
-            Button("Re-check entitlement") {
-                Task { await StoreManager.shared.refresh() }
-            }
-            .font(Theme.fredoka(14, weight: .medium))
-            .foregroundStyle(.white)
-            .padding(.leading, 34)
-        }
     }
 
     /// App icon: the default plus the Fil Extra styles, as a vertical list matching Screensavers.

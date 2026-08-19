@@ -228,6 +228,25 @@ disk, still shipping, flagged here on 2026-08-13 and untouched since.
 
 ---
 
+## StoreKit testing — read before debugging a purchase (2026-08-18)
+
+**Purchases that unlock nothing are usually the device, not the code.** A StoreKit transaction
+lives in the device's store, not in the app, so it survives deleting and reinstalling. A device
+that has ever run Fil under a different bundle ID or team can hold a transaction that looks
+healthy — not expired, not revoked, subscription status `subscribed` — and still entitles nothing,
+because it belongs to a different app identity.
+
+Confirmed on 2026-08-18: identical build, same purchase. On the physical device
+`Transaction.currentEntitlements` was empty; on a fresh simulator it returned the product,
+`isPro` flipped, and every gate unlocked.
+
+**So test entitlement changes on a fresh simulator first.** A device is the right place to test
+almost everything else, and the wrong place to form a first opinion about a purchase.
+
+`StoreManager.updateEntitlement` logs `entitlement: seen=… expected=… isPro=…` to the `store`
+OSLog category. That line separates the three causes that look identical from outside: nothing
+arriving, something arriving under an unexpected product ID, or a live entitlement the UI ignores.
+
 ## Open work, sequenced
 
 1. ~~**Accessory lock-screen widget** (#20)~~ — **done.** Shipped with all three
