@@ -21,7 +21,6 @@ struct SettingsView: View {
 
     @State private var section: SettingsSection = .appearance
     @State private var showFeedback = false
-    @State private var showCaptureAnywhere = false
     @State private var contentVisible = false
 
     @Environment(\.openURL) private var openURL
@@ -57,9 +56,6 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showFeedback) {
             FeedbackSheet()
-        }
-        .sheet(isPresented: $showCaptureAnywhere) {
-            CaptureAnywhereView()
         }
     }
 
@@ -135,17 +131,11 @@ struct SettingsView: View {
 
             lockScreenSection
 
-            sectionDivider
+            // "Capture from anywhere" sat here — a sheet explaining Control Center, the Action
+            // Button, the share sheet and Siri. Removed 2026-08-18: the surfaces teach themselves
+            // in use, and a settings row explaining them read as documentation rather than
+            // product. CaptureAnywhereView.swift went with it; git has both.
 
-            Button { showCaptureAnywhere = true } label: {
-                HStack {
-                    settingLabel("Capture from anywhere", icon: "bolt.badge.clock")
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.4))
-                }
-            }
-            .buttonStyle(.plain)
 
             if !screensaverOptions.isEmpty {
                 sectionDivider
@@ -154,8 +144,14 @@ struct SettingsView: View {
                     settingLabel("Screensavers", icon: "zzz")
                     // Indent rows so their icons line up under the word "Screensavers"
                     // (header icon frame width 22 + HStack spacing 12).
-                    ForEach(screensaverOptions) { screensaverRow($0) }
-                        .padding(.leading, 34)
+                    VStack(alignment: .leading, spacing: 16) {
+                        ForEach(screensaverOptions) { screensaverRow($0) }
+                        Text("More screensavers arrive with updates.")
+                            .font(Theme.fredoka(13, weight: .regular))
+                            .foregroundStyle(.white.opacity(0.7))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.leading, 34)
                 }
             }
 
@@ -261,7 +257,10 @@ struct SettingsView: View {
     }
 
     /// One icon choice: thumbnail + name, a checkmark when it's the icon on the Home Screen, and
-    /// the lock treatment when it comes with Fil Extra. iOS puts up its own confirmation alert
+    /// the lock treatment when it comes with Fil Extra.
+    ///
+    /// The lock dims the name, never the artwork. A locked row is an advertisement — someone has to
+    /// be able to see the icon they would get, or the row is asking them to buy something unseen. iOS puts up its own confirmation alert
     /// after the change, which cannot be suppressed.
     private func appIconRow(_ option: AppIconOption) -> some View {
         let isSelected = AppIconManager.shared.currentIconName == option.assetName
@@ -275,11 +274,11 @@ struct SettingsView: View {
                     HStack(spacing: 6) {
                         Text(option.title)
                             .font(Theme.fredoka(17, weight: .regular))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.white.opacity(option.isUnlocked ? 1 : 0.5))
                         if !option.isUnlocked {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 11))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .foregroundStyle(.white.opacity(0.5))
                         }
                     }
                     if !option.isUnlocked {
@@ -297,7 +296,6 @@ struct SettingsView: View {
                 }
             }
             .contentShape(Rectangle())
-            .opacity(option.isUnlocked ? 1 : 0.5)
         }
         .buttonStyle(.plain)
         .disabled(!option.isUnlocked)
@@ -372,11 +370,11 @@ struct SettingsView: View {
                     HStack(spacing: 6) {
                         Text(option.title)
                             .font(Theme.fredoka(17, weight: .regular))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(.white.opacity(option.isUnlocked ? 1 : 0.5))
                         if !option.isUnlocked {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 11))
-                                .foregroundStyle(.white.opacity(0.6))
+                                .foregroundStyle(.white.opacity(0.5))
                         }
                     }
                     Text(option.isUnlocked ? option.description : option.requirement)
@@ -387,7 +385,6 @@ struct SettingsView: View {
                 Spacer(minLength: 0)
             }
             .contentShape(Rectangle())
-            .opacity(option.isUnlocked ? 1 : 0.5)
         }
         .buttonStyle(.plain)
         .disabled(!option.isUnlocked)
