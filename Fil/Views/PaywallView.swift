@@ -47,9 +47,27 @@ struct PaywallView: View {
             // Refresh entitlement deterministically here rather than racing the Transaction.updates
             // listener, so isPro is true before the paywall dismisses and the next query routes to
             // the cloud.
-            if case .success(.success) = result {
+            // TEMPORARY diagnostic — record every branch, not just success. An empty
+            // currentEntitlements means no transaction exists, so the question is what this
+            // returned.
+            switch result {
+            case .success(.success(let verification)):
+                switch verification {
+                case .verified(let t):
+                    StoreManager.shared.notePurchaseOutcome("success verified \(t.productID)")
+                case .unverified(let t, let error):
+                    StoreManager.shared.notePurchaseOutcome("success UNVERIFIED \(t.productID): \(error)")
+                }
                 await StoreManager.shared.refresh()
                 dismiss()
+            case .success(.pending):
+                StoreManager.shared.notePurchaseOutcome("pending — awaiting approval")
+            case .success(.userCancelled):
+                StoreManager.shared.notePurchaseOutcome("cancelled by user")
+            case .success(let other):
+                StoreManager.shared.notePurchaseOutcome("unknown result: \(other)")
+            case .failure(let error):
+                StoreManager.shared.notePurchaseOutcome("FAILED: \(error.localizedDescription)")
             }
         }
         // Force the whole paywall (our copy + Apple's plan controls + the standalone Theme.background

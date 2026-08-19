@@ -252,6 +252,8 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("isPro (live): \(String(store.isPro))")
                 Text("ready: \(String(store.isReady))  ·  products loaded: \(store.products.count)")
+                Text("purchase: \(store.lastPurchaseOutcome)")
+                Text("Transaction.updates delivered: \(store.updatesDelivered)")
                 if let d {
                     Text("entitlements seen: \(d.entitlementsSeen.isEmpty ? "none" : d.entitlementsSeen.joined(separator: ", "))")
                     Text("unverified: \(d.unverifiedCount)")

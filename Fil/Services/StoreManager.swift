@@ -44,10 +44,16 @@ final class StoreManager {
         guard updatesTask == nil else { return }
         updatesTask = Task { [weak self] in
             for await update in Transaction.updates {
+                await self?.noteUpdateDelivered()
                 await self?.handle(update)
             }
         }
         Task { await refresh() }
+    }
+
+    /// TEMPORARY — see updatesDelivered.
+    func noteUpdateDelivered() {
+        updatesDelivered += 1
     }
 
     /// Reload products and recompute entitlement.
@@ -124,6 +130,19 @@ final class StoreManager {
 
     /// TEMPORARY — surfaced in Settings so the failure is readable without a debugger.
     private(set) var diagnostic: Diagnostic?
+
+    /// TEMPORARY — what the purchase flow last reported, and whether Transaction.updates has ever
+    /// delivered anything. An empty currentEntitlements means no transaction exists; these two say
+    /// whether one was ever created.
+    private(set) var lastPurchaseOutcome: String = "no purchase attempted this launch"
+    private(set) var updatesDelivered: Int = 0
+
+    /// TEMPORARY — called from the paywall so the purchase result is recorded even though
+    /// SubscriptionStoreView runs the purchase itself.
+    func notePurchaseOutcome(_ text: String) {
+        lastPurchaseOutcome = text
+        log.notice("purchase outcome: \(text, privacy: .public)")
+    }
 
     enum PurchaseOutcome { case success, pending, cancelled }
 
