@@ -71,18 +71,21 @@ struct PaywallView: View {
     /// invites, it never pressures.
     private var marketingHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // "A smarter search" described half of Extra. Smart organize, folder captions and
-            // "File for me" were all already behind this paywall and none of them were named —
-            // the page sold finding and quietly withheld filing.
-            AnimatedGradientRevealText(text: "Find it, and put it away.")
+            // The headline names all four things Extra includes: beautiful covers the app icons
+            // and screensavers, smart covers search and filing. Two earlier headlines each sold a
+            // subset — "A smarter search" withheld filing, and "Find it, and put it away." named
+            // both of those while leaving the icons and screensavers invisible on the one screen
+            // where someone decides whether to pay for them. The body below delivers one half each.
+            AnimatedGradientRevealText(text: "Beautiful and smart.")
                 .font(Theme.fredoka(26, weight: .bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             blobRow
-            // Two claims, so two lines. Both are the same promise from opposite ends: you don't
-            // have to remember where a thought went, or decide where it goes.
+            // One line per half of the headline, in the same order.
             VStack(alignment: .leading, spacing: 10) {
-                Text("Ask in your own words, and Fil shows you the thoughts that answer, not a list of keyword hits.")
-                Text("Or hand it a pile and let it file, with every choice yours to change before anything moves.")
+                Text("App icons in glass, ice and paint, and ambient screensavers made out of your own thoughts.")
+                // Filing's own objection answered in the same breath that raises it: nothing moves
+                // until you say so.
+                Text("Ask in your own words and Fil finds what you meant, or hand it a pile and let it file, every choice yours before anything moves.")
             }
             .font(Theme.fredoka(15, weight: .semibold))
             .foregroundStyle(.white)

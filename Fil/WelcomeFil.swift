@@ -43,7 +43,7 @@ enum WelcomeFil {
     static let linksNote = "Paste or type a link and it formats automatically."
 
     static let searchNoteTitle = "Finding thoughts later"
-    static let searchNote = "Tap search to look back through your thoughts. Fil Extra lets you ask in your own words and finds them with better detail."
+    static let searchNote = "Tap search to look back through your thoughts. Fil Extra lets you ask in your own words."
 
     static let landfilNoteTitle = "The Landfil"
     static let landfilNote = "When you're ready to let go of your thoughts, send them to the landfil (trash)."

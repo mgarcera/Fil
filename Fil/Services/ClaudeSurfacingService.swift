@@ -46,12 +46,22 @@ actor ClaudeSurfacingService {
         let folderID: UUID?
     }
 
+    /// The one place the not-subscribed upsell is written. CanvasHome renders it with the
+    /// "Fil Extra" wordmark in gradient, and this enum returns it as an error description — two
+    /// presentations of one sentence, which is why it cannot live as a literal in both.
+    ///
+    /// It stays specific to the moment: this appears where search results would have been, so it
+    /// answers the search that just failed rather than describing Fil Extra in general.
+    static let notSubscribedUpsell = "Fil Extra searches by what you meant."
+    /// The span of `notSubscribedUpsell` drawn in the accent gradient.
+    static let notSubscribedUpsellWordmark = "Fil Extra"
+
     enum SurfacingError: LocalizedError {
         case notSubscribed, http(Int, String), empty, badJSON
 
         var errorDescription: String? {
             switch self {
-            case .notSubscribed:         return "Check out Fil Extra for a smarter search."
+            case .notSubscribed:         return ClaudeSurfacingService.notSubscribedUpsell
             case let .http(code, body):  return "Surfacing request failed (\(code)). \(body)"
             case .empty:                 return "The proxy returned an empty response."
             case .badJSON:               return "Couldn't read the proxy's response."

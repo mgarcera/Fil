@@ -748,12 +748,15 @@ struct CanvasHome: View {
         DispatchQueue.main.async { composerFocused = true }
     }
 
-    /// "check out fil pro for a smart search" with the "fil pro" wordmark in the multicolor accent
-    /// gradient. The full sentence lays out (and wraps) normally in secondary text; the gradient is
-    /// masked to show through only the "fil pro" glyphs via an aligned overlay.
+    /// The not-subscribed upsell with the "Fil Extra" wordmark in the multicolor accent gradient.
+    /// The full sentence lays out (and wraps) normally in secondary text; the gradient is masked to
+    /// show through only the wordmark's glyphs via an aligned overlay.
+    ///
+    /// The sentence itself belongs to ClaudeSurfacingService, which also returns it as an error
+    /// description — it was a duplicated literal in both files until 2026-08-19.
     private var filProInviteLine: some View {
-        let full = "Check out Fil Extra for a smarter search."
-        let word = "Fil Extra"
+        let full = ClaudeSurfacingService.notSubscribedUpsell
+        let word = ClaudeSurfacingService.notSubscribedUpsellWordmark
 
         // Base sentence: gray, with the wordmark punched out (clear) so the gradient overlay shows.
         var base = AttributedString(full)
