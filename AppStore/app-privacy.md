@@ -1,7 +1,7 @@
 # Fil — App Privacy (App Store Connect answers)
 
 Fil is local-first with no analytics, ads, accounts, or third-party tracking SDKs. **One paid,
-opt-in feature (Fil Pro smart search) transmits user content off-device**, so the questionnaire is no
+opt-in feature (Fil Extra smart search) transmits user content off-device**, so the questionnaire is no
 longer "Data Not Collected." Answer as follows.
 
 ## Data collection
@@ -21,12 +21,12 @@ on-device and collect nothing; the free tier never transmits content.
 **No.** Fil does not track. No `NSUserTrackingUsageDescription`, no IDFA, no ATT prompt.
 
 ## Why this is accurate (keep for your records)
-- **Fil Pro smart search:** when a subscriber asks a question in their own words, their fils' text
+- **Fil Extra smart search:** when a subscriber asks a question in their own words, their fils' text
   is sent to Anthropic, which produces a reflection + picks the matching fils. Apple treats transmitting user
   content off-device as "collected," so it must be declared — as App Functionality, not linked, not
   tracking. Under Anthropic's commercial terms it is not used to train models and is deleted within
   ~30 days. Disclosed in the Privacy Policy and in an in-app note before first use.
-- **Subscription check:** Fil sends the StoreKit transaction id to its proxy to verify Fil Pro with
+- **Subscription check:** Fil sends the StoreKit transaction id to its proxy to verify Fil Extra with
   Apple. This is Apple's own receipt mechanism used solely for app functionality, not stored by us
   and not linked to identity; it does not add a separate declared data type. (If App Review ever
   pushes back, the fallback is to also declare "Purchases → App Functionality, not linked.")

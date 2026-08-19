@@ -18,6 +18,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "D1CB73A52FF491FB00C0E269"
                BuildableName = "FilShareExtension.appex"
+               BlueprintName = "FilShareExtension"
                ReferencedContainer = "container:Fil.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -31,6 +32,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "D11FBF3D2FA40BDB00FB77E8"
                BuildableName = "Fil.app"
+               BlueprintName = "Fil"
                ReferencedContainer = "container:Fil.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -62,6 +64,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D11FBF3D2FA40BDB00FB77E8"
             BuildableName = "Fil.app"
+            BlueprintName = "Fil"
             ReferencedContainer = "container:Fil.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -80,6 +83,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "D11FBF3D2FA40BDB00FB77E8"
             BuildableName = "Fil.app"
+            BlueprintName = "Fil"
             ReferencedContainer = "container:Fil.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
