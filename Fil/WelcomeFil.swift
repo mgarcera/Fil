@@ -9,47 +9,41 @@ enum WelcomeFil {
     static let gradientEnd = "#6659CC"     // indigo
 
     static let transcript = """
-    Hi, I'm Mason, the maker of Fil.
+    Hi, I'm Mason, the maker of Fil (Click me!).
 
-    Congrats on making your first one! This one's mine!
+    Congrats on adding your first thought! This one's mine that I wanted to leave for you.
 
-    I wanted a fun place to put thoughts that lets me stay organized without turning it all into gigantic system. 
+    I made Fil because I wanted a fun place to put thoughts that lets me stay organized without turning it all into one gigantic system. Keeping track of thoughts can get messy, but at least Fil makes it a beautiful mess. 
 
-    Tap a word to attach a Filament. Tt's a powerful feature that you can use in an infinite number of ways. Like here for example!
+    Tap a word to attach a filament. It's a powerful feature that you can use in an infinite number of ways. Like here for example!
 
-    Follow these tips and you'll be up and running in no time!
+    You'll be up and running in no time. If you have any questions or comments, you can find the feedback form in Settings > Open feedback form. Happy filling!
     """
 
     // Sample filaments — each keyword appears in the transcript, so they highlight + are tappable.
     static let filamentKeyword = "filament"
-    static let filamentNoteTitle = "What's a filament?"
-    static let filamentNote = "A filament is a thin, thread-like object, fiber, or wire. The word comes from the Latin word filum, meaning thread. Here, it's a way for you to thread meta-thoughts into your main thoughts!"
+    static let filamentNoteTitle = "What's a filament? (Click me!)"
+    static let filamentNote = "Filament: A thin, thread-like object, fiber, or wire. Comes from the Latin word filum, meaning thread. Here, it's a way for you to thread thoughts into your thoughts! Cool huh? Just long tap a word and press filament to do it."
 
-    // The "here" filament — the word highlights and opens a tutorial video (bundled in Resources,
-    // copied into the documents dir at seed time).
+    /// The "here" filament — a stack of getting-started notes.
+    ///
+    /// These used to hang off a "tips" keyword, which never appeared in the transcript, so nothing
+    /// highlighted and no one could open them. "here" is in the text, which is what makes them
+    /// reachable. Any keyword added below must exist in `transcript` or it attaches to nothing.
     static let exampleKeyword = "here"
-    static let exampleVideoResource = "Intro"
-    static let exampleVideoExtension = "mp4"
 
-    // The "tips" filament — a small stack of getting-started notes.
-    // (Draft copy in Mason's voice; add rich content later.)
-    static let tipsKeyword = "tips"
-
-    static let voiceNoteTitle = "No need to type"
+    static let voiceNoteTitle = "No need to type (Click me!)"
     static let voiceNote = "Press the microphone button from the menu and you can just talk. I say most of my thoughts out loud."
-    /// Screenshot of the composer's capture menu, shown beside the voice note (bundled resource).
-    static let voiceTipImageResource = "voice-and-photo"
-    static let voiceTipImageExtension = "webp"
 
-    static let linksNoteTitle = "Links"
-    static let linksNote = "Paste or type a link and it formats automatically, ready for whenever you come back to it."
+    static let linksNoteTitle = "Links (Click me!)"
+    static let linksNote = "Paste or type a link and it formats automatically."
 
-    static let searchNoteTitle = "Finding It Later"
-    static let searchNote = "Tap search to look back through your thoughts. Fil Extra lets you ask in your own words and finds past thoughts with better detail."
+    static let searchNoteTitle = "Finding Thoughts Later (Click me!)"
+    static let searchNote = "Tap search to look back through your thoughts. Fil Extra lets you ask in your own words and finds them with better detail."
 
-    static let landfilNoteTitle = "The Landfil"
-    static let landfilNote = "when you're ready to let go of your thoughts, send them to the landfil (trash)."
+    static let landfilNoteTitle = "The Landfil (Click me!)"
+    static let landfilNote = "When you're ready to let go of your thoughts, send them to the landfil (trash)."
 
-    static let signoffNoteTitle = "One last thing"
-    static let signoffNote = "Let me know how Fil goes for you! :)"
+    static let signoffNoteTitle = "One last thing (Click me!)"
+    static let signoffNote = "As you use the app, please let me know how Fil goes for you. You can submit feedback anytime in Settings > About > Open feedback form."
 }

@@ -153,8 +153,10 @@ before first use, and it is declared in App Privacy as User Content, used for Ap
 not linked to identity, not used for tracking.
 
 EXPECTED BEHAVIOUR THAT MIGHT LOOK LIKE A BUG
-After you create your first thought, a short welcome thought signed "from mason" appears. It is
-seeded intentionally on first run, not leftover test data.
+After you create your first thought, a short welcome thought signed "from mason" appears, inside
+a folder called "From Mason". It is seeded intentionally on first run, not leftover test data.
+Tapping the highlighted words in it opens attached notes; that is the app's filament feature
+demonstrating itself.
 
 Alternate app icons are part of Fil Extra. iOS shows its own confirmation alert when an icon
 changes; that alert is the system's and cannot be suppressed.

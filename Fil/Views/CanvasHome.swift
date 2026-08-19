@@ -1172,12 +1172,12 @@ struct CanvasHome: View {
         Haptics.success()
     }
 
-    /// Builds the fixed "from mason" seed fil (no AI) with two sample filaments: a "filament" text
-    /// note and a "here" word that opens a bundled tutorial video. Deletable like any fil.
+    /// Builds the fixed "from mason" seed fil (no AI) with two filaments: "filament", a text note
+    /// explaining the idea, and "here", a stack of getting-started notes. Deletable like any fil.
     private func insertWelcomeFil() -> (folder: Folder, note: Note) {
-        // The seed lands as real content: a "From Mason" folder holding the welcome fil.
+        // The seed lands as real content: a "From Mason 👋" folder holding the welcome fil.
         let folder = Folder(
-            name: "From Mason",
+            name: "From Mason 👋",
             gradientStartHex: WelcomeFil.gradientStart,
             gradientEndHex: WelcomeFil.gradientEnd
         )
@@ -1192,49 +1192,19 @@ struct CanvasHome: View {
 
         let filament = KeywordAttachment(keyword: WelcomeFil.filamentKeyword, note: note)
         filament.entries = [AttachmentEntry(kind: .textNote, text: WelcomeFil.filamentNote, noteTitle: WelcomeFil.filamentNoteTitle)]
-        // The "here" filament holds a tutorial video: copy the bundled clip into the documents dir
-        // (where .video entries resolve) so it behaves like any user-added video.
+        // The "here" filament: the getting-started notes. They previously hung off a "tips"
+        // keyword that never appeared in the transcript, so nothing highlighted and the notes were
+        // unreachable. "here" is in the text.
         let example = KeywordAttachment(keyword: WelcomeFil.exampleKeyword, note: note)
-        if let bundledVideo = Bundle.main.url(
-            forResource: WelcomeFil.exampleVideoResource,
-            withExtension: WelcomeFil.exampleVideoExtension
-        ) {
-            // Named for how it should read in the QuickLook title bar ("a vid").
-            let filename = "a vid.\(WelcomeFil.exampleVideoExtension)"
-            let dest = AudioPlayerViewModel.recordingsDirectory.appendingPathComponent(filename)
-            // Decoded path: the space in "a vid.mp4" would percent-encode under .path(), so
-            // fileExists(atPath:) must use the real filesystem path or it never finds the copy.
-            let destPath = dest.path(percentEncoded: false)
-            if !FileManager.default.fileExists(atPath: destPath) {
-                try? FileManager.default.copyItem(at: bundledVideo, to: dest)
-                FileProtection.protectAtRest(dest)
-            }
-            if FileManager.default.fileExists(atPath: destPath) {
-                example.entries = [AttachmentEntry.video(path: filename)]
-            }
-        }
-
-        // The "tips" filament — a small stack of getting-started notes.
-        let instructions = KeywordAttachment(keyword: WelcomeFil.tipsKeyword, note: note)
-        var tipEntries: [AttachmentEntry] = [
+        example.entries = [
             AttachmentEntry(kind: .textNote, text: WelcomeFil.voiceNote, noteTitle: WelcomeFil.voiceNoteTitle),
-        ]
-        // A screenshot of the capture menu sits beside the voice note (bundled webp → image entry).
-        if let imageURL = Bundle.main.url(
-            forResource: WelcomeFil.voiceTipImageResource,
-            withExtension: WelcomeFil.voiceTipImageExtension
-        ), let imageData = try? Data(contentsOf: imageURL) {
-            tipEntries.append(.image(imageData))
-        }
-        tipEntries.append(contentsOf: [
             AttachmentEntry(kind: .textNote, text: WelcomeFil.linksNote, noteTitle: WelcomeFil.linksNoteTitle),
             AttachmentEntry(kind: .textNote, text: WelcomeFil.searchNote, noteTitle: WelcomeFil.searchNoteTitle),
             AttachmentEntry(kind: .textNote, text: WelcomeFil.landfilNote, noteTitle: WelcomeFil.landfilNoteTitle),
             AttachmentEntry(kind: .textNote, text: WelcomeFil.signoffNote, noteTitle: WelcomeFil.signoffNoteTitle),
-        ])
-        instructions.entries = tipEntries
+        ]
 
-        note.attachments = [filament, example, instructions]
+        note.attachments = [filament, example]
 
         modelContext.insert(folder)
         modelContext.insert(note)
