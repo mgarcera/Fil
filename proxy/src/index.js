@@ -9,6 +9,13 @@
  * Secrets (set with `wrangler secret put`, never committed):
  *   ANTHROPIC_API_KEY     — the Anthropic key
  *   APPSTORE_PRIVATE_KEY  — the In-App Purchase .p8 (PKCS#8 PEM)
+ *
+ * LOGGING: never log the query text or any fil content. `wrangler tail` streams every request
+ * from every user, and Workers logs are Cloudflare's, not ours — putting a thought in there
+ * contradicts both the App Store description ("your thoughts stay on your phone") and the privacy
+ * policy's 30-day deletion promise, which is about Anthropic and cannot speak for our own logs.
+ * Log the query's LENGTH (`q42`) when you need to tell requests apart; it is enough to correlate
+ * with a cost line and carries nothing.
  *   APPSTORE_KEY_ID       — the key's Key ID
  *   APPSTORE_ISSUER_ID    — the account Issuer ID
  */
@@ -327,7 +334,7 @@ export default {
     }
 
     if (summarizeOnly) {
-      console.log(`summarize "${query}": ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
+      console.log(`summarize q${query.length}: ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
       return json({ summary: text.trim(), relevant: [] }, 200);
     }
 
@@ -339,14 +346,14 @@ export default {
     }
 
     if (describe) {
-      console.log(`describe "${query}": ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
+      console.log(`describe q${query.length}: ${fils.length} fils | out ${u.output_tokens ?? 0} | $${cost.toFixed(5)}`);
       return json({ summary: firstSentence(text.trim()), relevant: [] }, 200);
     }
 
     const parsed = parseSurfacing(text);
     if (!parsed) return json({ error: "Couldn't read the model's response." }, 502);
     console.log(
-      `surface "${query}": ${parsed.relevant.length} fils | in ${u.input_tokens ?? 0} out ${u.output_tokens ?? 0} cacheRead ${u.cache_read_input_tokens ?? 0} | $${cost.toFixed(5)}`,
+      `surface q${query.length}: ${parsed.relevant.length} fils | in ${u.input_tokens ?? 0} out ${u.output_tokens ?? 0} cacheRead ${u.cache_read_input_tokens ?? 0} | $${cost.toFixed(5)}`,
     );
 
     return json({ summary: parsed.summary, relevant: parsed.relevant, suggestion: parsed.suggestion }, 200);
