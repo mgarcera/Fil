@@ -82,10 +82,8 @@ struct PaywallView: View {
             blobRow
             // One line per half of the headline, in the same order.
             VStack(alignment: .leading, spacing: 10) {
-                Text("App icons in glass, ice and paint, and ambient screensavers made out of your own thoughts.")
-                // Filing's own objection answered in the same breath that raises it: nothing moves
-                // until you say so.
-                Text("Ask in your own words and Fil finds what you meant, or hand it a pile and let it file, every choice yours before anything moves.")
+                Text("App icons in glass and ice. Screensavers made from your thoughts.")
+                Text("Search in your own words. Give Fil a pile and let it file.")
             }
             .font(Theme.fredoka(15, weight: .semibold))
             .foregroundStyle(.white)

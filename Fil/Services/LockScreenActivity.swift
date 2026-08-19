@@ -3,12 +3,14 @@ import Foundation
 /// Which Live Activity, if any, Fil keeps on the Lock Screen / Dynamic Island. The user chooses
 /// this in Settings; at most one runs at a time (enforced by `LockScreenActivityCoordinator`).
 enum LockScreenActivity: String, CaseIterable, Identifiable {
+    // Case order is the pill order in Settings (allCases drives the row). Safe to reorder: the
+    // String rawValue is what persists, so nobody's saved choice moves.
     /// No Live Activity.
     case off
-    /// The Bin — a live count of unfiled fils plus a peek at the most recent (Phase 1).
-    case bin
     /// A pinned folder — its name, fil count, and a peek at its contents (Phase 2).
     case pinnedFolder
+    /// The Bin — a live count of unfiled fils plus a peek at the most recent (Phase 1).
+    case bin
 
     var id: String { rawValue }
 

@@ -176,7 +176,7 @@ struct SettingsView: View {
     private var lockScreenSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             settingLabel("Live Widget", icon: "lock.iphone")
-            Text("Keep a live widget on the Lock Screen and Dynamic Island. Bin shows your unsorted thoughts, while Folder shows your chosen folder.")
+            Text("Access your pinned folder outside the app. Bin shows unsorted thoughts.")
                 .font(Theme.fredoka(13, weight: .regular))
                 .foregroundStyle(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)

@@ -44,7 +44,7 @@ struct ComposerBar: View {
     @State private var showCamera = false         // the + menu's "Take a photo" presents the camera
     @FocusState private var focusedTodoID: UUID?
 
-    private let placeholders = ["Tap to write", "For big notes, your first line is the title"]
+    private let placeholders = ["Tap to write", "Writing tip: your first line becomes the title."]
     private let placeholderInterval: TimeInterval = 10
 
     private var trimmedText: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }

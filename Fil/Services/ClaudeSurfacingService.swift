@@ -51,8 +51,10 @@ actor ClaudeSurfacingService {
     /// presentations of one sentence, which is why it cannot live as a literal in both.
     ///
     /// It stays specific to the moment: this appears where search results would have been, so it
-    /// answers the search that just failed rather than describing Fil Extra in general.
-    static let notSubscribedUpsell = "Fil Extra searches by what you meant."
+    /// answers the search that just failed rather than describing Fil Extra in general. The wording
+    /// matches the paywall's "Search in your own words." on purpose — someone who taps through
+    /// should land on the same phrase that brought them.
+    static let notSubscribedUpsell = "Fil Extra searches in your own words."
     /// The span of `notSubscribedUpsell` drawn in the accent gradient.
     static let notSubscribedUpsellWordmark = "Fil Extra"
 
