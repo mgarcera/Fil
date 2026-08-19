@@ -103,7 +103,30 @@ final class StoreManager {
         // outside: no entitlement arrives at all, one arrives under a product ID we do not
         // recognise, or the entitlement is fine and the UI is not re-reading it. This records
         // which, so the answer is legible in Settings instead of inferred.
+        // TEMPORARY — Transaction.all is every transaction StoreKit has recorded, entitled or not.
+        // If a verified purchase is missing from currentEntitlements, this says whether it exists
+        // at all: present here but absent there means it is recorded and not entitling (expired,
+        // revoked, wrong group); absent from both means it never persisted.
+        var all: [String] = []
+        for await result in Transaction.all {
+            if case .verified(let t) = result {
+                let expired = t.expirationDate.map { $0 < Date() } ?? false
+                all.append("\(t.productID)\(expired ? " EXPIRED" : "")\(t.revocationDate != nil ? " REVOKED" : "")")
+            }
+        }
+
+        var statuses: [String] = []
+        if let anyProduct = products.first, let sub = anyProduct.subscription {
+            if let list = try? await sub.status {
+                for st in list {
+                    statuses.append(String(describing: st.state))
+                }
+            }
+        }
+
         diagnostic = Diagnostic(
+            allTransactions: all,
+            subscriptionStatuses: statuses,
             entitlementsSeen: seen,
             unverifiedCount: unverified,
             expectedIDs: ProductID.all,
@@ -112,7 +135,8 @@ final class StoreManager {
             checkedAt: Date()
         )
         log.notice("""
-            entitlement check: seen=\(seen, privacy: .public) \
+            entitlement check: all=\(all, privacy: .public) status=\(statuses, privacy: .public) \
+            seen=\(seen, privacy: .public) \
             unverified=\(unverified) expected=\(ProductID.all, privacy: .public) \
             loaded=\(self.products.map(\.id), privacy: .public) isPro=\(active)
             """)
@@ -120,6 +144,8 @@ final class StoreManager {
 
     /// TEMPORARY — see updateEntitlement().
     struct Diagnostic {
+        let allTransactions: [String]
+        let subscriptionStatuses: [String]
         let entitlementsSeen: [String]
         let unverifiedCount: Int
         let expectedIDs: [String]

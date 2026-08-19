@@ -55,6 +55,10 @@ struct PaywallView: View {
                 switch verification {
                 case .verified(let t):
                     StoreManager.shared.notePurchaseOutcome("success verified \(t.productID)")
+                    // StoreKit requires every transaction to be finished. SubscriptionStoreView
+                    // runs the purchase but does not finish it for us, and an unfinished
+                    // transaction is re-delivered indefinitely.
+                    await t.finish()
                 case .unverified(let t, let error):
                     StoreManager.shared.notePurchaseOutcome("success UNVERIFIED \(t.productID): \(error)")
                 }
