@@ -13,12 +13,17 @@ enum WelcomeFil {
 
     Congrats on adding your first thought! This one's mine that I wanted to leave for you.
 
-    I made Fil because I wanted a fun place to put thoughts that lets me stay organized without turning it all into one gigantic system. Keeping track of thoughts can get messy, but at least Fil makes it a beautiful mess. 
+    I made Fil (pronounced phil) because I wanted a fun place to put thoughts that lets me stay organized without turning it all into one gigantic system. Keeping track of thoughts can get messy, but at least Fil makes it a beautiful mess. 
 
     Tap a word to attach a filament. It's a powerful feature that you can use in an infinite number of ways. Like here for example!
 
     You'll be up and running in no time. If you have any questions or comments, you can find the feedback form in Settings > Open feedback form. Happy filling!
     """
+
+    // The pronunciation sits on the second mention, not the first. The first is in the opening
+    // line, which Note.titleLine renders as the card's title on the canvas — a second parenthetical
+    // there would crowd "(Click me!)", and by the second mention someone has seen the word twice,
+    // which is when they would wonder how to say it.
 
     // Sample filaments — each keyword appears in the transcript, so they highlight + are tappable.
     //
