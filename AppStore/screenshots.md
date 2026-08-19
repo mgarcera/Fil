@@ -43,12 +43,14 @@ the same story.
 
 ## Blobs
 
-Six SVGs in `blobs/`, one per screenshot, generated with the app's own blob algorithm and gradient
-palette so they are the real shapes rather than lookalikes. Seed 7 is deliberately absent — that is
-the website's blob, and reusing it would make the store and the site look like the same asset
-twice.
+Six per screenshot in `blobs/`, as **SVG and 1024px PNG**, generated with the app's own blob
+algorithm and gradient palette so they are the real shapes rather than lookalikes. Seed 7 is
+deliberately absent — that is the website's blob, and reusing it would make the store and the site
+look like the same asset twice.
 
-Open `blobs/_preview.html` to see all six together.
+The PNGs carry a real alpha channel: they are rasterised from the path data with a supersampled
+mask, not exported through a previewer, which flattens them onto white and makes them useless for
+compositing over a screenshot.
 
 ## Still open
 
