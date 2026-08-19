@@ -329,10 +329,10 @@ struct ContentView: View {
             }
         }
         return [
-            option("Filosophy", "camera.filters", "A lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid), extraOnly: false) { launchScreensaver(.liquid) },
-            option("Filharmonic", "wave.3.left", "Let your thoughts ripple.", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
-            option("Filanthropy", "wind", "Watch your thoughts drift and swirl.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
-            option("Chlorofil", "rainbow", "Your thoughts in streaks of light. Uses your latest thoughts, so they'll always change color.", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
+            option("Lava Lamp", "camera.filters", "A lava lamp of your thoughts.", unlockAt: screensaverUnlockThreshold(for: .liquid), extraOnly: false) { launchScreensaver(.liquid) },
+            option("Ripple", "wave.3.left", "Let your thoughts ripple.", unlockAt: screensaverUnlockThreshold(for: .wave)) { launchScreensaver(.wave) },
+            option("Drift", "wind", "Watch your thoughts drift and swirl.", unlockAt: screensaverUnlockThreshold(for: .auroraLeaves)) { launchScreensaver(.auroraLeaves) },
+            option("Aurora", "rainbow", "Your thoughts in streaks of light. Uses your latest thoughts, so they'll always change color.", unlockAt: screensaverUnlockThreshold(for: .auroraRibbons)) { launchScreensaver(.auroraRibbons) },
             option("Fillet", "fish.fill", "Your thoughts...as fish food.", unlockAt: koiPondUnlockThreshold) { launchKoiPond() },
         ]
     }

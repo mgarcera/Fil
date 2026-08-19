@@ -217,10 +217,10 @@ struct FolderMark: View {
 let binStartHex = "#33BF99"
 let binEndHex = "#408CD9"
 
-// MARK: - Chlorofil-style Bin coloration
+// MARK: - Aurora-style Bin coloration
 
 /// Each fil's blended mid-color (start↔end), sampled across the Bin up to `cap` colors — the same
-/// idea as the Chlorofil screensaver, which paints fils' mid-colors as light. Empty → the fallback.
+/// idea as the Aurora screensaver, which paints fils' mid-colors as light. Empty → the fallback.
 func binGlowColors(_ blobs: [FilActivityBlob], cap: Int = 5) -> [Color] {
     let mids = blobs.map { midColor($0.startHex, $0.endHex) }
     guard !mids.isEmpty else { return [Color(hex: binStartHex), Color(hex: binEndHex)] }

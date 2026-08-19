@@ -73,7 +73,7 @@ private struct FilBasketLockScreenView: View {
         .padding(.vertical, 14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(alignment: .bottom) {
-            // Chlorofil-style: the Bin's glow is built from the colors of the fils inside it.
+            // Aurora-style: the Bin's glow is built from the colors of the fils inside it.
             FilActivityColorGlow(colors: binGlowColors(state.blobs))
         }
     }
