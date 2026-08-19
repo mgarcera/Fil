@@ -255,6 +255,8 @@ struct SettingsView: View {
                 Text("purchase: \(store.lastPurchaseOutcome)")
                 Text("Transaction.updates delivered: \(store.updatesDelivered)")
                 if let d {
+                    Text("direct: \(d.directEntitlements.joined(separator: "  |  "))")
+                    Text("unfinished: \(d.unfinishedCount)")
                     Text("all transactions: \(d.allTransactions.isEmpty ? "none" : d.allTransactions.joined(separator: ", "))")
                     Text("subscription status: \(d.subscriptionStatuses.isEmpty ? "none" : d.subscriptionStatuses.joined(separator: ", "))")
                     Text("entitlements seen: \(d.entitlementsSeen.isEmpty ? "none" : d.entitlementsSeen.joined(separator: ", "))")

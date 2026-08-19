@@ -110,8 +110,31 @@ final class StoreManager {
         var all: [String] = []
         for await result in Transaction.all {
             if case .verified(let t) = result {
+                let exp = t.expirationDate.map { ISO8601DateFormatter().string(from: $0) } ?? "none"
                 let expired = t.expirationDate.map { $0 < Date() } ?? false
-                all.append("\(t.productID)\(expired ? " EXPIRED" : "")\(t.revocationDate != nil ? " REVOKED" : "")")
+                all.append("\(t.productID) env=\(t.environment.rawValue) own=\(t.ownershipType.rawValue) exp=\(exp)\(expired ? " PAST" : "")\(t.revocationDate != nil ? " REVOKED" : "")")
+            }
+        }
+
+        // Unfinished transactions block nothing by themselves, but their presence says the app
+        // never acknowledged the purchase.
+        var unfinished = 0
+        for await result in Transaction.unfinished {
+            if case .verified = result { unfinished += 1 }
+        }
+
+        // Ask per product rather than iterating the collection — a targeted answer, and it works
+        // even when the sequence yields nothing.
+        var direct: [String] = []
+        for id in ProductID.all {
+            if let r = await Transaction.currentEntitlement(for: id) {
+                switch r {
+                case .verified(let t): direct.append("\(id): verified")
+                    _ = t
+                case .unverified(_, let e): direct.append("\(id): UNVERIFIED \(e)")
+                }
+            } else {
+                direct.append("\(id): nil")
             }
         }
 
@@ -119,12 +142,23 @@ final class StoreManager {
         if let anyProduct = products.first, let sub = anyProduct.subscription {
             if let list = try? await sub.status {
                 for st in list {
-                    statuses.append(String(describing: st.state))
+                    let name: String
+                    switch st.state {
+                    case .subscribed: name = "subscribed"
+                    case .expired: name = "expired"
+                    case .inBillingRetryPeriod: name = "inBillingRetry"
+                    case .inGracePeriod: name = "inGracePeriod"
+                    case .revoked: name = "revoked"
+                    default: name = "unknown(\(st.state.rawValue))"
+                    }
+                    statuses.append(name)
                 }
             }
         }
 
         diagnostic = Diagnostic(
+            directEntitlements: direct,
+            unfinishedCount: unfinished,
             allTransactions: all,
             subscriptionStatuses: statuses,
             entitlementsSeen: seen,
@@ -144,6 +178,8 @@ final class StoreManager {
 
     /// TEMPORARY — see updateEntitlement().
     struct Diagnostic {
+        let directEntitlements: [String]
+        let unfinishedCount: Int
         let allTransactions: [String]
         let subscriptionStatuses: [String]
         let entitlementsSeen: [String]
