@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="fil-blob-11" gradientTransform="rotate(157 0.5 0.5)" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#33BF99"/>
+      <stop offset="8%" stop-color="#33BF99"/>
+      <stop offset="50%" stop-color="#5e87b9"/>
+      <stop offset="92%" stop-color="#8A4FD9"/>
+      <stop offset="100%" stop-color="#8A4FD9"/>
+    </linearGradient>
+  </defs>
+  <path fill="url(#fil-blob-11)" d="M 169.1 100.0 C 169.1 116.7 161.8 138.5 150.2 150.2 C 138.7 162.0 117.4 169.9 100.0 170.6 C 82.6 171.3 57.1 166.2 45.6 154.4 C 34.0 142.7 28.4 115.9 30.7 100.0 C 32.9 84.1 47.3 70.4 58.9 58.9 C 70.5 47.4 84.8 32.4 100.0 30.9 C 115.2 29.3 138.7 38.2 150.2 49.8 C 161.8 61.3 169.1 83.3 169.1 100.0 Z"/>
+</svg>
