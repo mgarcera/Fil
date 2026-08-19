@@ -1,3 +1,25 @@
+## Account migration — credentials must be regenerated (2026-08-18)
+
+The code now validates `com.smidgecraft.Fil` and the `.extra.*` product IDs, and is deployed. **The
+App Store Server API credentials are still the old account's and must be replaced before launch.**
+
+`APPSTORE_ISSUER_ID` is per App Store Connect account and the `.p8` In-App Purchase key is issued
+inside one, so neither survives the move to the new individual account (team T89Z7YKXVC). The old
+org account lapses around 2026-08-20; these die with it whether or not they work today.
+
+Regenerate from the new account — App Store Connect → Users and Access → Integrations → In-App
+Purchase — then:
+
+```
+wrangler secret put APPSTORE_ISSUER_ID
+wrangler secret put APPSTORE_KEY_ID
+wrangler secret put APPSTORE_PRIVATE_KEY
+```
+
+**This fails closed.** `entitledOriginalId` returning null produces a 403 "Fil Pro is required to
+surface", so stale credentials do not degrade quietly — every paying subscriber is denied every AI
+feature, and the app cannot tell that apart from not having subscribed.
+
 # Fil surfacing proxy
 
 A Cloudflare Worker that holds the Anthropic API key server-side so it never ships in the app. The
