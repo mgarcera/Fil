@@ -76,8 +76,14 @@ final class StoreManager {
     func updateEntitlement() async {
         var active = false
         var txID: String?
+        var seen: [String] = []
+        var unverified = 0
         for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
+            guard case .verified(let transaction) = result else {
+                unverified += 1
+                continue
+            }
+            seen.append(transaction.productID)
             if ProductID.all.contains(transaction.productID), transaction.revocationDate == nil {
                 active = true
                 txID = String(transaction.id)
@@ -85,7 +91,39 @@ final class StoreManager {
         }
         isPro = active
         proTransactionID = txID
+
+        // TEMPORARY DIAGNOSTIC — remove once the Extra gate is confirmed working.
+        // "Purchased and nothing unlocked" has three different causes that look identical from the
+        // outside: no entitlement arrives at all, one arrives under a product ID we do not
+        // recognise, or the entitlement is fine and the UI is not re-reading it. This records
+        // which, so the answer is legible in Settings instead of inferred.
+        diagnostic = Diagnostic(
+            entitlementsSeen: seen,
+            unverifiedCount: unverified,
+            expectedIDs: ProductID.all,
+            productsLoaded: products.map(\.id),
+            isPro: active,
+            checkedAt: Date()
+        )
+        log.notice("""
+            entitlement check: seen=\(seen, privacy: .public) \
+            unverified=\(unverified) expected=\(ProductID.all, privacy: .public) \
+            loaded=\(self.products.map(\.id), privacy: .public) isPro=\(active)
+            """)
     }
+
+    /// TEMPORARY — see updateEntitlement().
+    struct Diagnostic {
+        let entitlementsSeen: [String]
+        let unverifiedCount: Int
+        let expectedIDs: [String]
+        let productsLoaded: [String]
+        let isPro: Bool
+        let checkedAt: Date
+    }
+
+    /// TEMPORARY — surfaced in Settings so the failure is readable without a debugger.
+    private(set) var diagnostic: Diagnostic?
 
     enum PurchaseOutcome { case success, pending, cancelled }
 
