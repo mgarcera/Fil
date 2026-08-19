@@ -36,13 +36,13 @@ enum WelcomeFil {
     /// reachable. Any keyword added below must exist in `transcript` or it attaches to nothing.
     static let exampleKeyword = "here"
 
-    static let voiceNoteTitle = "No need to type"
-    static let voiceNote = "Press the microphone button from the menu and you can just talk. I say most of my thoughts out loud."
+    static let voiceNoteTitle = "Voice and Photos"
+    static let voiceNote = "Press the microphone button from the input bar and you can just talk. I say most of my thoughts out loud. You can also add a photo with a caption. Multiple photos will form a carousel."
 
     static let linksNoteTitle = "Links"
     static let linksNote = "Paste or type a link and it formats automatically."
 
-    static let searchNoteTitle = "Finding Thoughts Later"
+    static let searchNoteTitle = "Finding thoughts later"
     static let searchNote = "Tap search to look back through your thoughts. Fil Extra lets you ask in your own words and finds them with better detail."
 
     static let landfilNoteTitle = "The Landfil"

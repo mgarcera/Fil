@@ -1,7 +1,7 @@
 import SwiftUI
 import StoreKit
 
-/// Fil Pro paywall, built on Apple's native `SubscriptionStoreView`: Apple renders the plan picker,
+/// Fil Extra paywall, built on Apple's native `SubscriptionStoreView`: Apple renders the plan picker,
 /// localized prices, trial eligibility, buy button, and restore; we supply a bespoke Fil marketing
 /// header. Purchases flow through `Transaction.updates`, which `StoreManager` observes to flip
 /// `isPro`, so app-wide gating updates automatically. See docs/monetization/blank-canvas-pivot-plan.md.
@@ -71,7 +71,7 @@ struct PaywallView: View {
     /// invites, it never pressures.
     private var marketingHeader: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // "A smarter search" described half of Pro. Smart organize, folder captions and
+            // "A smarter search" described half of Extra. Smart organize, folder captions and
             // "File for me" were all already behind this paywall and none of them were named —
             // the page sold finding and quietly withheld filing.
             AnimatedGradientRevealText(text: "Find it, and put it away.")
@@ -89,10 +89,10 @@ struct PaywallView: View {
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
-            // Keeps the paywall lean; the full free-vs-Pro capability list lives on the web.
+            // Keeps the paywall lean; the full free-vs-Extra capability list lives on the web.
             Link(destination: Self.smartSearchURL) {
                 HStack(spacing: 4) {
-                    Text("See everything Pro can do")
+                    Text("See everything Extra can do")
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 11, weight: .semibold))
                 }
@@ -101,10 +101,12 @@ struct PaywallView: View {
             .tint(Theme.filProAmber)
             .frame(maxWidth: .infinity, alignment: .leading)
             // Plain-language data disclosure, shown at the moment of opting in.
-            // Must name every Pro path that leaves the device, not just search. Filing sends text
-            // too, and a disclosure that says "to answer your search" while a second feature also
-            // sends is inaccurate rather than merely incomplete.
-            Text("To search or file for you, Fil sends the relevant text to our AI provider (Anthropic). It's never used to train models and is deleted within 30 days. Free keyword search stays on your device.")
+            // Must name every Extra path that leaves the device, not just search. Filing sends
+            // text too, and a disclosure that says "to answer your search" while a second feature
+            // also sends is inaccurate rather than merely incomplete. The provider is deliberately
+            // unnamed here — the privacy policy names it, and this line has to stay readable at
+            // the moment of opting in.
+            Text("To search or file for you, Fil sends the relevant text to our AI provider. It's never used to train models and is deleted within 30 days. Free keyword search stays on your device.")
                 .font(Theme.fredoka(15, weight: .regular))
                 .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.leading)
