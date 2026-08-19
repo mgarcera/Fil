@@ -126,9 +126,37 @@ mason@smidgecraft.com
   $24.99/yr. Create the products with the IDs `com.smidgecraft.Fil.extra.monthly` and
   `.annual` — they must match `StoreManager.ProductID` exactly, and are immutable once created.
 
-## App Review notes (draft)
-- Fil is device-local. Smart search is the only feature that sends data out, and only on request.
-- First run seeds a "from mason" welcome fil after the user's own first fil — expected behaviour,
-  not test data.
-- Reviewers need the sandbox path to evaluate smart search, since it
-  is gated. Note the trial in the review notes so it isn't reported as a non-functional feature.
+## App Review Information
+
+- **Sign-in required:** No. Fil has no accounts. Nothing is gated behind a login.
+- **Contact:** Mason Garcera · mason@smidgecraft.com · (phone as entered in ASC)
+- **Demo account:** none needed.
+
+### Notes — paste verbatim
+
+```
+No account is required. Open the app and start writing; everything works immediately.
+
+TESTING FIL EXTRA
+Smart search and "File for me" are the two features behind the Fil Extra subscription. Both are
+reachable from the main screen: the search field for smart search, and the folder browser's
+"File for me" button for filing. The subscription starts with a two-week free trial, so a sandbox
+account can enable both without a charge. Without Extra those two features show the paywall — that
+is intended, not a defect.
+
+WHAT LEAVES THE DEVICE
+Fil is local-first. Creating, storing and keyword-searching thoughts happen entirely on device and
+transmit nothing. Smart search is the only feature that sends content off device: when a subscriber
+asks a question in their own words, the text of their thoughts is sent to our proxy and on to
+Anthropic to produce the answer. This is disclosed in the privacy policy and in an in-app note
+before first use, and it is declared in App Privacy as User Content, used for App Functionality,
+not linked to identity, not used for tracking.
+
+EXPECTED BEHAVIOUR THAT MIGHT LOOK LIKE A BUG
+After you create your first thought, a short welcome thought signed "from mason" appears. It is
+seeded intentionally on first run, not leftover test data.
+
+Alternate app icons are part of Fil Extra. iOS shows its own confirmation alert when an icon
+changes; that alert is the system's and cannot be suppressed.
+```
+
