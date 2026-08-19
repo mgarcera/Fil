@@ -113,29 +113,30 @@ struct SettingsView: View {
         .blurOpacityEffect(contentVisible)
     }
 
+    /// Ordered outward: the Live Widget (what Fil shows when the app is closed) first, then the
+    /// app's own surface, then the two things you collect — icons and screensavers.
     private var appearanceSection: some View {
         VStack(alignment: .leading, spacing: 18) {
+            lockScreenSection
+
+            sectionDivider
+
             appearanceSectionRow
 
-            if !appIconOptions.isEmpty, AppIconManager.shared.supportsAlternateIcons {
-                sectionDivider
-
-                appIconSection
-            }
-
             sectionDivider
 
-            settingToggle("Sound effects", icon: "music.note", isOn: $soundEnabled)
-
-            sectionDivider
-
-            lockScreenSection
+            settingToggle("Sound Effects", icon: "music.note", isOn: $soundEnabled)
 
             // "Capture from anywhere" sat here — a sheet explaining Control Center, the Action
             // Button, the share sheet and Siri. Removed 2026-08-18: the surfaces teach themselves
             // in use, and a settings row explaining them read as documentation rather than
             // product. CaptureAnywhereView.swift went with it; git has both.
 
+            if !appIconOptions.isEmpty, AppIconManager.shared.supportsAlternateIcons {
+                sectionDivider
+
+                appIconSection
+            }
 
             if !screensaverOptions.isEmpty {
                 sectionDivider
@@ -242,7 +243,7 @@ struct SettingsView: View {
     /// four icons read as a beginning rather than as all there is. Adding art needs no copy change.
     private var appIconSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            settingLabel("App icon", icon: "app.badge")
+            settingLabel("App Icon", icon: "app.badge")
             // Indent rows so their thumbnails line up under the word "App icon"
             // (header icon frame width 22 + HStack spacing 12), exactly as Screensavers does.
             VStack(alignment: .leading, spacing: 16) {

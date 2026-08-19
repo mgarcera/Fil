@@ -114,15 +114,28 @@ final class AppIconManager {
 
     /// The artwork for a choice, for the picker's thumbnails.
     ///
-    /// Alternate icons live only inside `Assets.car` (unlike the primary icon, which the build also
-    /// flattens to `AppIcon60x60@2x.png` at the bundle root), so `UIImage(named:)` against the asset
-    /// set name is the way in. The fallbacks keep the row from rendering an empty square if a
-    /// lookup ever misses.
+    /// **An app icon set is not loadable by name.** The compiler writes it into `Assets.car` as an
+    /// `Icon Image` rendition, and `UIImage(named:)` only resolves `Image` renditions — so
+    /// `UIImage(named: "AppIcon-PaintPop")` is nil no matter that the name is right there in the
+    /// catalog. `setAlternateIconName` still works, which is what makes this confusing: the icons
+    /// switch correctly while the picker cannot draw a single one of them.
+    ///
+    /// So each alternate ships its artwork a second time as a real image set, `<name>Preview`, at
+    /// 256px — enough for a 28pt thumbnail at 3x, and a fraction of the 1024px original.
+    ///
+    /// There is deliberately no fallback to the default icon here. That fallback is what hid this
+    /// bug: every row drew the default artwork and looked plausible, so a total lookup failure was
+    /// indistinguishable from icons that merely resemble each other. A miss now returns nil and the
+    /// row draws its empty placeholder, which reads as broken, because it is.
     func previewImage(for choice: Choice) -> UIImage? {
-        if let assetName = choice.assetName {
-            return UIImage(named: assetName) ?? primaryIconImage
+        guard let assetName = choice.assetName else {
+            return UIImage(named: "AppIcon") ?? primaryIconImage
         }
-        return UIImage(named: "AppIcon") ?? primaryIconImage
+        let image = UIImage(named: "\(assetName)Preview")
+        if image == nil {
+            log.error("no preview art for '\(assetName, privacy: .public)' — expected image set '\(assetName, privacy: .public)Preview'")
+        }
+        return image
     }
 
     /// The primary icon read out of the built Info.plist's `CFBundlePrimaryIcon` → `CFBundleIconFiles`.
