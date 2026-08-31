@@ -29,12 +29,13 @@ are direction, not copy.*
 
 ## App Store
 
-- **Name:** `Fil — Folders Outside the App` *(29 chars)*
-- **Subtitle:** `Lock screen & dynamic island` *(28 chars)*
-- **Keyword field carries what the subtitle can't:** notes, voice notes, widget, home screen,
+- **Name:** `Fil: Folders Outside the App` *(28 chars)*
+- **Subtitle:** `Lock screen & home screen` *(25 chars)*
+- **Keyword field carries what the subtitle can't:** notes, voice notes, widget,
   folder, quick capture, journal, ideas, control center, share sheet.
 
-*(`AppStore/metadata.md` still holds the July description and needs the full rewrite against this.)*
+*(`AppStore/metadata.md` is the source of truth for the listing — it holds the shipped description
+and the 2026-08-30 rejection history. This block is a mirror.)*
 
 ---
 

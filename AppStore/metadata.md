@@ -16,12 +16,20 @@ titles (it doesn't — titles are the first line of the user's own text).
 
 # Fil — App Store Listing Metadata
 
+> **Rejected 2026-08-30 (1.0 build 1), guideline 5.2.5 — Intellectual Property.** The subtitle read
+> `Lock screen & dynamic island`. Apple's trademark rules allow referential use of "Dynamic Island"
+> in a description's prose (describing what the app does), but not in the app's **name or
+> subtitle**, which is why only the subtitle was cited. Subtitle changed to `Lock screen & home
+> screen`; the description and promotional text keep the term as referential prose and were not
+> flagged. What's New was recapitalised, since a trademark used referentially has to carry its own
+> capitalisation. Nothing in the screenshot captions names it.
+
 *Copy these into App Store Connect. Character counts are noted; Apple's limits in parentheses.
 Verify counts in ASC (it's the source of truth).*
 
 - **App name** (30): `Fil: Folders Outside the App` — 28 chars. Colon, not an em dash: the dash
   renders cramped at App Store card sizes, and the colon reads as a label rather than an aside.
-- **Subtitle** (30): `Lock screen & dynamic island` — 28 chars
+- **Subtitle** (30): `Lock screen & home screen` — 25 chars
 - **Primary category:** Lifestyle   ·   **Secondary category:** Utilities
 - **Bundle ID:** `com.smidgecraft.Fil` — registered fresh on the new individual account, 2026-08-17.
   The old `com.masongarcera.Fil` is abandoned with the lapsing org account rather than transferred:
@@ -34,9 +42,13 @@ Verify counts in ASC (it's the source of truth).*
 voice,memo,transcribe,journal,diary,idea,capture,thought,note,widget,search,ai,photo,link,pdf,pin
 ```
 ~97 chars. Hidden from users; they carry the search load while the visible name and subtitle carry
-the positioning. Don't repeat words already in the name or subtitle — "folders", "lock screen", and
-"dynamic island" are all indexed from there, so they're deliberately absent here. Apple stems
+the positioning. Don't repeat words already in the name or subtitle — "folders", "lock screen" and
+"home screen" are all indexed from there, so they're deliberately absent here. Apple stems
 plurals, so singulars are fine.
+
+**"Dynamic island" is deliberately absent from the keyword field too.** It is now indexed from
+nowhere, which is the cost of the 5.2.5 fix. Keywords are metadata under the same guideline, so
+putting the term there would re-open the rejection in a field nobody can see.
 
 ## Promotional text (170)
 ```
@@ -96,7 +108,7 @@ Questions, ideas, or feedback? mason@smidgecraft.com
 
 ## What's New (version 1.0)
 ```
-the first Fil. pin what you're working on to your lock screen, dynamic island, or home screen, and
+the first Fil. pin what you're working on to your Lock Screen, Dynamic Island, or Home Screen, and
 glance at it without unlocking. every thought arrives with its own color and shape, so you know it
 on sight. send anything in from any app. no account, no ads. tell me what to build next:
 mason@smidgecraft.com
