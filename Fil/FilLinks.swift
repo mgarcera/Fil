@@ -15,7 +15,7 @@ enum FilLinks {
     static let contactEmail = URL(string: "mailto:mason@smidgecraft.com")!
 
     /// Fil's App Store record ID (App Store Connect → App Information → Apple ID).
-    static let appStoreID = "6790072250"
+    static let appStoreID = "6802540300"
 
     /// Deep link that opens Fil's App Store page straight to the "Write a Review" sheet.
     static var writeReview: URL {
