@@ -139,7 +139,7 @@ no-support devices (→ Phase 2 #9); inline `.system(size:)` conversion + fixed-
 
 Positioning locked (after a brainstorm grounded in the "from mason" manifesto — Fil is
 explicitly anti-optimization, *not* a productivity/second-brain/journal app):
-- **Name:** `Fil — Let Thoughts Be`   **Subtitle:** `Speak your mind. Let it be.`
+- **Name:** `Fil: Folders Outside the App`   **Subtitle:** `Speak your mind. Let it be.`
 - **Category:** Lifestyle (primary) / Utilities (secondary).
 - ASO strategy: visible name/subtitle carry the soul; the hidden 100-char keyword field + the
   description carry search terms. "Voice notes" intentionally dropped from the visible name.
@@ -164,7 +164,7 @@ Committed as one set (interdependent reference content, not independently-revert
   voice privacy, delete, screensaver unlocks).
 - **#11 App Privacy answers** — `AppStore/app-privacy.md`. "Data Not Collected" + Tracking No,
   with the rationale (Apple's speech service ≠ developer collection) and an ASC checklist.
-- **#13 Listing metadata** — `AppStore/metadata.md`. Final `Fil — Let Thoughts Be` /
+- **#13 Listing metadata** — `AppStore/metadata.md`. Final `Fil: Folders Outside the App` /
   `Speak your mind. Let it be.`; ~96-char keyword string; promo text; description + What's New in
   the manifesto voice; Lifestyle/Utilities categories.
 - **#14 Screenshot spec** — `AppStore/screenshots.md`. 6-shot 6.9″ shot-list with lowercase

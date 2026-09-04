@@ -19,7 +19,7 @@ privacy policy and terms both carry July's privacy-as-positioning language. See
 ## 2. App Store Connect — the record — ✅ EXISTS
 `FilLinks.appStoreID` is set to a real ID, so the app record was created. Still to
 enter or confirm:
-- **Name:** `Fil — Let Thoughts Be` · **Subtitle** + **keywords** from
+- **Name:** `Fil: Folders Outside the App` · **Subtitle** + **keywords** from
   `AppStore/metadata.md` — but that copy is from Jul 13 and predates folders, the
   full-screen player, and the capture controls. Rewrite before entering.
 - **Category**, age rating.

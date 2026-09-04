@@ -366,7 +366,7 @@ Put caption keywords ("voice", "transcribe", "notes", "private") in top/bottom s
 10. [x] Stand up a Support page; enter Support URL — `apple-skills:growth` *(drafted `docs/support/`; you host + enter URL)*
 11. [x] Complete the App Privacy nutrition label ("Data Not Collected", Tracking = No) consistent with the manifest — `apple-skills:legal` *(answers in `AppStore/app-privacy.md`; you enter in ASC)*
 12. [x] Add in-app Settings links: Privacy Policy, Contact/Feedback, Rate Fil — `apple-skills:generators` + `apple-skills:legal` *(+ Terms; URLs are placeholders in FilLinks.swift until hosted)*
-13. [x] Set the App Store name + subtitle + deduped keywords — `apple-skills:app-store` *(finalized in `AppStore/metadata.md`: "Fil — Let Thoughts Be"; you enter in ASC)*
+13. [x] Set the App Store name + subtitle + deduped keywords — `apple-skills:app-store` *(finalized in `AppStore/metadata.md`: "Fil: Folders Outside the App"; you enter in ASC)*
 14. [x] Produce the 6-shot 6.9″/6.7″ screenshot set (+ optional preview) — `apple-skills:app-store` + `apple-skills:generators` *(shot-list spec in `AppStore/screenshots.md`; you capture + upload)*
 
 **Phase 3 — Reliability, UX & accessibility hardening**
