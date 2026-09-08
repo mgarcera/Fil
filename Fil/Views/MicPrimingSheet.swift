@@ -4,9 +4,19 @@ import SwiftUI
 /// understands why fil asks — and that typing is always an option — instead of getting a cold OS
 /// dialog on their first record tap. Priming this way keeps the core feature from being denied on
 /// reflex (a denial is permanent and can only be undone in Settings).
+///
+/// **Guideline 5.1.1(iv) constraints — do not reintroduce what was removed here.** Apple rejected
+/// 1.0 (4) over this sheet. A pre-permission message may inform, but it may not gate:
+/// - The button may not say "Enable" (or "Allow", "OK", "Turn On"). Apple names "Continue" and
+///   "Next" as acceptable. The word must not imply the user is granting anything here.
+/// - There must be no way to leave this sheet without reaching the system prompt. The old
+///   "Not now" button, and swipe-to-dismiss, both let the user out early; the caller now sets
+///   `.interactiveDismissDisabled()` for the same reason.
+///
+/// Declining stays available where Apple wants it: the system prompt itself. Typing stays
+/// available because this sheet only appears on a deliberate record tap.
 struct MicPrimingSheet: View {
-    let onEnable: () -> Void
-    let onNotNow: () -> Void
+    let onContinue: () -> Void
 
     var body: some View {
         VStack(spacing: 18) {
@@ -26,26 +36,15 @@ struct MicPrimingSheet: View {
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
 
-            VStack(spacing: 10) {
-                Button(action: onEnable) {
-                    Text("Enable")
-                        .font(Theme.dmSans(16, weight: .semibold))
-                        .foregroundStyle(Theme.background)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
-                        .background(Theme.primaryText, in: Capsule())
-                }
-                .buttonStyle(.plain)
-
-                Button(action: onNotNow) {
-                    Text("Not now")
-                        .font(Theme.dmSans(15, weight: .medium))
-                        .foregroundStyle(Theme.secondaryText)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                }
-                .buttonStyle(.plain)
+            Button(action: onContinue) {
+                Text("Continue")
+                    .font(Theme.dmSans(16, weight: .semibold))
+                    .foregroundStyle(Theme.background)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Theme.primaryText, in: Capsule())
             }
+            .buttonStyle(.plain)
             .padding(.top, 6)
         }
         .padding(.horizontal, 28)

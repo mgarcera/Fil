@@ -334,14 +334,16 @@ struct CanvasHome: View {
         }
         .sheet(isPresented: $showMicPriming) {
             MicPrimingSheet(
-                onEnable: {
+                onContinue: {
                     showMicPriming = false
                     Task { if await recorder.requestPermissions() { await beginRecording() } }
-                },
-                onNotNow: { showMicPriming = false }
+                }
             )
             .presentationDetents([.medium])
             .presentationBackground(Theme.background)
+            // 5.1.1(iv): the priming message may not offer a way out. Swiping this sheet away
+            // would skip the system prompt exactly like the removed "Not now" button did.
+            .interactiveDismissDisabled()
         }
         .alert("Fil didn't hear you", isPresented: $showEmptyVoicePrompt) {
             Button("Redo") { Task { await beginRecording() } }
