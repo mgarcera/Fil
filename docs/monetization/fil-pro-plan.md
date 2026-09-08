@@ -3,7 +3,7 @@
 > **⚠️ SUPERSEDED (2026-07-11) by [`blank-canvas-pivot-plan.md`](./blank-canvas-pivot-plan.md).**
 > The blank-canvas direction added cloud AI surfacing (a real recurring per-query cost), which breaks
 > the two premises this plan rested on — "stays on device" and "no per-use cost." The live money model
-> is now a flat freemium **Fil Pro** subscription ($2.99/mo + $24.99/yr, capability-split free tier).
+> is now a flat freemium **Fil Extra** subscription ($2.99/mo + $24.99/yr, capability-split free tier).
 > This file is kept for history only; the cosmetics/tip shop may still return as *optional extra*
 > support, but it is no longer the core model.
 

@@ -96,7 +96,7 @@ Fil Extra adds:
 
 - App icons: A set of alternate icons, the same word rendered in different materials, with more arriving over time.
 
-No account, no ads, no tracking. Your thoughts stay on your phone. Fil Extra is the one thing that leaves to AI, and only when you ask. That text is never used to train the model and is deleted within 30 days.
+No account, no ads, no tracking. Your thoughts stay on your phone. Anything that leaves, you send: smart search passes the relevant text to our AI provider, and the feedback form sends what you type into it. Search text is never used to train the model and is deleted within 30 days.
 
 (Fil Extra is an optional auto-renewing subscription, monthly or yearly, and it starts with a free trial. Payment is charged to your Apple Account and renews unless canceled at least 24 hours before the period ends. Manage it in iOS Settings.)
 

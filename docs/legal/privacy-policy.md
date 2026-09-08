@@ -28,23 +28,25 @@ recordings, transcripts, text, images, links, and titles) live on your device, n
 servers. Mason Garcera d/b/a Smidgecraft (the maker of Fil) does not run a server that collects your content,
 and Fil has no account to sign into.
 
-There is one optional exception, and we want to be upfront about it: **smart search**, which sends
-your fils' text to an AI provider that finds and reflects the ones relevant to a question you ask.
-It only runs when you choose to use it. Details are in "Smart search" below.
+There are two optional exceptions, and we want to be upfront about both: **smart search**, which
+sends your fils' text to an AI provider that finds and reflects the ones relevant to a question you
+ask, and the **feedback form**, which sends what you type into it. Each runs only when you choose
+it. Details are in "Smart search" and "Feedback you send us" below.
 
 ## The short version
 - We don't collect, sell, or share your personal data.
 - Your fils are created, stored, and searched by keyword entirely on your device.
-- The **only** time anything leaves your device is when you run a **smart search**. That sends your
-  fils' text to our AI provider (Anthropic), which picks and reflects the ones relevant to your
-  question. It is **not used to train AI models** and is **deleted within 30 days**.
+- Anything that leaves your device, you send. There are two such moments. A **smart search** sends
+  your fils' text to our AI provider (Anthropic), which picks and reflects the ones relevant to your
+  question; that text is **not used to train AI models** and is **deleted within 30 days**. The
+  **feedback form** sends what you type into it, and nothing else from your fils.
 - No ads, no analytics SDKs, no third-party trackers, no login.
 
 ## What Fil stores, and where
 Everything you create in Fil is stored **locally on your device** using Apple's on-device
 storage. A small amount is shared between Fil and its own widgets, Lock Screen surfaces, and Share
 extension through a private App Group container **on your device**. None of it is transmitted to us.
-The one exception is smart search, described below.
+The exceptions are smart search and the feedback form, both described below.
 
 ## Smart search (cloud AI)
 Creating fils, storing them, and searching them by keyword all happen entirely on your device and
@@ -52,11 +54,22 @@ never leave it. **Smart search** is optional: when you ask Fil a question in you
 example, "what am I forgetting?"), the text of your fils is sent securely to our AI provider,
 **Anthropic**, which picks the ones relevant to your request and returns a short reflection.
 
-- This happens **only** when you run a smart search. If you never do, nothing leaves your device.
+- This happens **only** when you run a smart search. If you never do, no fil text is ever sent.
 - The text is used **only to answer your request**. Under Anthropic's commercial terms, it is **not
   used to train any AI models**, and Anthropic **deletes it within 30 days**.
 - No name or account is attached; Fil has no account.
 - **Keyword search never uses the cloud** and never leaves your device.
+
+## Feedback you send us
+Fil has a feedback sheet you can open from Settings. When you send it, the message you typed is
+posted to **Formspree**, a form-to-email service, which emails it to us. Fil attaches the app
+version and device model so we can reproduce what you describe.
+
+- This happens **only** when you write a message and tap send.
+- Your email address is optional, and is used only to reply to you.
+- If you open the sheet from a smart search that fell back to keyword search, the search text you
+  typed is attached so we can see what failed. **No other fil content is sent**, and your fils
+  themselves are never attached.
 
 ## Subscriptions
 <!-- CONDITIONAL: delete this section entirely if v1 ships without a paywall. -->

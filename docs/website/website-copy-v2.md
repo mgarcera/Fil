@@ -139,7 +139,7 @@ it must read at thumbnail size, and it's the one thing no competitor's listing s
 >
 > some thoughts you can't name. you remember a feeling, a week, a person — not a keyword.
 >
-> **fil pro** reads your fils and answers in a sentence, then shows you the ones it meant. it can
+> **fil extra** reads your fils and answers in a sentence, then shows you the ones it meant. it can
 > group a messy pile into folders that make sense, and write a line describing what's in each.
 >
 > searching by word is free, always. the understanding is pro.
@@ -154,7 +154,7 @@ it must read at thumbnail size, and it's the one thing no competitor's listing s
 
 > your fils live on your device. there's no account to make and nothing to log into.
 >
-> when you ask fil pro to surface something, the relevant text is sent to our ai provider
+> when you ask fil extra to surface something, the relevant text is sent to our ai provider
 > (anthropic) to answer it. it's never used to train models and it's deleted within 30 days. if you
 > never ask, nothing leaves your phone.
 >

@@ -16,7 +16,7 @@ wrangler secret put APPSTORE_KEY_ID
 wrangler secret put APPSTORE_PRIVATE_KEY
 ```
 
-**This fails closed.** `entitledOriginalId` returning null produces a 403 "Fil Pro is required to
+**This fails closed.** `entitledOriginalId` returning null produces a 403 "Fil Extra is required to
 surface", so stale credentials do not degrade quietly — every paying subscriber is denied every AI
 feature, and the app cannot tell that apart from not having subscribed.
 
@@ -78,7 +78,7 @@ npm run deploy                                 # prints the workers.dev URL
 
 Then in the app's proxy-config sheet, enter the deployed URL + the same `PROXY_SHARED_SECRET`.
 
-## Testing Fil Pro: dev vs official StoreKit
+## Testing Fil Extra: dev vs official StoreKit
 
 Local StoreKit purchases (the `Products.storekit` file, run from Xcode) are fake — Apple's servers
 never see them, so the real App Store Server API can never verify them. A single proxy secret,

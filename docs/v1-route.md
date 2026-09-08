@@ -22,7 +22,7 @@ Since then: **97 commits, 85 of them in August** — the full-screen player, the
 dock and composer, folders, fil-card language, sound and haptics, titles from
 first line. Craft, not launch work.
 
-All four `rootcause.ltd/fil/*` pages are live (verified 200). The ASC app record
+All four `smidgecraft.com/fil/*` pages are live (verified 200). The ASC app record
 exists (`appStoreID` is a real ID). Nothing has been submitted.
 
 ---
@@ -65,14 +65,14 @@ exists (`appStoreID` is a real ID). Nothing has been submitted.
 |---|--------|----------|
 | 23 | **Apple account** | The org account can't convert to individual (Apple confirmed in writing). The LLC is revoked and reinstatement is $600 for an entity that earned nothing, so: **new individual developer account**, org account left to lapse. **Weeklite: race the transfer** — no $99 renewal. If the new account activates before the old expires, transfer it; if not, Weeklite goes. Fil needs no transfer (never released) — it gets recreated under the new account, which means a **new `appStoreID`** and a re-registered bundle ID and App Group. |
 | 24 | **Brand** | **Smidgecraft replaces Rootcause as the label**, not just the domain. `smidgecraft.com` is the new home; Fil keeps its `/fil/*` route shape, so `FilLinks` URLs change host only. Affects `src/lib/brand.ts` (name, thesis, url, description), site nav and footer, and every legal doc that names the entity. |
-| 25 | **Contact** | **`mason@smidgecraft.com` is canonical** — app, site, legal pages, support page, and App Store Connect. Replaces the current split between `mason@garcera.us` (website) and `mason@rootcause.ltd` (Fil legal docs). |
+| 25 | **Contact** | **`mason@smidgecraft.com` is canonical** — app, site, legal pages, support page, and App Store Connect. Replaces the current split between `mason@garcera.us` (website) and `mason@smidgecraft.com` (Fil legal docs). |
 | 26 | **Monetization** | **On hold pending the Private Cloud Compute test.** WWDC 2026 opened PCC to third parties, free for Small Business Program members under 2M downloads — which is the entire cost basis the subscription was built on. Test device reach, quality against Haiku, and guardrails before pricing anything. The new individual account's SBP enrolment is the gate. |
 | 27 | **Export / import spec** | Four open decisions settled — see `docs/features/export-import.md`. |
 | 2b | **Device verification** | Revised from "done" to **partial**: daily use, never deliberate testing. The August surface (both Live Activities, both Control Center controls, player audio, sound and haptics) has not had a cold-install, locked-device, or activity-eviction pass. |
 
 ### Extra — the paid tier, settled 2026-08-17
 
-**Renamed from "Fil Pro" to "Fil Extra."** "Pro" promises professional-grade and frames the free
+**Renamed from "Fil Extra" to "Fil Extra."** "Pro" promises professional-grade and frames the free
 tier as amateur; "Extra" says more-on-top, which is the model. Done now because the ASC record is
 being recreated under the new account, so the subscription group, product display names and the
 listing get written once. After launch a live product cannot be renamed.

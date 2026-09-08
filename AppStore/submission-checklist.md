@@ -40,7 +40,7 @@ enter or confirm:
 
 ## 4. App Store Connect — subscriptions ⛔ THE HARD GATE
 `Fil/Products.storekit` has both products locally
-(`…pro.monthly` $2.99, `…pro.annual` $24.99, `P2W` free intro offer on each).
+(`…extra.monthly` $2.99, `…extra.annual` $24.99, `P2W` free intro offer on each).
 **ASC needs its own:**
 - Subscription **group**.
 - Both products created, with localized display names and descriptions.

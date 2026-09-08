@@ -14,7 +14,7 @@ summary near the end.
   since the whole corpus is sent) → cosmetics/tips can't reliably cover it; a recurring model can.
 - **The dev-key spike is not shippable** — the API key currently lives client-side in AppStorage.
 
-## DECISION 1 — Money model → **Freemium subscription ("Fil Pro"), flat, no credits** *(recommended — now research-grounded)*
+## DECISION 1 — Money model → **Freemium subscription ("Fil Extra"), flat, no credits** *(recommended — now research-grounded)*
 Auto-renewing StoreKit 2 subscription unlocks surfacing; **capture stays free forever**. Recurring
 revenue matches the recurring API + proxy cost. Skip usage credits for v1 (see findings). The old
 cosmetics/tip shop can still exist later as *additional* support, but it's no longer the core model.
@@ -52,7 +52,7 @@ margin, use credits/hybrid." **That warning mostly doesn't apply to Fil**, and h
   ([Day One plans](https://dayoneapp.com/plans/))
 
 ### Finalized model
-- **Flat auto-renewing "Fil Pro" — LOCKED at $2.99/mo + $24.99/yr** (2026-07-11; annual ~30% off to
+- **Flat auto-renewing "Fil Extra" — LOCKED at $2.99/mo + $24.99/yr** (2026-07-11; annual ~30% off to
   bias toward commitment). No credits in v1. Rationale: the $1 delta over $1.99 is nearly all margin
   (costs are fixed), ~doubling net profit at every scale while staying in the calm/indie band
   (Day One, Bear). Assumes Apple's 15% Small Business rate.
@@ -154,7 +154,7 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
 - **Privacy policy** update: name Anthropic as a processor, what's sent (fil text for a query), that
   it's **not used to train models** and **deleted within ~30 days** (or "not stored" only if we
   secure ZDR), and that capture stays local. (`docs/legal/privacy-policy.md`, hosted at
-  rootcause.ltd/fil/privacy.)
+  smidgecraft.com/fil/privacy.)
 - **App Store privacy nutrition label:** update from "no data collected" — surfacing transmits user
   content to a processor; declare accordingly (likely "User Content" used for App Functionality, not
   linked, not for tracking). Re-answer P2.11's questions for the cloud path.
@@ -182,13 +182,13 @@ app (SwiftUI)  ──►  serverless proxy  ──►  Anthropic API
    Purchase `.p8`, Get All Subscription Statuses, prod→sandbox); shared secret removed. *Per-user KV
    attribution + silent ~200/day circuit-breaker still TODO.*
 5. ✅ **Paywall + gating** — native `SubscriptionStoreView` + a bespoke Fil marketing header; free
-   users see a calm "found by keyword / fil pro can surface" invite that opens it; success flips
+   users see a calm "found by keyword / fil extra can surface" invite that opens it; success flips
    `isPro`. *(Reverse-trial via StoreKit intro offer; verdict on header copy pending.)*
 6. ✅ **Disclosures** — privacy policy updated (cloud-surfacing section + subscriptions), App Privacy
    answers flipped to User Content › Other User Content (App Functionality, not linked, not
    tracking) + matching `PrivacyInfo.xcprivacy`, and a plain-language data line in the paywall at
    opt-in (+ SubscriptionStoreView's privacy link). *Re-publish the hosted policy at
-   rootcause.ltd/fil/privacy to match the repo copy; fair-use clause TBD in the terms.*
+   smidgecraft.com/fil/privacy to match the repo copy; fair-use clause TBD in the terms.*
 7. ◐ **Altitude cleanups** (#9) — *mostly done (verified 2026-08-13).*
    `BlankCanvasPrototype` is now `CanvasHome`; the `showsChrome` scaffolding and the
    "TEMPORARY / delete when promoted" comments are gone; the dev-key path went in phase 4.

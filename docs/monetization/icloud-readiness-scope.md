@@ -1,6 +1,6 @@
 # iCloud / CloudKit Readiness Scope
 
-> **STATUS: SHELVED (2026-07-06).** iCloud sync is **no longer the Fil Pro hero** — the Pro bundle
+> **STATUS: SHELVED (2026-07-06).** iCloud sync is **no longer the Fil Extra hero** — the Pro bundle
 > is now summaries + all-screensavers + ambience (no CloudKit). This document is preserved as
 > reference *if sync is ever revisited as a future v2*. Reasons for shelving: audio recordings
 > (loose files) don't sync via SwiftData so voice fils would arrive silent; a prior migration

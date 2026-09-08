@@ -1,7 +1,7 @@
 <!--
 STAGED — revised 2026-08-13. Email and domain updated ahead of the migration sweep.
 
-Still to resolve: the Fil Pro answers assume a subscription ships, which is on hold pending the
+Still to resolve: the Fil Extra answers assume a subscription ships, which is on hold pending the
 Private Cloud Compute test. If v1 has no paywall, the free-vs-Pro FAQ entry is rewritten and the
 "Pro smart search" framing drops. Live copy is src/app/fil/support/page.tsx in the website repo.
 See docs/entity-migration.md.
@@ -14,9 +14,9 @@ have an idea, email **mason@smidgecraft.com**, and a real person (Mason) reads e
 
 ## Frequently asked
 
-**What's the difference between free and Fil Pro?**
+**What's the difference between free and Fil Extra?**
 Everyone gets unlimited capture (text, voice, photos, links) and free keyword search that stays on
-your device. **Fil Pro** adds *smart search*: ask in your own words and Fil finds what you meant, by
+your device. **Fil Extra** adds *smart search*: ask in your own words and Fil finds what you meant, by
 meaning, time, and kind, then reflects it back. See everything it can find at
 smidgecraft.com/fil/smart-search.
 
@@ -25,13 +25,13 @@ Only when you run a Pro smart search. To answer it, the text of your fils is sen
 (Anthropic). It's never used to train AI models and is deleted within 30 days. Free keyword search
 never uses the cloud.
 
-**How much is Fil Pro, and is there a trial?**
+**How much is Fil Extra, and is there a trial?**
 It's a monthly or yearly subscription; the current price shows in the app before you subscribe. New
 subscribers start with a free trial of about two weeks.
 
 **How do I cancel, or restore a purchase?**
 Cancel any time in **iOS Settings › Apple Account › Subscriptions**, and you keep Pro until the
-period ends. Reinstalled or on a new device? Tap **Restore** on the Fil Pro screen.
+period ends. Reinstalled or on a new device? Tap **Restore** on the Fil Extra screen.
 
 **What's a filament?**
 Tap a word in a fil to attach something to it: a note, a link, a photo, a video, a PDF, or another

@@ -18,7 +18,7 @@ leaves your phone. it looks through:
 
 it matches the exact words you remember.
 
-## fil pro smart search
+## fil extra smart search
 
 ask in your own words and fil understands what you meant, not just the letters you typed. it looks
 through everything free search does, and it understands more than words:

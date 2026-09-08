@@ -84,7 +84,7 @@ All of these are ID-based, so **they survive automatically if uuids are preserve
 completely if they aren't. Same rule as above.
 
 ### Deliberately not exported
-- **Fil Pro entitlement** — owned by StoreKit; restoring a backup must never grant Pro.
+- **Fil Extra entitlement** — owned by StoreKit; restoring a backup must never grant Pro.
 - **`UserProfile`** — vestigial since the onboarding rework.
 - **App settings / `@AppStorage`** — arguably nice-to-have; out of scope for v1 (see Open decisions).
 - **Pinned-folder and Bin snapshots** — derived state, rebuilt on next launch.
