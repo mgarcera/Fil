@@ -154,10 +154,6 @@ mason@smidgecraft.com
 > through all three submissions. What is in it right now is a short 5.1.1(iv) paragraph written for
 > the build 5 resubmission, describing the mic priming sheet fix. Paste this fuller note for the
 > next version, and merge that paragraph in if the priming screen is still recent.
->
-> **Before pasting, fix the WHAT LEAVES THE DEVICE section below.** It still says smart search is
-> the only feature that sends content off device. The feedback sheet posts to Formspree too. Every
-> other copy of that claim was corrected on 2026-09-08; this one was missed because nothing reads it.
 
 ```
 No account is required. Open the app and start writing; everything works immediately.
@@ -171,11 +167,14 @@ is intended, not a defect.
 
 WHAT LEAVES THE DEVICE
 Fil is local-first. Creating, storing and keyword-searching thoughts happen entirely on device and
-transmit nothing. Smart search is the only feature that sends content off device: when a subscriber
-asks a question in their own words, the text of their thoughts is sent to our proxy and on to
-Anthropic to produce the answer. This is disclosed in the privacy policy and in an in-app note
-before first use, and it is declared in App Privacy as User Content, used for App Functionality,
-not linked to identity, not used for tracking.
+transmit nothing. Two features send anything off device, both only when the user chooses them.
+Smart search: when a subscriber asks a question in their own words, the text of their thoughts is
+sent to our proxy and on to Anthropic to produce the answer. The feedback sheet in Settings: the
+message the user types is posted to Formspree, a form-to-email service, with the app version and
+device model attached, and an optional email address for replies. No thought content is attached to
+feedback. Both paths are disclosed in the privacy policy and in the App Store description, and
+smart search is declared in App Privacy as User Content, used for App Functionality, not linked to
+identity, not used for tracking.
 
 EXPECTED BEHAVIOUR THAT MIGHT LOOK LIKE A BUG
 After you create your first thought, a short welcome thought signed "from mason" appears, inside
