@@ -330,7 +330,9 @@ struct CanvasHome: View {
         // hunting. Sits at the top: the Bin and composer own the bottom of this screen.
         .overlay(alignment: .top) { filingUndoBar }
         .sheet(isPresented: $showFeedback) {
-            FeedbackSheet(context: "smart search fell back to keyword for: “\(query)”")
+            // The context names which path failed, never what the user typed. The query itself is
+            // their words, and this sheet posts to a third party (Formspree), so it stays local.
+            FeedbackSheet(context: "smart search fell back to keyword")
         }
         .sheet(isPresented: $showMicPriming) {
             MicPrimingSheet(

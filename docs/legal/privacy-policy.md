@@ -67,9 +67,8 @@ version and device model so we can reproduce what you describe.
 
 - This happens **only** when you write a message and tap send.
 - Your email address is optional, and is used only to reply to you.
-- If you open the sheet from a smart search that fell back to keyword search, the search text you
-  typed is attached so we can see what failed. **No other fil content is sent**, and your fils
-  themselves are never attached.
+- **None of your content is attached.** Not your fils, and not your search text. If you open the
+  sheet after a smart search fell back to keyword search, Fil notes only that it fell back.
 
 ## Subscriptions
 <!-- CONDITIONAL: delete this section entirely if v1 ships without a paywall. -->
