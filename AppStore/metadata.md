@@ -29,7 +29,7 @@ Verify counts in ASC (it's the source of truth).*
 
 - **App name** (30): `Fil: Folders Outside the App` — 28 chars. Colon, not an em dash: the dash
   renders cramped at App Store card sizes, and the colon reads as a label rather than an aside.
-- **Subtitle** (30): `Lock screen & home screen` — 25 chars
+- **Subtitle** (30): `Lock Screen & Home Screen` — 25 chars
 - **Primary category:** Lifestyle   ·   **Secondary category:** Utilities
 - **Bundle ID:** `com.smidgecraft.Fil` — registered fresh on the new individual account, 2026-08-17.
   The old `com.masongarcera.Fil` is abandoned with the lapsing org account rather than transferred:
@@ -57,7 +57,7 @@ Pin what you're in the middle of to your Lock Screen, Dynamic Island, Home Scree
 
 ## Description
 ```
-Pin the thing you're in the middle of (the trip, the move, the dinner you're planning) and it lives on your Lock Screen, in your Dynamic Island, on your Home Screen, and more. Glance and it's there. Open Fil when you want to dig in.
+Pin the thing you're in the middle of (the trip, the move, the dinner you're planning) and it lives on your Lock Screen, in your Dynamic Island, on your Home Screen, and more. Glance and it's there. Open Fil (pronounced phil) when you want to go deeper.
 
 Five places that aren't the app:
 
@@ -92,9 +92,9 @@ Fil Extra adds:
 
 - File for me: Hand it a pile of loose thoughts and it proposes which of your folders each one belongs in, and you can change any of it before a single one moves. It also organizes a whole library into folders and can write a folder's caption from what's inside it.
 
-- Screensavers: The rest of the ambient screensavers open up, each one made out of your own thoughts.
+- Screensavers: The rest of the ambient screensavers open up, each one made out of your own thoughts (with more arriving over time).
 
-- App icons: A set of alternate icons, the same word rendered in different materials, with more arriving over time.
+- App icons: A set of alternate icons, the same word rendered in different materials (with more arriving over time).
 
 No ads, no tracking. Your thoughts stay on your phone. Anything that leaves, you send: smart search passes the relevant text to our AI provider, and the feedback form sends what you type into it. Search text is never used to train the model and is deleted within 30 days.
 
@@ -149,6 +149,15 @@ mason@smidgecraft.com
 - **Demo account:** none needed.
 
 ### Notes — paste verbatim
+
+> **Status 2026-09-08: this block has never been pasted into ASC.** The Notes field was empty
+> through all three submissions. What is in it right now is a short 5.1.1(iv) paragraph written for
+> the build 5 resubmission, describing the mic priming sheet fix. Paste this fuller note for the
+> next version, and merge that paragraph in if the priming screen is still recent.
+>
+> **Before pasting, fix the WHAT LEAVES THE DEVICE section below.** It still says smart search is
+> the only feature that sends content off device. The feedback sheet posts to Formspree too. Every
+> other copy of that claim was corrected on 2026-09-08; this one was missed because nothing reads it.
 
 ```
 No account is required. Open the app and start writing; everything works immediately.
