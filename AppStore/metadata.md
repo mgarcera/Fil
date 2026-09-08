@@ -121,8 +121,12 @@ mason@smidgecraft.com
 - **Support contact email (App Review Information):** `mason@smidgecraft.com`.
 - **Privacy Policy URL:** `https://smidgecraft.com/fil/privacy` (must match `FilLinks.privacyPolicy`).
 - **Support URL:** `https://smidgecraft.com/fil/support` (must match `FilLinks.support`).
-- **Terms of Use (EULA):** paste the `/fil/terms` text into the custom EULA field (or link it) so it
-  matches the in-app Terms link (`FilLinks.termsOfService`).
+- **Terms of Use (EULA):** leave ASC on **Apple's Standard License Agreement**. Do not paste the
+  `/fil/terms` text into the custom EULA field. A custom EULA *replaces* Apple's standard agreement,
+  and Fil's terms are written to sit on top of it ("where these terms are silent, Apple's Standard
+  EULA applies"). Pasting them in would leave the document deferring to an agreement that no longer
+  governs. `LAUNCH_READINESS_AUDIT.md:298` reached the same conclusion; this line contradicted it
+  from July until 2026-09-08.
 - **Age rating:** no objectionable content (expected 4+).
 - **Seller name:** ⚠️ comes from the developer account enrollment, not an ASC field. On an
   **individual** account it shows the enrolled person's legal name — so the listing will read
