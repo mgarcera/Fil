@@ -405,6 +405,10 @@ struct SettingsView: View {
 
             Divider().overlay(Color.white.opacity(0.14))
 
+            FilBoxSettingsSection()
+
+            Divider().overlay(Color.white.opacity(0.14))
+
             Text("Version \(appVersion)")
                 .font(Theme.dmSans(12))
                 .foregroundStyle(.white.opacity(0.5))

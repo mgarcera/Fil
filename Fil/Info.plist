@@ -29,5 +29,49 @@
 	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<!--
+	  The .filbox backup type. Exported (not imported) because Fil defines it, and declared as a
+	  conformer of public.zip-archive rather than a bare public.data so the readable/ Markdown layer
+	  inside a backup stays double-clickable on a Mac years from now. That portability is the only
+	  reason that layer is worth writing, so the container has to stay honest zip.
+
+	  CFBundleDocumentTypes is what makes Files → tap → Fil work. Without it, import is a menu in
+	  Settings that nobody finds.
+	-->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.smidgecraft.Fil.filbox</string>
+			<key>UTTypeDescription</key>
+			<string>Fil Backup</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>filbox</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Fil Backup</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.smidgecraft.Fil.filbox</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
