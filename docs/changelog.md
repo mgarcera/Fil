@@ -37,6 +37,9 @@ Rules for an entry:
 ### Settings
 - Settings opens full height
 
+### Type
+- The app's typeface is now Gabarito, chosen for legibility over Fredoka
+
 ### Fixes
 - A photo taken from the composer now fills its card in the player. Portrait shots from the camera
   were being laid out as landscape and sat small in the middle

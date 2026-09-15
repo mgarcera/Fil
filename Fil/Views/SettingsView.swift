@@ -72,7 +72,7 @@ struct SettingsView: View {
                     } label: {
                         let isSelected = section == tab
                         Text(tab.title)
-                            .font(Theme.fredoka(19, weight: .medium))
+                            .font(Theme.gabarito(19, weight: .medium))
                             .foregroundStyle(isSelected ? Color.black : .white)
                             .padding(.horizontal, 18)
                             .frame(height: 44)
@@ -148,7 +148,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         ForEach(screensaverOptions) { screensaverRow($0) }
                         Text("More screensavers arrive with updates.")
-                            .font(Theme.fredoka(13, weight: .regular))
+                            .font(Theme.gabarito(13, weight: .regular))
                             .foregroundStyle(.white.opacity(0.7))
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -177,7 +177,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 12) {
             settingLabel("Live Widget", icon: "lock.iphone")
             Text("Access your pinned folder outside the app. Bin shows unsorted thoughts.")
-                .font(Theme.fredoka(13, weight: .regular))
+                .font(Theme.gabarito(13, weight: .regular))
                 .foregroundStyle(.white.opacity(0.7))
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
@@ -194,7 +194,7 @@ struct SettingsView: View {
             withAnimation(.snappy) { lockScreenActivityRaw = option.rawValue }
         } label: {
             Text(option.title)
-                .font(Theme.fredoka(18, weight: .medium))
+                .font(Theme.gabarito(18, weight: .medium))
                 .foregroundStyle(isSelected ? Color.black : .white)
                 .padding(.horizontal, 16)
                 .frame(height: 40)
@@ -224,7 +224,7 @@ struct SettingsView: View {
             withAnimation(.snappy) { appearanceRaw = mode.rawValue }
         } label: {
             Text(mode.title)
-                .font(Theme.fredoka(18, weight: .medium))
+                .font(Theme.gabarito(18, weight: .medium))
                 .foregroundStyle(isSelected ? Color.black : .white)
                 .padding(.horizontal, 16)
                 .frame(height: 40)
@@ -249,7 +249,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(appIconOptions) { appIconRow($0) }
                 Text("More icons arrive with updates.")
-                    .font(Theme.fredoka(13, weight: .regular))
+                    .font(Theme.gabarito(13, weight: .regular))
                     .foregroundStyle(.white.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -274,7 +274,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(option.title)
-                            .font(Theme.fredoka(17, weight: .regular))
+                            .font(Theme.gabarito(17, weight: .regular))
                             .foregroundStyle(.white.opacity(option.isUnlocked ? 1 : 0.5))
                         if !option.isUnlocked {
                             Image(systemName: "lock.fill")
@@ -284,7 +284,7 @@ struct SettingsView: View {
                     }
                     if !option.isUnlocked {
                         Text(option.requirement)
-                            .font(Theme.fredoka(13, weight: .regular))
+                            .font(Theme.gabarito(13, weight: .regular))
                             .foregroundStyle(.white.opacity(0.7))
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -337,7 +337,7 @@ struct SettingsView: View {
 
             if let description {
                 Text(description)
-                    .font(Theme.fredoka(13, weight: .regular))
+                    .font(Theme.gabarito(13, weight: .regular))
                     .foregroundStyle(.white.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -353,7 +353,7 @@ struct SettingsView: View {
                 .foregroundStyle(.white.opacity(0.85))
                 .frame(width: 22)
             Text(title)
-                .font(Theme.fredoka(17, weight: .regular))
+                .font(Theme.gabarito(17, weight: .regular))
                 .foregroundStyle(.white)
         }
     }
@@ -370,7 +370,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
                         Text(option.title)
-                            .font(Theme.fredoka(17, weight: .regular))
+                            .font(Theme.gabarito(17, weight: .regular))
                             .foregroundStyle(.white.opacity(option.isUnlocked ? 1 : 0.5))
                         if !option.isUnlocked {
                             Image(systemName: "lock.fill")
@@ -379,7 +379,7 @@ struct SettingsView: View {
                         }
                     }
                     Text(option.isUnlocked ? option.description : option.requirement)
-                        .font(Theme.fredoka(13, weight: .regular))
+                        .font(Theme.gabarito(13, weight: .regular))
                         .foregroundStyle(.white.opacity(0.7))
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -421,7 +421,7 @@ struct SettingsView: View {
         Button(action: action) {
             HStack(spacing: 14) {
                 Text(title)
-                    .font(Theme.fredoka(17, weight: .regular))
+                    .font(Theme.gabarito(17, weight: .regular))
                     .foregroundStyle(.white)
                 Spacer()
                 Image(systemName: "arrow.up.right")

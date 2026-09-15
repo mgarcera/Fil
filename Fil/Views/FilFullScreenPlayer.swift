@@ -245,7 +245,7 @@ struct FilFullScreenPlayer: View {
     private var topBar: some View {
         HStack {
             if editing {
-                Button("Cancel") { cancelEdit() }.font(Theme.fredoka(13, weight: .medium))
+                Button("Cancel") { cancelEdit() }.font(Theme.gabarito(13, weight: .medium))
             } else {
                 Button(action: onClose) {
                     Image(systemName: "chevron.down").font(.system(size: 17, weight: .semibold))
@@ -262,10 +262,10 @@ struct FilFullScreenPlayer: View {
                         .transition(.scale.combined(with: .opacity))
                 }
             }
-            .font(Theme.fredoka(12, weight: .medium)).monospacedDigit().opacity(0.7)
+            .font(Theme.gabarito(12, weight: .medium)).monospacedDigit().opacity(0.7)
             Spacer()
             if editing {
-                Button("Done") { finishEdit() }.font(Theme.fredoka(13, weight: .semibold))
+                Button("Done") { finishEdit() }.font(Theme.gabarito(13, weight: .semibold))
             } else {
                 Menu {
                     if !note.isLinkFil {
@@ -304,7 +304,7 @@ struct FilFullScreenPlayer: View {
             VStack(spacing: 12) {
                 linkIcon
                 Text((note.sourceDomain ?? "link"))
-                    .font(Theme.fredoka(13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
+                    .font(Theme.gabarito(13, weight: .medium)).foregroundStyle(.white.opacity(0.85))
             }
             .frame(width: 240, height: 210)
             .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
@@ -371,7 +371,7 @@ struct FilFullScreenPlayer: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Photos have no title — just the caption (the note) and any to-dos.
                 if !caption.isEmpty {
-                    Text(caption).font(Theme.fredoka(16, weight: .regular)).opacity(0.9)
+                    Text(caption).font(Theme.gabarito(16, weight: .regular)).opacity(0.9)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -455,7 +455,7 @@ struct FilFullScreenPlayer: View {
                 // The first line of the text is the title, so the editor holds the whole note — no
                 // separate title field to edit or keep in sync.
                 TextEditor(text: $draft)
-                    .font(Theme.fredoka(16, weight: .regular))
+                    .font(Theme.gabarito(16, weight: .regular))
                     .foregroundStyle(.white)
                     .tint(.white)
                     .scrollContentBackground(.hidden)
@@ -528,12 +528,12 @@ struct FilFullScreenPlayer: View {
     @ViewBuilder private var linkDescription: some View {
         if let d = note.sourceDescription?.trimmingCharacters(in: .whitespacesAndNewlines), !d.isEmpty {
             Text((d))
-                .font(Theme.fredoka(16, weight: .regular)).opacity(0.9)
+                .font(Theme.gabarito(16, weight: .regular)).opacity(0.9)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    /// A photo fil's small header-style title + caption (Fredoka), sitting under the carousel.
+    /// A photo fil's small header-style title + caption (Gabarito), sitting under the carousel.
     @ViewBuilder private var photoCaption: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text((displayTitle))
@@ -542,7 +542,7 @@ struct FilFullScreenPlayer: View {
             let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
             if !body.isEmpty {
                 Text((body))
-                    .font(Theme.fredoka(15, weight: .regular)).opacity(0.85)
+                    .font(Theme.gabarito(15, weight: .regular)).opacity(0.85)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -578,7 +578,7 @@ struct FilFullScreenPlayer: View {
                     HStack(spacing: 12) {
                         TodoStatusCircle(isCompleted: item.done, onColor: true)
                         Text((item.text))
-                            .font(Theme.fredoka(16, weight: .light))
+                            .font(Theme.gabarito(16, weight: .light))
                             .strikethrough(item.done, color: .white.opacity(0.6))
                             .opacity(item.done ? 0.55 : 1)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -680,9 +680,9 @@ struct FilFullScreenPlayer: View {
             .frame(height: 5)
 
             HStack {
-                Text(timeString(audio.currentTime)).font(Theme.fredoka(11, weight: .regular)).opacity(0.6)
+                Text(timeString(audio.currentTime)).font(Theme.gabarito(11, weight: .regular)).opacity(0.6)
                 Spacer()
-                Text(timeString(audio.duration)).font(Theme.fredoka(11, weight: .regular)).opacity(0.6)
+                Text(timeString(audio.duration)).font(Theme.gabarito(11, weight: .regular)).opacity(0.6)
             }
         }
     }

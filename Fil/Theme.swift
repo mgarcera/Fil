@@ -61,18 +61,22 @@ enum Theme {
         .custom("InstrumentSerif-Regular", size: size, relativeTo: .body)
     }
 
-    /// Fredoka — a rounded, friendly sans bundled at launch (OFL). Dynamic-Type aware; maps the
-    /// requested weight to the nearest bundled cut (Light/Regular/Medium/SemiBold/Bold).
-    static func fredoka(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
-        let name: String
+    /// Gabarito — a geometric sans bundled at launch (OFL). Dynamic-Type aware; maps the requested
+    /// weight to the nearest bundled cut. Chosen over Fredoka on 2026-09-15 for legibility (Manrope
+    /// was tried the day before and lost); see archive/2026-09-15-type-bakeoff. Gabarito's weight
+    /// axis starts at Regular, so light asks fall to Regular.
+    static func gabarito(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .custom(faceName(weight), size: size, relativeTo: .body)
+    }
+
+    /// The bundled cut name for a weight, for the UIKit transcript as well as SwiftUI.
+    static func faceName(_ weight: Font.Weight) -> String {
         switch weight {
-        case .ultraLight, .thin, .light: name = "Fredoka-Light"
-        case .medium:                     name = "Fredoka-Medium"
-        case .semibold:                   name = "Fredoka-SemiBold"
-        case .bold, .heavy, .black:       name = "Fredoka-Bold"
-        default:                          name = "Fredoka-Regular"
+        case .medium:               return "Gabarito-Medium"
+        case .semibold:             return "Gabarito-SemiBold"
+        case .bold, .heavy, .black: return "Gabarito-Bold"
+        default:                    return "Gabarito-Regular"
         }
-        return .custom(name, size: size, relativeTo: .body)
     }
 
     /// Caveat — a handwritten script bundled at launch (OFL). Used for the stamp snippets' text.

@@ -101,7 +101,7 @@ private extension FilApp {
     static func registerBundledFonts() {
         let names = [
             "InstrumentSerif-Regular",
-            "Fredoka-Light", "Fredoka-Regular", "Fredoka-Medium", "Fredoka-SemiBold", "Fredoka-Bold",
+            "Gabarito-Regular", "Gabarito-Medium", "Gabarito-SemiBold", "Gabarito-Bold",
             "Caveat-Regular", "Caveat-Medium", "Caveat-SemiBold", "Caveat-Bold"
         ]
         for name in names {

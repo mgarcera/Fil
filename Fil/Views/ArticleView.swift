@@ -336,7 +336,7 @@ struct ArticleView: View {
             // an editable field; a photo must keep a note, so an empty caption can't be saved.
             if isEditingTranscript {
                 TextField("write a note", text: transcriptBinding, axis: .vertical)
-                    .font(Theme.fredoka(13, weight: .regular))
+                    .font(Theme.gabarito(13, weight: .regular))
                     .foregroundStyle(Theme.primaryText)
                     .multilineTextAlignment(.center)
                     .lineLimit(1...6)
@@ -346,7 +346,7 @@ struct ArticleView: View {
                 let caption = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !caption.isEmpty {
                     Text(caption)
-                        .font(Theme.fredoka(13, weight: .regular))
+                        .font(Theme.gabarito(13, weight: .regular))
                         .foregroundStyle(Theme.secondaryText)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
@@ -535,9 +535,9 @@ struct ArticleView: View {
         Group {
             if isEditingTranscript {
                 // Match the reading view (SelectableTextView) exactly so text doesn't shift when
-                // toggling edit: Fredoka regular 16pt, label @0.85, 6pt line spacing.
+                // toggling edit: Gabarito regular 16pt, label @0.85, 6pt line spacing.
                 TextEditor(text: transcriptBinding)
-                    .font(Theme.fredoka(16, weight: .regular))
+                    .font(Theme.gabarito(16, weight: .regular))
                     .foregroundStyle(Theme.primaryText.opacity(0.85))
                     .lineSpacing(6)
                     .scrollContentBackground(.hidden)
@@ -646,7 +646,7 @@ struct ArticleView: View {
                 // Long-press a to-do to landfil it.
                 ForEach(note.todoRowItems) { item in
                     HStack(spacing: 8) {
-                        TodoRowContent(text: item.text, isCompleted: item.done, font: Theme.fredoka(16, weight: .light)) {
+                        TodoRowContent(text: item.text, isCompleted: item.done, font: Theme.gabarito(16, weight: .light)) {
                             toggleTodo(at: item.index)
                         }
                         // A quiet trailing (x) removes the to-do (routes to the confirmation).
@@ -685,7 +685,7 @@ struct ArticleView: View {
                     TodoStatusCircle(isCompleted: false)
 
                     TextField("To do", text: $newTodoText)
-                        .font(Theme.fredoka(16, weight: .light))
+                        .font(Theme.gabarito(16, weight: .light))
                         .foregroundStyle(Theme.secondaryText)
                         .focused($isTodoFieldFocused)
                         .submitLabel(.done)
@@ -705,7 +705,7 @@ struct ArticleView: View {
                         Image(systemName: "plus")
                             .font(.system(size: 13, weight: .semibold))
                         Text("To do")
-                            .font(Theme.fredoka(16, weight: .light))
+                            .font(Theme.gabarito(16, weight: .light))
                     }
                     .foregroundStyle(Theme.tertiaryText)
                     .contentShape(Rectangle())

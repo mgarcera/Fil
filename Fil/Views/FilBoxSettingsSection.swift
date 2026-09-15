@@ -79,7 +79,7 @@ struct FilBoxSettingsSection: View {
     private func rowLabel(_ title: String, systemImage: String) -> some View {
         HStack(spacing: 14) {
             Text(title)
-                .font(Theme.fredoka(16, weight: .regular))
+                .font(Theme.gabarito(16, weight: .regular))
                 .foregroundStyle(.white)
             Spacer()
             Image(systemName: systemImage)

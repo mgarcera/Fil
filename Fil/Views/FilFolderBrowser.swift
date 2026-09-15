@@ -313,7 +313,7 @@ struct FoldersHomeSection: View {
                 Text((title)).font(Theme.instrumentSerif(22)).foregroundStyle(Theme.primaryText).lineLimit(1)
                 if let caption, !caption.isEmpty {
                     Text((caption))
-                        .font(Theme.fredoka(12, weight: .regular))
+                        .font(Theme.gabarito(12, weight: .regular))
                         .foregroundStyle(Theme.secondaryText)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -800,7 +800,7 @@ struct FolderInteriorView: View {
                     .padding(.top, 2)
                 } else if !summary.isEmpty {
                     Text((summary))
-                        .font(Theme.fredoka(13, weight: .regular))
+                        .font(Theme.gabarito(13, weight: .regular))
                         .foregroundStyle(Theme.secondaryText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -1132,7 +1132,7 @@ struct PinnedFolderHero: View {
                 .rotation3DEffect(.degrees(-6), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
                 .opacity(0.85)
             Text(placeholderText)
-                .font(Theme.fredoka(13, weight: .regular))
+                .font(Theme.gabarito(13, weight: .regular))
                 .foregroundStyle(Theme.secondaryText)
         }
         .padding(.vertical, 8)

@@ -42,7 +42,7 @@ struct FilCard: View {
                 // A captionless photo has no words — show only its date below the thumbnail.
                 if !main.isEmpty {
                     Text(FilCardText.highlighted(note, base: main))
-                        .font(Theme.fredoka(15, weight: .regular))
+                        .font(Theme.gabarito(15, weight: .regular))
                         .foregroundStyle(.white)
                         .lineLimit(30)
                         .fixedSize(horizontal: false, vertical: true)
@@ -51,7 +51,7 @@ struct FilCard: View {
                     ? note.timestamp.formatted(date: .abbreviated, time: .omitted)
                     : FilCardText.caption(note)
                 if !caption.isEmpty {
-                    Text(caption).font(Theme.fredoka(12, weight: .light)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                    Text(caption).font(Theme.gabarito(12, weight: .light)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
@@ -74,7 +74,7 @@ struct FilTodoCard: View {
                 let body = note.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                 if !body.isEmpty {
                     Text(body)
-                        .font(Theme.fredoka(15, weight: .regular))
+                        .font(Theme.gabarito(15, weight: .regular))
                         .foregroundStyle(.white)
                         .lineLimit(30)
                         .fixedSize(horizontal: false, vertical: true)
@@ -85,7 +85,7 @@ struct FilTodoCard: View {
                         HStack(alignment: .top, spacing: 10) {
                             TodoStatusCircle(isCompleted: item.done, onColor: true)
                             Text(item.text)
-                                .font(Theme.fredoka(15, weight: .light))
+                                .font(Theme.gabarito(15, weight: .light))
                                 .foregroundStyle(.white)
                                 .strikethrough(item.done, color: .white.opacity(0.5))
                                 .opacity(item.done ? 0.6 : 1)
@@ -199,7 +199,7 @@ enum FilCardText {
     }
 
     /// The card's main text with its filament keywords lit — same treatment as the reading view
-    /// (Fredoka medium in the fil's lighter gradient color), so highlights read on the card too.
+    /// (Gabarito medium in the fil's lighter gradient color), so highlights read on the card too.
     static func highlighted(_ note: Note, base: String) -> AttributedString {
         var attributed = AttributedString(base)
         let keywords = note.attachments.map(\.keyword)
@@ -211,7 +211,7 @@ enum FilCardText {
             var start = attributed.startIndex
             while start < attributed.endIndex,
                   let range = attributed[start...].range(of: keyword, options: .caseInsensitive) {
-                attributed[range].font = Theme.fredoka(15, weight: .medium)
+                attributed[range].font = Theme.gabarito(15, weight: .medium)
                 attributed[range].foregroundColor = color
                 start = range.upperBound
             }

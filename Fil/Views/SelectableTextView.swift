@@ -39,13 +39,13 @@ struct SelectableTextView: UIViewRepresentable {
     }
 
     /// Body-relative Dynamic Type fonts so the selectable transcript scales like the rest of the app.
-    /// Fredoka (matching the fil card), with a system fallback if the bundled font isn't registered.
+    /// Gabarito (matching the fil card), with a system fallback if the bundled font isn't registered.
     private var bodyFont: UIFont {
-        let base = UIFont(name: "Fredoka-Regular", size: 16) ?? .systemFont(ofSize: 16)
+        let base = UIFont(name: Theme.faceName(.regular), size: 16) ?? .systemFont(ofSize: 16)
         return UIFontMetrics(forTextStyle: .body).scaledFont(for: base)
     }
     private var boldBodyFont: UIFont {
-        let base = UIFont(name: "Fredoka-Medium", size: 16) ?? .boldSystemFont(ofSize: 16)
+        let base = UIFont(name: Theme.faceName(.medium), size: 16) ?? .boldSystemFont(ofSize: 16)
         return UIFontMetrics(forTextStyle: .body).scaledFont(for: base)
     }
 

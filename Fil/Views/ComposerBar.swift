@@ -148,7 +148,7 @@ struct ComposerBar: View {
         HStack(spacing: 10) {
             Image(systemName: "circle").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.secondaryText)
             TextField("to-do", text: todo.text)
-                .font(Theme.fredoka(15, weight: .light)).foregroundStyle(Theme.secondaryText)
+                .font(Theme.gabarito(15, weight: .light)).foregroundStyle(Theme.secondaryText)
                 .focused($focusedTodoID, equals: todo.wrappedValue.id)
                 .submitLabel(.next)
                 .onSubmit { handleTodoReturn(for: todo.wrappedValue.id) }
@@ -196,20 +196,20 @@ struct ComposerBar: View {
                 if searchMode {
                     if searchPrompts.isEmpty {
                         AnimatedGradientRevealText(text: searchPlaceholder, maxDuration: 1.2, settledOpacity: 0.4)
-                            .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                            .font(Theme.gabarito(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                             .allowsHitTesting(false)
                             .id(searchPlaceholder)
                     } else {
                         TimelineView(.periodic(from: .now, by: placeholderInterval)) { context in
                             let index = Int(context.date.timeIntervalSinceReferenceDate / placeholderInterval) % searchPrompts.count
                             AnimatedGradientRevealText(text: searchPrompts[index], maxDuration: 1.2, settledOpacity: 0.4)
-                                .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                                .font(Theme.gabarito(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                         }
                         .allowsHitTesting(false)
                     }
                 } else if let contextLabel {
                     AnimatedGradientRevealText(text: contextLabel, maxDuration: 1.2, settledOpacity: 0.4)
-                        .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                        .font(Theme.gabarito(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                         .allowsHitTesting(false)
                         .id(contextLabel)   // re-reveal when the folder context changes
                 } else {
@@ -218,7 +218,7 @@ struct ComposerBar: View {
             }
 
             TextField("", text: $text, axis: .vertical)
-                .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                .font(Theme.gabarito(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                 .lineLimit(1...4).focused(focus).submitLabel(searchMode ? .search : .return)
                 // Guard against an iOS 27 crash: the inline grammar/proofreading pass calls a
                 // proofreading-shimmer selector on the vertical TextField's backing VerticalTextView that
@@ -235,7 +235,7 @@ struct ComposerBar: View {
 
             if let dissolvingText {
                 GradientDissolveText(text: dissolvingText)
-                    .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                    .font(Theme.gabarito(15, weight: .medium)).foregroundStyle(Theme.primaryText)
                     .allowsHitTesting(false)
             }
         }
@@ -291,7 +291,7 @@ struct ComposerBar: View {
         TimelineView(.periodic(from: .now, by: placeholderInterval)) { context in
             let index = Int(context.date.timeIntervalSinceReferenceDate / placeholderInterval) % placeholders.count
             AnimatedGradientRevealText(text: placeholders[index], maxDuration: 1.2, settledOpacity: 0.4)
-                .font(Theme.fredoka(15, weight: .medium)).foregroundStyle(Theme.primaryText)
+                .font(Theme.gabarito(15, weight: .medium)).foregroundStyle(Theme.primaryText)
         }
         .allowsHitTesting(false)
     }

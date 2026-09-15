@@ -77,7 +77,7 @@ struct PaywallView: View {
             // both of those while leaving the icons and screensavers invisible on the one screen
             // where someone decides whether to pay for them. The body below delivers one half each.
             AnimatedGradientRevealText(text: "Beautiful and smart.")
-                .font(Theme.fredoka(26, weight: .bold))
+                .font(Theme.gabarito(26, weight: .bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             blobRow
             // One line per half of the headline, in the same order.
@@ -85,7 +85,7 @@ struct PaywallView: View {
                 Text("The beauty: App icons in glass, ice, and more. Screensavers made out of your thoughts.")
                 Text("The brains: Search like you're texting a friend. Got a pile of thoughts? Let Fil organize them for you.")
             }
-            .font(Theme.fredoka(15, weight: .semibold))
+            .font(Theme.gabarito(15, weight: .semibold))
             .foregroundStyle(.white)
             .multilineTextAlignment(.leading)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -97,7 +97,7 @@ struct PaywallView: View {
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 11, weight: .semibold))
                 }
-                .font(Theme.fredoka(14, weight: .medium))
+                .font(Theme.gabarito(14, weight: .medium))
             }
             .tint(Theme.filProAmber)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -108,7 +108,7 @@ struct PaywallView: View {
             // unnamed here — the privacy policy names it, and this line has to stay readable at
             // the moment of opting in.
             Text("To search or file for you, Fil sends the relevant text to our AI provider. It's never used to train models and is deleted within 30 days. Free keyword search stays on your device.")
-                .font(Theme.fredoka(15, weight: .regular))
+                .font(Theme.gabarito(15, weight: .regular))
                 .foregroundStyle(.white.opacity(0.7))
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -117,7 +117,7 @@ struct PaywallView: View {
                 Link("Terms", destination: Self.termsURL)
                 Link("Privacy policy", destination: Self.privacyURL)
             }
-            .font(Theme.fredoka(12, weight: .regular))
+            .font(Theme.gabarito(12, weight: .regular))
             .tint(.white.opacity(0.7))
         }
         .padding(.horizontal, 24)

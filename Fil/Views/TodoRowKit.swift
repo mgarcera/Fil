@@ -71,7 +71,7 @@ struct TodoStatusCircle: View {
 struct TodoRowContent: View {
     let text: String
     let isCompleted: Bool
-    /// The to-do text font — defaults to the shared DM Sans; folders pass Fredoka.
+    /// The to-do text font — defaults to the shared DM Sans; folders pass Gabarito.
     var font: Font = Theme.dmSans(16, weight: .regular)
     let onToggle: () -> Void
 

@@ -638,20 +638,20 @@ struct CanvasHome: View {
                         // Gentle, non-blocking note when smart search fails and we fall back to keyword.
                         VStack(alignment: .leading, spacing: 6) {
                             AnimatedGradientRevealText.search(surfaceError)
-                                .font(Theme.fredoka(15, weight: .medium))
+                                .font(Theme.gabarito(15, weight: .medium))
                                 .foregroundStyle(Theme.secondaryText)
                                 .fixedSize(horizontal: false, vertical: true)
                             // Offer feedback only when we actually fell back to keyword matches (path E).
                             if !results.isEmpty {
                                 Button("Open feedback form") { showFeedback = true }
-                                    .font(Theme.fredoka(14, weight: .medium))
+                                    .font(Theme.gabarito(14, weight: .medium))
                                     .tint(Theme.filProAmber)
                             }
                         }
                     }
                     if !summary.isEmpty && !results.isEmpty {
                         AnimatedGradientRevealText.search(summary)
-                            .font(Theme.fredoka(16, weight: .regular))
+                            .font(Theme.gabarito(16, weight: .regular))
                             .foregroundStyle(Theme.primaryText)
                             .fixedSize(horizontal: false, vertical: true)
                     } else if !StoreManager.shared.isPro && !results.isEmpty && !isFilterQuery {
@@ -686,7 +686,7 @@ struct CanvasHome: View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
                 AnimatedGradientRevealText.search("Found by keyword.")
-                    .font(Theme.fredoka(15, weight: .medium))
+                    .font(Theme.gabarito(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                 filProInviteLine
             }
@@ -700,7 +700,7 @@ struct CanvasHome: View {
         Button { showPaywall = true } label: {
             VStack(alignment: .leading, spacing: 4) {
                 AnimatedGradientRevealText.search("Nothing came up for \(query)")
-                    .font(Theme.fredoka(15, weight: .medium))
+                    .font(Theme.gabarito(15, weight: .medium))
                     .foregroundStyle(Theme.primaryText)
                     .fixedSize(horizontal: false, vertical: true)
                 filProInviteLine
@@ -735,7 +735,7 @@ struct CanvasHome: View {
         }
 
         return Text(line)
-            .font(Theme.fredoka(15, weight: .medium))
+            .font(Theme.gabarito(15, weight: .medium))
             .tint(Theme.filProAmber)
             .fixedSize(horizontal: false, vertical: true)
             .environment(\.openURL, OpenURLAction { url in
@@ -778,9 +778,9 @@ struct CanvasHome: View {
         if let range = mask.range(of: word) { mask[range].foregroundColor = .black }
 
         return Text(base)
-            .font(Theme.fredoka(14))
+            .font(Theme.gabarito(14))
             .foregroundStyle(Theme.secondaryText)
-            .overlay { Theme.accentGradient.mask(Text(mask).font(Theme.fredoka(14))) }
+            .overlay { Theme.accentGradient.mask(Text(mask).font(Theme.gabarito(14))) }
             .fixedSize(horizontal: false, vertical: true)
     }
 
