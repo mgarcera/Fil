@@ -301,7 +301,7 @@ struct ContentView: View {
             appIconOptions: appIconOptions,
             autoScreensaverUnlocked: StoreManager.shared.isPro && notes.count >= koiPondUnlockThreshold
         )
-            .presentationDetents([.fraction(0.6), .large])
+            .presentationDetents([.large])
             .presentationBackground(Theme.background)
     }
 

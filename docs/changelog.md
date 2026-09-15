@@ -34,6 +34,9 @@ Rules for an entry:
 - A saved link now has the same top bar as every other thought: Move and Landfil. The address
   capsule is gone; the link is still one tap away behind the open button
 
+### Settings
+- Settings opens full height
+
 ---
 
 ## 1.0 (5) — submitted 2026-09-08
