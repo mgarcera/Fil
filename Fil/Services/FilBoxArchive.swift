@@ -142,7 +142,31 @@ struct FilBoxArchive {
             }
             cursor = nameStart + nameLength + extraLength + commentLength
         }
-        return entries
+        return stripCommonRoot(entries)
+    }
+
+    /// `NSFileCoordinator`'s `.forUploading` zip puts the staging folder itself at the root, so
+    /// every entry arrives as `filbox-<uuid>/manifest.json` rather than `manifest.json`. Finder's
+    /// Compress does the same thing to a folder, and adds `__MACOSX/` resource forks beside it. When
+    /// every real entry shares one top-level folder, address them as if it weren't there.
+    private static func stripCommonRoot(_ entries: [String: Entry]) -> [String: Entry] {
+        let real = entries.filter { !$0.key.hasPrefix("__MACOSX/") && !$0.key.hasSuffix("/.DS_Store") && $0.key != ".DS_Store" }
+        let roots = Set(real.keys.compactMap { $0.split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false).first })
+        guard roots.count == 1, let root = roots.first,
+              real.keys.allSatisfy({ $0.hasPrefix("\(root)/") }) else { return real }
+
+        var stripped: [String: Entry] = [:]
+        for (path, entry) in real {
+            let relative = String(path.dropFirst(root.count + 1))
+            stripped[relative] = Entry(
+                path: relative,
+                compressedSize: entry.compressedSize,
+                uncompressedSize: entry.uncompressedSize,
+                method: entry.method,
+                localHeaderOffset: entry.localHeaderOffset
+            )
+        }
+        return stripped
     }
 
     /// The end-of-central-directory record sits last but carries a variable-length comment, so it has
