@@ -168,20 +168,8 @@ struct DockChipsRow: View {
             .buttonStyle(.plain)
     }
 
-    /// A liquid-glass chip label; delete carries a red-tinted glass with a white label.
-    /// `tint` colours the icon only — used to mark a Pro action without shouting.
     private func chipLabel(_ text: String, _ icon: String, destructive: Bool, tint: Color? = nil) -> some View {
-        let fg: Color = destructive ? .white : Theme.primaryText
-        return HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(tint ?? fg)
-            Text(text).font(Theme.dmSans(14, weight: .semibold))
-        }
-        .foregroundStyle(fg)
-        .fixedSize()
-        .padding(.horizontal, 14).padding(.vertical, 9)
-        .glassEffect(destructive ? .regular.tint(.red).interactive() : .regular.interactive(), in: .capsule)
+        DockChipLabel(text, icon, destructive: destructive, tint: tint)
     }
 
     private func flashCopied() {
@@ -190,5 +178,42 @@ struct DockChipsRow: View {
             try? await Task.sleep(for: .seconds(1.2))
             withAnimation(.snappy) { copied = false }
         }
+    }
+}
+
+/// A liquid-glass chip label; delete carries a red-tinted glass with a white label.
+/// `tint` colours the icon only — used to mark a Pro action without shouting.
+/// Shared so a chip that appears elsewhere (the Move chip on a Bin fil's reader) is the same chip.
+struct DockChipLabel: View {
+    let text: String
+    let icon: String
+    var destructive: Bool = false
+    var tint: Color? = nil
+    /// Off inside a navigation bar, which already draws its own glass; two layers read as a smudge.
+    var glass: Bool = true
+
+    init(_ text: String, _ icon: String, destructive: Bool = false, tint: Color? = nil, glass: Bool = true) {
+        self.text = text
+        self.icon = icon
+        self.destructive = destructive
+        self.tint = tint
+        self.glass = glass
+    }
+
+    var body: some View {
+        let fg: Color = destructive ? .white : Theme.primaryText
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tint ?? fg)
+            Text(text).font(Theme.dmSans(14, weight: .semibold))
+        }
+        .foregroundStyle(fg)
+        .fixedSize()
+        .padding(.horizontal, 14).padding(.vertical, 9)
+        .glassEffect(
+            glass ? (destructive ? .regular.tint(.red).interactive() : .regular.interactive()) : .identity,
+            in: .capsule
+        )
     }
 }

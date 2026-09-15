@@ -1244,6 +1244,8 @@ private struct BrowserFilPage: View {
                 note: note,
                 ignoresTopSafeArea: false,
                 showsCloseButton: true,
+                // A fil with no folder is a Bin fil, wherever the pager was opened from.
+                showsMoveButton: note.folder == nil,
                 filSheetPath: $path,
                 selectedPresentationDetent: $detent
             )

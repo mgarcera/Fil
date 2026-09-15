@@ -20,11 +20,17 @@ struct ArticleView: View {
     let ignoresTopSafeArea: Bool
     let topContentInset: CGFloat
     let showsCloseButton: Bool
+    /// A Move chip in the top-left, for a fil opened from the Bin. Same chip as the dock's, so
+    /// filing one thought from its reader looks like filing several from the dock.
+    let showsMoveButton: Bool
     @Binding private var filSheetPath: [FilSheetRoute]
     @Binding private var selectedPresentationDetent: PresentationDetent
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
+    // Same order the dock's Move menu uses (FilSelectionStore.folders()).
+    @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)])
+    private var allFolders: [Folder]
     @State private var player = AudioPlayerViewModel()
     @State private var linkBrowserURL: URL?
     @State private var showLandfilConfirmation = false
@@ -56,6 +62,7 @@ struct ArticleView: View {
         ignoresTopSafeArea: Bool = true,
         topContentInset: CGFloat = 0,
         showsCloseButton: Bool = false,
+        showsMoveButton: Bool = false,
         filSheetPath: Binding<[FilSheetRoute]> = .constant([]),
         selectedPresentationDetent: Binding<PresentationDetent> = .constant(.fraction(0.6))
     ) {
@@ -68,6 +75,7 @@ struct ArticleView: View {
         self.ignoresTopSafeArea = ignoresTopSafeArea
         self.topContentInset = topContentInset
         self.showsCloseButton = showsCloseButton
+        self.showsMoveButton = showsMoveButton
         self._filSheetPath = filSheetPath
         self._selectedPresentationDetent = selectedPresentationDetent
     }
@@ -181,16 +189,30 @@ struct ArticleView: View {
         }
         .onDisappear { player.stop() }
         .toolbar {
-            if !note.isLinkFil {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    // Landfil, promoted out of the menu — sits red next to Edit.
-                    Button(role: .destructive) {
-                        showLandfilConfirmation = true
+            if showsMoveButton, filSheetPath.isEmpty, !allFolders.isEmpty {
+                ToolbarItem(placement: .topBarLeading) {
+                    Menu {
+                        ForEach(allFolders) { folder in
+                            Button(folder.name) { move(to: folder) }
+                        }
                     } label: {
-                        Image(systemName: "trash")
+                        DockChipLabel("Move", "folder", glass: false)
                     }
-                    .tint(.red)
-                    .accessibilityLabel("Landfil")
+                    .accessibilityLabel("Move to folder")
+                }
+            }
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                // Landfil, promoted out of the menu — sits red next to Edit. Every type has it, so a
+                // link reads as the same kind of thing as a note or a photo.
+                Button(role: .destructive) {
+                    showLandfilConfirmation = true
+                } label: {
+                    Image(systemName: "trash")
+                }
+                // A link has nothing to edit yet: its title and description come from the page.
+                if !note.isLinkFil {
+                .tint(.red)
+                .accessibilityLabel("Landfil")
 
                     Button {
                         toggleEditing()
@@ -231,6 +253,16 @@ struct ArticleView: View {
             }
             .presentationDetents([.fraction(0.6)], selection: $backlinkSheetDetent)
             .presentationBackground { FolderBrowserBackground() }
+    /// Files this one fil. It leaves the Bin the moment it has a folder, so the reader closes with it:
+    /// the pager it opened from is a snapshot of a Bin this fil is no longer in.
+    private func move(to folder: Folder) {
+        note.folder = folder
+        note.sortIndex = 0   // order is per-folder
+        try? modelContext.save()
+        Haptics.move()
+        dismiss()
+    }
+
         }
     }
 

@@ -27,6 +27,8 @@ Rules for an entry:
   remembers the fold between launches
 - Once one thought in the Bin is selected, a tap selects the next and a long press opens it, so
   picking several is quick. Clearing the selection puts tap-to-open back
+- Open a thought from the Bin and a Move button sits top-left, so one thought can be filed from
+  its reader without selecting it first
 
 ---
 
