@@ -10,6 +10,23 @@ import Social
 
 class ShareViewController: SLComposeServiceViewController {
 
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        relabelPostButton()
+    }
+
+    override func presentationAnimationDidFinish() {
+        super.presentationAnimationDidFinish()
+        // The system rebuilds the bar during presentation; set it again once that has settled.
+        relabelPostButton()
+    }
+
+    /// The stock button says "Post", which is Twitter's word. What actually happens is the shared
+    /// thing lands in the Bin, unfiled, and the button says so.
+    private func relabelPostButton() {
+        navigationController?.navigationBar.topItem?.rightBarButtonItem?.title = "Add to Bin"
+    }
+
     override func isContentValid() -> Bool {
         // Attachments (a shared URL or image) can carry the content on their own,
         // so an empty note field is still valid.
