@@ -106,6 +106,31 @@ Privacy: https://smidgecraft.com/fil/privacy
 Questions, ideas, or feedback? mason@smidgecraft.com
 ```
 
+## What's New (version 1.1) — as pasted into ASC, 2026-09-15
+```
+Export and import thoughts:
+- Export everything from Settings as a .filbox. Import it on any iPhone with Fil, or unzip it in your regular file browser to save your contents.
+
+Cleaner composer
+- Collapse the Bin using the chevron.
+
+Cleaner folder list
+- Pinned folder now gets the spotlight without it staying in the overall list.
+
+Legibility
+- Changed typeface for higher legibility.
+
+Photos
+- Portrait photos taken from the composer fill their card in full screen view.
+
+Text selection
+- Selecting text no longer swipes to the next thought by accident.
+
+Thank you for using Fil! Feedback: mason@smidgecraft.com
+```
+This is the house format for every What's New from here on: headed groups, one bullet each,
+sentence case, the fixed sign-off. `~/.claude/skills/app-store-release` drafts in it.
+
 ## What's New (version 1.0)
 ```
 the first Fil. pin what you're working on to your Lock Screen, Dynamic Island, or Home Screen, and
