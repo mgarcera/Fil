@@ -577,10 +577,13 @@ struct FilFullScreenPlayer: View {
                 ForEach(todos) { item in
                     HStack(spacing: 12) {
                         TodoStatusCircle(isCompleted: item.done, onColor: true)
+                        // One step under the body on this screen's ladder (body 1, link description
+                        // 0.9, photo caption 0.85, done 0.55). Fredoka Light carried the
+                        // subordination on its own; Gabarito has no Light, so opacity does it.
                         Text((item.text))
-                            .font(Theme.gabarito(16, weight: .light))
+                            .font(Theme.gabarito(16, weight: .regular))
                             .strikethrough(item.done, color: .white.opacity(0.6))
-                            .opacity(item.done ? 0.55 : 1)
+                            .opacity(item.done ? 0.55 : 0.85)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .contentShape(Rectangle())

@@ -40,8 +40,10 @@ struct TodoStatusCircle: View {
             RoundedRectangle(cornerRadius: 11, style: .continuous)
                 .fill(fillColor)
                 .overlay {
+                    // strokeBorder, not stroke: a centred stroke hangs 0.75pt outside the 22pt
+                    // frame, and the player's scroll clips it into a flat left edge.
                     RoundedRectangle(cornerRadius: 11, style: .continuous)
-                        .stroke(strokeColor, lineWidth: 1.5)
+                        .strokeBorder(strokeColor, lineWidth: 1.5)
                 }
 
             if isCompleted {
