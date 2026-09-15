@@ -12,7 +12,7 @@ Rules for an entry:
 
 ---
 
-## 1.1 (2) — archived 2026-09-15
+## 1.1 (2) — submitted 2026-09-15
 
 ### Your fils, as a file
 - Export your whole library as a single `.filbox` file from Settings → About: every fil, folder,
