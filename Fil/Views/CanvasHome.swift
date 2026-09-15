@@ -161,6 +161,9 @@ struct CanvasHome: View {
     private var binHasItems: Bool { !folderInteriorOpen && notes.contains { $0.folder == nil } }
     /// Which dock set is shown — shared between the floating switcher chip and HomeBasket's blob row.
     @State private var dockTab: DockTab = .bin
+    /// The Bin's blob row folded away via the chevron in the switcher chip. Remembered across
+    /// launches: someone who folds it for a cleaner dock wants it to stay folded.
+    @AppStorage("dockBinCollapsed") private var dockBinCollapsed = false
 
     var body: some View {
         ZStack {
@@ -227,6 +230,7 @@ struct CanvasHome: View {
                     if (hasSelection || binHasItems) && !isSearching {
                         DockChipsRow(
                             tab: $dockTab,
+                            binCollapsed: $dockBinCollapsed,
                             showBin: !folderInteriorOpen,
                             onFile: fileOrOrganize
                         )
@@ -247,7 +251,8 @@ struct CanvasHome: View {
                             HomeBasket(
                                 onOpen: { note, container in basketPager = FilPagerSelection(notes: container, startID: note.uuid) },
                                 showBin: !folderInteriorOpen,
-                                tab: $dockTab
+                                tab: $dockTab,
+                                binCollapsed: dockBinCollapsed
                             )
                         }
                         composerBar
@@ -264,6 +269,7 @@ struct CanvasHome: View {
                 .animation(.snappy(duration: 0.2), value: composerFocused)
                 .animation(.snappy(duration: 0.2), value: hasSelection)
                 .animation(.snappy(duration: 0.2), value: binHasItems)
+                .animation(.snappy(duration: 0.25), value: dockBinCollapsed)
                 // Measure the WHOLE dock (floating buttons + composer) so scroll content clears it all.
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { dockHeight = $0 }
             }

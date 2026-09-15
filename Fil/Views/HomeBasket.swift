@@ -14,6 +14,9 @@ struct HomeBasket: View {
     var showBin: Bool = true
     /// Which set to show — owned by CanvasHome, shared with the floating switcher chip.
     @Binding var tab: DockTab
+    /// The Bin's row is folded away (the chevron in the switcher chip). Only the Bin folds: a
+    /// selection is something the user is mid-action on, so its row always shows.
+    var binCollapsed: Bool = false
 
     private let selection = FilSelectionStore.shared
     @Query(filter: #Predicate<Note> { $0.folder == nil }, sort: \Note.timestamp, order: .reverse)
@@ -22,8 +25,13 @@ struct HomeBasket: View {
     private var selected: [Note] { selection.selectedNotes() }
     private var hasSelection: Bool { !selection.isEmpty }
     private var hasBin: Bool { showBin && !unfiled.isEmpty }
-    private var isVisible: Bool { hasBin || hasSelection }
     private var effectiveTab: DockTab { resolveDockTab(tab, hasBin: hasBin, hasSelection: hasSelection) }
+    private var isVisible: Bool {
+        switch effectiveTab {
+        case .bin: hasBin && !binCollapsed
+        case .selected: hasSelection
+        }
+    }
     private var shown: [Note] { effectiveTab == .selected ? selected : unfiled }
 
     var body: some View {
@@ -36,6 +44,7 @@ struct HomeBasket: View {
             }
             .animation(.snappy(duration: 0.3), value: hasSelection)
             .animation(.snappy(duration: 0.3), value: unfiled.count)
+            .transition(.opacity)
         }
     }
 

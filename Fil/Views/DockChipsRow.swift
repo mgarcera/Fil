@@ -16,6 +16,9 @@ func resolveDockTab(_ tab: DockTab, hasBin: Bool, hasSelection: Bool) -> DockTab
 /// the dock's blob row via `tab` and acts on the shared `FilSelectionStore`.
 struct DockChipsRow: View {
     @Binding var tab: DockTab
+    /// The Bin's blob row is folded away. Owned by CanvasHome and shared with HomeBasket, which stops
+    /// drawing the row; the Bin segment and its count stay, so the fold never hides that fils exist.
+    @Binding var binCollapsed: Bool
     /// The Bin segment shows only on the folders home (hidden inside a folder interior).
     var showBin: Bool = true
     /// Tapped "File for me" (or "Organize", when there's nowhere to file yet). The caller decides
@@ -70,11 +73,32 @@ struct DockChipsRow: View {
 
     private var switcher: some View {
         HStack(spacing: 4) {
-            if hasBin { segment("Bin", unfiled.count, .bin) }
+            if hasBin {
+                collapseToggle
+                segment("Bin", unfiled.count, .bin)
+            }
             if hasSelection { segment("Selected", selection.count, .selected) }
         }
         .padding(4)
         .glassEffect(.regular.interactive(), in: .capsule)
+    }
+
+    /// Folds the Bin's blob row away for a cleaner dock. Sits left of the Bin segment, inside the same
+    /// capsule, because it acts on the Bin and nothing else: a selection's row is never folded.
+    private var collapseToggle: some View {
+        Button {
+            Haptics.toggle()
+            withAnimation(.snappy(duration: 0.25)) { binCollapsed.toggle() }
+        } label: {
+            Image(systemName: "chevron.down")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.secondaryText.opacity(0.6))
+                .rotationEffect(.degrees(binCollapsed ? -180 : 0))
+                .frame(width: 28, height: 28)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(binCollapsed ? "Show Bin" : "Hide Bin")
     }
 
     private func segment(_ label: String, _ count: Int, _ value: DockTab) -> some View {

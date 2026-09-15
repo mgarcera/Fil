@@ -22,6 +22,10 @@ Rules for an entry:
 - Import a `.filbox` on any iPhone with Fil. Importing adds what's missing and leaves what's
   already there alone, so an old backup is always safe to bring in
 
+### The dock
+- Fold the Bin away with the chevron beside it, for a cleaner dock. The count stays; Fil
+  remembers the fold between launches
+
 ---
 
 ## 1.0 (5) — submitted 2026-09-08
