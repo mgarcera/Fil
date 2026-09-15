@@ -24,10 +24,6 @@ struct FilBoxSettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Your fils")
-                .font(Theme.fredoka(17, weight: .regular))
-                .foregroundStyle(.white)
-
             Text("Getting a new phone, or want a copy you keep yourself? Export everything as a single file you can store anywhere: fils, folders, photos, recordings, files.")
                 .font(Theme.dmSans(13))
                 .foregroundStyle(.white.opacity(0.62))
@@ -57,7 +53,7 @@ struct FilBoxSettingsSection: View {
                 .buttonStyle(.plain)
             }
 
-            Text("To bring it back, import the file on any iPhone with Fil installed. Importing adds what's missing and leaves what's already here alone.")
+            Text("It's a zip renamed .filbox and it'll open years from now. Import it on any iPhone with Fil to bring everything back. Or you could unzip it on your computer to read them in your file browser.")
                 .font(Theme.dmSans(13))
                 .foregroundStyle(.white.opacity(0.62))
                 .fixedSize(horizontal: false, vertical: true)
