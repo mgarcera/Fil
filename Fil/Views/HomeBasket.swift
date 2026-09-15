@@ -59,15 +59,16 @@ struct HomeBasket: View {
                         // mutually exclusive: a held press satisfies the long-press (tap never fires, so
                         // it doesn't also open); a quick tap fails the long-press and falls through to
                         // open. Select's own haptic lives in FilSelectionStore.toggle.
+                        //
+                        // Once anything is selected the two swap: the first long-press said what the
+                        // user is doing, so every tap after it selects, and opening becomes the held
+                        // gesture. Clearing the selection swaps them back.
                         .gesture(
                             LongPressGesture(minimumDuration: 0.2)
-                                .onEnded { _ in withAnimation(.snappy) { selection.toggle(note.uuid) } }
+                                .onEnded { _ in hasSelection ? open(note) : select(note) }
                                 .exclusively(
                                     before: TapGesture()
-                                        .onEnded {
-                                            Haptics.navigate()
-                                            onOpen(note, shown)
-                                        }
+                                        .onEnded { hasSelection ? select(note) : open(note) }
                                 )
                         )
                 }
@@ -79,6 +80,15 @@ struct HomeBasket: View {
             .background(ScrollTouchDelayDisabler())
         }
         .frame(height: 68)
+    }
+
+    private func select(_ note: Note) {
+        withAnimation(.snappy) { selection.toggle(note.uuid) }
+    }
+
+    private func open(_ note: Note) {
+        Haptics.navigate()
+        onOpen(note, shown)
     }
 
     /// A 44pt fil blob. Every fil type renders as its gooey blob here (the real media shows in the

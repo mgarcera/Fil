@@ -25,6 +25,8 @@ Rules for an entry:
 ### The dock
 - Fold the Bin away with the chevron beside it, for a cleaner dock. The count stays; Fil
   remembers the fold between launches
+- Once one thought in the Bin is selected, a tap selects the next and a long press opens it, so
+  picking several is quick. Clearing the selection puts tap-to-open back
 
 ---
 
