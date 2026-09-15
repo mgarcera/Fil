@@ -1207,9 +1207,11 @@ struct BrowserFilPager: View {
     }
 
     var body: some View {
+    /// Read here, at the sheet's root, and handed down: a fil filed from its reader closes the sheet.
+    @Environment(\.dismiss) private var dismiss
         TabView(selection: $selection) {
             ForEach(notes, id: \.uuid) { note in
-                BrowserFilPage(note: note, detent: $detent)
+                BrowserFilPage(note: note, detent: $detent, onMoved: { dismiss() })
                     .tag(note.uuid)
             }
         }
@@ -1255,6 +1257,7 @@ private struct BrowserFilPage: View {
                 filSheetDestination(route)
             }
         }
+    var onMoved: () -> Void = {}
     }
 
     /// Destinations pushed inside the fil sheet: a filament (keyword) popup, or a linked fil.
@@ -1266,6 +1269,7 @@ private struct BrowserFilPage: View {
                 KeywordPopup(note: routeNote, keyword: keyword)
             } else {
                 MissingLinkedFilView()
+                onMoved: onMoved,
             }
         case .linkedNote(let linkedNoteID):
             if let linkedNote = allNotes.first(where: { $0.uuid == linkedNoteID }) {

@@ -23,6 +23,9 @@ struct ArticleView: View {
     /// A Move chip in the top-left, for a fil opened from the Bin. Same chip as the dock's, so
     /// filing one thought from its reader looks like filing several from the dock.
     let showsMoveButton: Bool
+    /// Called after Move files the fil. The pager passes its own dismiss: `dismiss` read inside a
+    /// toolbar Menu's action resolves to the menu's presentation, not the sheet's, and does nothing.
+    let onMoved: (() -> Void)?
     @Binding private var filSheetPath: [FilSheetRoute]
     @Binding private var selectedPresentationDetent: PresentationDetent
     @Environment(\.modelContext) private var modelContext
@@ -63,6 +66,7 @@ struct ArticleView: View {
         topContentInset: CGFloat = 0,
         showsCloseButton: Bool = false,
         showsMoveButton: Bool = false,
+        onMoved: (() -> Void)? = nil,
         filSheetPath: Binding<[FilSheetRoute]> = .constant([]),
         selectedPresentationDetent: Binding<PresentationDetent> = .constant(.fraction(0.6))
     ) {
@@ -76,6 +80,7 @@ struct ArticleView: View {
         self.topContentInset = topContentInset
         self.showsCloseButton = showsCloseButton
         self.showsMoveButton = showsMoveButton
+        self.onMoved = onMoved
         self._filSheetPath = filSheetPath
         self._selectedPresentationDetent = selectedPresentationDetent
     }
@@ -260,7 +265,7 @@ struct ArticleView: View {
         note.sortIndex = 0   // order is per-folder
         try? modelContext.save()
         Haptics.move()
-        dismiss()
+        if let onMoved { onMoved() } else { dismiss() }
     }
 
     private var backlinkParentNote: Note? {
