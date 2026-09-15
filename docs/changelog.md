@@ -12,7 +12,7 @@ Rules for an entry:
 
 ---
 
-## 1.1 — unreleased
+## 1.1 (1) — archived 2026-09-15
 
 ### Your fils, as a file
 - Export your whole library as a single `.filbox` file from Settings → About: every fil, folder,
@@ -57,7 +57,7 @@ Rules for an entry:
 
 ---
 
-## 1.0 (5) — submitted 2026-09-08
+## 1.0 (5) — submitted 2026-09-08, approved
 
 First release. The lock screen, Dynamic Island, home screen widget, Today View, Control Center
 controls and share sheet; voice, photo and link capture; folders, filaments, and Fil Extra.
