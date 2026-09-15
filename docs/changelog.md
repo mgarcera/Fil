@@ -37,6 +37,10 @@ Rules for an entry:
 ### Settings
 - Settings opens full height
 
+### Fixes
+- A photo taken from the composer now fills its card in the player. Portrait shots from the camera
+  were being laid out as landscape and sat small in the middle
+
 ---
 
 ## 1.0 (5) — submitted 2026-09-08

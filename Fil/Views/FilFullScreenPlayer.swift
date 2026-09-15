@@ -818,9 +818,14 @@ private struct PhotoStackHero: View {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
               let w = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
+    /// Honours EXIF orientation. A portrait shot straight from the camera is stored as landscape
+    /// pixels plus a rotate tag; the decoder above applies the tag, so the card has to as well, or a
+    /// tall photo gets a short, wide card and sits small in the middle of it.
               let h = (props[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue, h > 0
         else { return 1 }
-        return CGFloat(w / h)
+        let orientation = (props[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+        let rotated = (5...8).contains(orientation)   // the four transposed cases
+        return CGFloat(rotated ? h / w : w / h)
     }
 
     /// Box-fit within maxCardW × maxCardH, preserving aspect: portraits fill the height and stay narrow;
