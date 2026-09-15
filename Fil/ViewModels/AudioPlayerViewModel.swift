@@ -96,7 +96,8 @@ final class AudioPlayerViewModel {
         timer = nil
     }
 
-    static func audioFileURL(for storedPath: String) -> URL? {
+    // Pure path lookups, callable from the export actor as well as the main one.
+    nonisolated static func audioFileURL(for storedPath: String) -> URL? {
         guard !storedPath.isEmpty else { return nil }
 
         let fileManager = FileManager.default
@@ -111,11 +112,11 @@ final class AudioPlayerViewModel {
         return fileManager.fileExists(atPath: localURL.path(percentEncoded: false)) ? localURL : nil
     }
 
-    static func hasAudioFile(for storedPath: String) -> Bool {
+    nonisolated static func hasAudioFile(for storedPath: String) -> Bool {
         audioFileURL(for: storedPath) != nil
     }
 
-    static var recordingsDirectory: URL {
+    nonisolated static var recordingsDirectory: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
 }

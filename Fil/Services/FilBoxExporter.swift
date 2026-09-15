@@ -199,7 +199,7 @@ actor FilBoxExporter {
 
 /// Copies both storage classes into `media/` under names that are stable inside the archive, and
 /// records anything a record pointed at that wasn't on disk.
-private struct MediaWriter {
+nonisolated private struct MediaWriter {
     let directory: URL
     private(set) var bytesWritten = 0
     private(set) var missing: [String] = []
@@ -265,7 +265,7 @@ private struct MediaWriter {
 /// title at all, and one runs 215 characters, so a title alone can neither name every file nor fit in
 /// one. The date carries the untitled ones and sorts the folder chronologically in any file browser,
 /// which is what makes this layer readable rather than merely present.
-private struct ReadableWriter {
+nonisolated private struct ReadableWriter {
     let directory: URL
     private var used: Set<String> = []
 

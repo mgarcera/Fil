@@ -11,7 +11,7 @@ import Foundation
 /// fresh IDs to dodge conflicts brings every thought back wearing a different face, which breaks the
 /// one promise the product makes. So `uuid` travels verbatim, and that same rule is what makes
 /// merge-by-id safe.
-enum FilBoxFormat {
+nonisolated enum FilBoxFormat {
     /// Bumped only when a change would make an older Fil misread a newer archive. Additive fields
     /// (new optionals) do not bump it: they decode as nil in an older build, which is exactly the
     /// "newer Fil opens an older .filbox" case the spec calls supported.
@@ -40,7 +40,7 @@ enum FilBoxFormat {
 
 // MARK: - Manifest
 
-struct FilBoxManifest: Codable {
+nonisolated struct FilBoxManifest: Codable {
     var schemaVersion: Int
     var appVersion: String
     var exportedAt: Date
@@ -56,7 +56,7 @@ struct FilBoxManifest: Codable {
 
 /// A fil, flattened. Relationships travel as IDs, never as nested objects, so the importer can
 /// insert in any order and resolve afterwards.
-struct FilBoxNote: Codable {
+nonisolated struct FilBoxNote: Codable {
     var uuid: UUID
     var title: String
     var transcript: String
@@ -90,13 +90,13 @@ struct FilBoxNote: Codable {
     var faviconMediaFile: String?
 }
 
-struct FilBoxBacklink: Codable {
+nonisolated struct FilBoxBacklink: Codable {
     var id: UUID
     var parentNoteID: String
     var parentKeyword: String
 }
 
-struct FilBoxFolder: Codable {
+nonisolated struct FilBoxFolder: Codable {
     var id: UUID
     var name: String
     var summary: String
@@ -108,7 +108,7 @@ struct FilBoxFolder: Codable {
     var summaryParts: [String]
 }
 
-struct FilBoxImage: Codable {
+nonisolated struct FilBoxImage: Codable {
     var id: UUID
     var order: Int
     var mediaFile: String
@@ -116,7 +116,7 @@ struct FilBoxImage: Codable {
 
 /// One entry under a keyword. `kind` mirrors `AttachmentEntry.Kind` as a raw string so an unknown
 /// future kind can be skipped rather than failing the whole import.
-struct FilBoxAttachment: Codable {
+nonisolated struct FilBoxAttachment: Codable {
     var id: UUID
     var keyword: String
     var kind: String
@@ -138,7 +138,7 @@ struct FilBoxAttachment: Codable {
 
 /// What an import actually did, phrased for the sentence shown to the user:
 /// "added 47 fils and 3 folders. 210 were already here."
-struct FilBoxImportResult {
+nonisolated struct FilBoxImportResult {
     var addedFils = 0
     var skippedFils = 0
     var addedFolders = 0
@@ -160,7 +160,7 @@ struct FilBoxImportResult {
     }
 }
 
-enum FilBoxError: LocalizedError {
+nonisolated enum FilBoxError: LocalizedError {
     case notAnArchive
     case manifestMissing
     case futureSchema(found: Int, supported: Int)
