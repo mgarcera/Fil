@@ -98,7 +98,8 @@ struct FoldersHomeSection: View {
                             .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                     }
-                    ForEach(folders) { folder in
+                    // The pinned folder is the hero above; listing it again read as a duplicate.
+                    ForEach(listedFolders) { folder in
                         folderRow(folder)
                     }
                     .onMove(perform: moveFolders)   // long-press a folder to drag-reorder
@@ -273,6 +274,9 @@ struct FoldersHomeSection: View {
             },
             onRename: { if let folder { startRename(folder) } },
             onSummarize: { if let folder { summarizeFolder(folder) } },
+            // The pinned folder has no row on the home (it is the hero), so its swipe-to-unpin is
+            // gone; the interior menu carries it instead.
+            onUnpin: folder.map { f in PinnedFolderStore.shared.isPinned(f.id) ? { togglePin(f) } : nil } ?? nil,
             isSummarizing: isSummarizing
         )
     }
@@ -291,9 +295,20 @@ struct FoldersHomeSection: View {
     }
 
     /// List long-press drag-reorder: renumber sortIndex to the new order.
+    /// The folders the home lists: every folder except the pinned one, which is the hero.
+    private var listedFolders: [Folder] {
+        folders.filter { !PinnedFolderStore.shared.isPinned($0.id) }
+    }
+
+    /// Reorders the listed folders. The pinned folder isn't in the list, so it is slotted back at
+    /// the position it held before, and reappears there when unpinned.
     private func moveFolders(from source: IndexSet, to destination: Int) {
-        var ordered = folders
+        var ordered = listedFolders
         ordered.move(fromOffsets: source, toOffset: destination)
+        if let pinned = folders.first(where: { PinnedFolderStore.shared.isPinned($0.id) }),
+           let slot = folders.firstIndex(where: { $0.id == pinned.id }) {
+            ordered.insert(pinned, at: min(slot, ordered.count))
+        }
         for (index, folder) in ordered.enumerated() { folder.sortIndex = index }
         try? context.save()
     }
@@ -642,6 +657,8 @@ struct FolderInteriorView: View {
     /// Folder options (rename / summarize) live in the top-left info menu.
     var onRename: () -> Void = {}
     var onSummarize: () -> Void = {}
+    /// Present only while this folder is the pinned one; the home list has no row for it to swipe.
+    var onUnpin: (() -> Void)? = nil
     /// True while a summary is generating — the caption shows the shimmering skeleton.
     var isSummarizing: Bool = false
 
@@ -689,6 +706,9 @@ struct FolderInteriorView: View {
                 } else {
                     Label("Caption for me", systemImage: "text.append")
                 }
+            }
+            if let onUnpin {
+                Button { onUnpin() } label: { Label("Remove Live Widget", systemImage: "pin.slash") }
             }
         } label: {
             Image(systemName: "info.circle")
@@ -1187,6 +1207,8 @@ struct BrowserFilPager: View {
     let notes: [Note]
     @State private var selection: UUID
     @State private var detent: PresentationDetent
+    /// Read here, at the sheet's root, and handed down: a fil filed from its reader closes the sheet.
+    @Environment(\.dismiss) private var dismiss
 
     init(notes: [Note], startID: UUID) {
         self.notes = notes
@@ -1207,8 +1229,6 @@ struct BrowserFilPager: View {
     }
 
     var body: some View {
-    /// Read here, at the sheet's root, and handed down: a fil filed from its reader closes the sheet.
-    @Environment(\.dismiss) private var dismiss
         TabView(selection: $selection) {
             ForEach(notes, id: \.uuid) { note in
                 BrowserFilPage(note: note, detent: $detent, onMoved: { dismiss() })
@@ -1237,6 +1257,7 @@ struct BrowserFilPager: View {
 private struct BrowserFilPage: View {
     let note: Note
     @Binding var detent: PresentationDetent
+    var onMoved: () -> Void = {}
     @State private var path: [FilSheetRoute] = []
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var allNotes: [Note]
 
@@ -1248,6 +1269,7 @@ private struct BrowserFilPage: View {
                 showsCloseButton: true,
                 // A fil with no folder is a Bin fil, wherever the pager was opened from.
                 showsMoveButton: note.folder == nil,
+                onMoved: onMoved,
                 filSheetPath: $path,
                 selectedPresentationDetent: $detent
             )
@@ -1257,7 +1279,6 @@ private struct BrowserFilPage: View {
                 filSheetDestination(route)
             }
         }
-    var onMoved: () -> Void = {}
     }
 
     /// Destinations pushed inside the fil sheet: a filament (keyword) popup, or a linked fil.
@@ -1269,7 +1290,6 @@ private struct BrowserFilPage: View {
                 KeywordPopup(note: routeNote, keyword: keyword)
             } else {
                 MissingLinkedFilView()
-                onMoved: onMoved,
             }
         case .linkedNote(let linkedNoteID):
             if let linkedNote = allNotes.first(where: { $0.uuid == linkedNoteID }) {
