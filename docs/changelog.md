@@ -30,6 +30,10 @@ Rules for an entry:
 - Open a thought from the Bin and a Move button sits top-left, so one thought can be filed from
   its reader without selecting it first
 
+### Links
+- A saved link now has the same top bar as every other thought: Move and Landfil. The address
+  capsule is gone; the link is still one tap away behind the open button
+
 ---
 
 ## 1.0 (5) — submitted 2026-09-08

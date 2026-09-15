@@ -178,9 +178,6 @@ struct ArticleView: View {
             .ignoresSafeArea()
         }
         .ignoresSafeArea(edges: ignoresTopSafeArea ? .top : [])
-        // Hide the nav bar only for a *root* link fil (it has its own open + swipe-to-dismiss). A
-        // link fil pushed inside the filament stack keeps its bar, so there's a back button.
-        .toolbar(note.isLinkFil && filSheetPath.isEmpty ? .hidden : .automatic, for: .navigationBar)
         .onAppear {
             normalizeTodoCompletionStates()
             if hasAudioRecording {
@@ -209,11 +206,11 @@ struct ArticleView: View {
                 } label: {
                     Image(systemName: "trash")
                 }
-                // A link has nothing to edit yet: its title and description come from the page.
-                if !note.isLinkFil {
                 .tint(.red)
                 .accessibilityLabel("Landfil")
 
+                // A link has nothing to edit yet: its title and description come from the page.
+                if !note.isLinkFil {
                     Button {
                         toggleEditing()
                     } label: {
@@ -253,6 +250,9 @@ struct ArticleView: View {
             }
             .presentationDetents([.fraction(0.6)], selection: $backlinkSheetDetent)
             .presentationBackground { FolderBrowserBackground() }
+        }
+    }
+
     /// Files this one fil. It leaves the Bin the moment it has a folder, so the reader closes with it:
     /// the pager it opened from is a snapshot of a Bin this fil is no longer in.
     private func move(to folder: Folder) {
@@ -261,9 +261,6 @@ struct ArticleView: View {
         try? modelContext.save()
         Haptics.move()
         dismiss()
-    }
-
-        }
     }
 
     private var backlinkParentNote: Note? {
@@ -391,26 +388,9 @@ struct ArticleView: View {
     }
 
     private var linkFilContentView: some View {
+        // No URL capsule: the nav bar now carries Move and Landfil like every other type, and the
+        // address itself is one tap away behind the open button.
         VStack(spacing: 16) {
-            if let url = note.sourceURL {
-                // The URL, display-only — opening is the "open" button below (tap or swipe up).
-                HStack(spacing: 9) {
-                    // Honest: a lock only for https; a neutral globe for http (no false security claim).
-                    Image(systemName: url.scheme?.lowercased() == "https" ? "lock.fill" : "globe")
-                        .font(.system(size: 11, weight: .semibold))
-                    Text(url.absoluteString)
-                        .font(Theme.dmMono(12))
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Spacer(minLength: 6)
-                }
-                .foregroundStyle(Theme.secondaryText)
-                .padding(.horizontal, 14)
-                .frame(height: 42)
-                .background(Theme.background.opacity(0.72), in: Capsule())
-                .overlay(Capsule().stroke(Theme.divider.opacity(0.55), lineWidth: 1))
-            }
-
             HStack(alignment: .center, spacing: 12) {
                 linkIcon
 
