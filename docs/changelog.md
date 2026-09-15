@@ -12,7 +12,7 @@ Rules for an entry:
 
 ---
 
-## 1.1 (1) — archived 2026-09-15
+## 1.1 (2) — archived 2026-09-15
 
 ### Your fils, as a file
 - Export your whole library as a single `.filbox` file from Settings → About: every fil, folder,
@@ -21,6 +21,7 @@ Rules for an entry:
   without Fil
 - Import a `.filbox` on any iPhone with Fil. Importing adds what's missing and leaves what's
   already there alone, so an old backup is always safe to bring in
+- Tap a `.filbox` in Files, or open one from AirDrop or Mail, and Fil imports it on the spot
 
 ### The dock
 - Fold the Bin away with the chevron beside it, for a cleaner dock. The count stays; Fil

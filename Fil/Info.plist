@@ -30,10 +30,13 @@
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<!--
-	  The .filbox backup type. Exported (not imported) because Fil defines it, and declared as a
-	  conformer of public.zip-archive rather than a bare public.data so the readable/ Markdown layer
-	  inside a backup stays double-clickable on a Mac years from now. That portability is the only
-	  reason that layer is worth writing, so the container has to stay honest zip.
+	  The .filbox backup type. Exported (not imported) because Fil defines it.
+
+	  Conforms to public.data, NOT public.zip-archive, even though the bytes are a plain zip. Files
+	  handles zip types itself: a tap on a zip-conforming file extracts it in place, and no app is
+	  ever asked (seen on device 2026-09-15). As plain data, a tap goes to the Owner handler, Fil.
+	  The Mac side loses nothing real: the archive is still an honest zip, and "rename to .zip" or
+	  Archive Utility opens it there.
 
 	  CFBundleDocumentTypes is what makes Files → tap → Fil work. Without it, import is a menu in
 	  Settings that nobody finds.
@@ -47,7 +50,7 @@
 			<string>Fil Backup</string>
 			<key>UTTypeConformsTo</key>
 			<array>
-				<string>public.zip-archive</string>
+				<string>public.data</string>
 			</array>
 			<key>UTTypeTagSpecification</key>
 			<dict>
@@ -58,6 +61,13 @@
 			</dict>
 		</dict>
 	</array>
+	<!--
+	  Fil reads a tapped .filbox where it sits (a scoped read inside FilBoxImporter.run) and never
+	  writes to it, so nothing is copied into Documents/Inbox and nothing is left behind. App Store
+	  Connect warns on upload if a document-opening app omits this key.
+	-->
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 extension UTType {
-    /// Declared in Fil/Info.plist as an exported type conforming to public.zip-archive.
+    /// Declared in Fil/Info.plist as an exported type conforming to public.data (see the note there).
     static let filbox = UTType(exportedAs: "com.smidgecraft.Fil.filbox")
 }
 
@@ -24,7 +24,7 @@ struct FilBoxSettingsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Getting a new phone, or want a copy you keep yourself? Export everything as a single file you can store anywhere: fils, folders, photos, recordings, files.")
+            Text("Getting a new phone or want to migrate your files? Export everything as a single file you can store anywhere.")
                 .font(Theme.dmSans(13))
                 .foregroundStyle(.white.opacity(0.62))
                 .fixedSize(horizontal: false, vertical: true)
@@ -53,7 +53,7 @@ struct FilBoxSettingsSection: View {
                 .buttonStyle(.plain)
             }
 
-            Text("It's a zip renamed .filbox and it'll open years from now. Import it on any iPhone with Fil to bring everything back. Or you could unzip it on your computer to read them in your file browser.")
+            Text("You'll get a zip renamed .filbox that you can import on any iPhone with Fil. If you want, unzip it on your computer to read them in your file browser.")
                 .font(Theme.dmSans(13))
                 .foregroundStyle(.white.opacity(0.62))
                 .fixedSize(horizontal: false, vertical: true)

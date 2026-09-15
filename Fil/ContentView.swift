@@ -19,6 +19,9 @@ struct ContentView: View {
     @State private var selectedNote: Note?
     @State private var recorder = VoiceRecorderViewModel()
     @State private var showFilSetup = false
+    /// The sentence shown after a .filbox arrives from Files, AirDrop or Mail: what was added, or why
+    /// the file could not be read. Same importer and same wording as Settings → About.
+    @State private var backupImportMessage: String?
     @State private var searchActive = false          // composer search/X ↔ canvas: search vs compose
     @State private var folderInteriorOpen = false      // canvas → hide chrome inside a folder interior
     @State private var homeDeepLink: HomeDeepLink?      // Lock Screen widget tap → open the Bin / a folder
@@ -112,6 +115,14 @@ struct ContentView: View {
         // body re-run (e.g. a background note write) spuriously dismiss + re-present a non-last
         // sheet — the article-sheet flicker we tracked down. Isolating them keeps each independent.
         .background(secondarySheetsHost)
+        .alert("Backup", isPresented: .init(
+            get: { backupImportMessage != nil },
+            set: { if !$0 { backupImportMessage = nil } }
+        )) {
+            Button("OK") {}
+        } message: {
+            Text(backupImportMessage ?? "")
+        }
         .alert("Error", isPresented: .init(
             get: { recorder.errorMessage != nil },
             set: { if !$0 { recorder.errorMessage = nil } }
@@ -282,6 +293,16 @@ struct ContentView: View {
     // background note write) spuriously dismiss + re-present it — the flicker we tracked down.
     /// Value identity (the fil's UUID) for the article sheet, mirroring `selectedNote`. Presenting
     /// off this instead of the Note object keeps the sheet stable across background note saves.
+    private func importBackup(at url: URL) {
+        do {
+            let outcome = try FilBoxImporter.run(url: url, context: modelContext)
+            Haptics.success()
+            backupImportMessage = outcome.summarySentence
+        } catch {
+            backupImportMessage = error.localizedDescription
+        }
+    }
+
     private var presentedFilBinding: Binding<PresentedFil?> {
         Binding(
             get: { selectedNote.map { PresentedFil(id: $0.uuid) } },
@@ -410,6 +431,13 @@ struct ContentView: View {
     }
 
     private func handleIncomingURL(_ url: URL) {
+        // A .filbox opened from Files, AirDrop or Mail. Info.plist's CFBundleDocumentTypes is what
+        // routes the tap here; this is the other half, without which the tap opened Fil to nothing.
+        if url.isFileURL, url.pathExtension.lowercased() == FilBoxFormat.fileExtension {
+            importBackup(at: url)
+            return
+        }
+
         if let pinnedNoteID = pinnedNoteID(from: url) {
             openFil(with: pinnedNoteID)
             return
