@@ -40,6 +40,8 @@ Rules for an entry:
 
 ### Settings
 - Settings opens full height
+- App Icon and Screensavers fold closed until tapped. Auto screensaver lives inside Screensavers;
+  the App Icon row names the current icon while closed
 
 ### Share sheet
 - The button says "Add to Bin" instead of "Post", since that is where the shared thing lands

@@ -20,6 +20,10 @@ struct SettingsView: View {
     @AppStorage(LockScreenActivity.storageKey, store: .filAppGroup) private var lockScreenActivityRaw = LockScreenActivity.off.rawValue
 
     @State private var section: SettingsSection = .appearance
+    // Progressive disclosure: the two collections fold closed on open. Their contents are things
+    // you visit rarely; a closed row is a name, an open one is a list.
+    @State private var appIconExpanded = false
+    @State private var screensaversExpanded = false
     @State private var showFeedback = false
     @State private var contentVisible = false
 
@@ -141,34 +145,77 @@ struct SettingsView: View {
             if !screensaverOptions.isEmpty {
                 sectionDivider
 
-                VStack(alignment: .leading, spacing: 16) {
-                    settingLabel("Screensavers", icon: "zzz")
-                    // Indent rows so their icons line up under the word "Screensavers"
-                    // (header icon frame width 22 + HStack spacing 12).
-                    VStack(alignment: .leading, spacing: 16) {
-                        ForEach(screensaverOptions) { screensaverRow($0) }
-                        Text("More screensavers arrive with updates.")
-                            .font(Theme.gabarito(13, weight: .regular))
-                            .foregroundStyle(.white.opacity(0.7))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.leading, 34)
-                }
+                screensaversSection
             }
-
-            sectionDivider
-
-            settingToggle(
-                "Auto screensaver",
-                icon: "power",
-                description: autoScreensaverUnlocked
-                    ? "After a minute of idling, play the last opened screensaver. This keeps your screen awake, so watch your battery."
-                    : "Unlocks once you have a few more thoughts.",
-                isOn: $autoScreensaverEnabled
-            )
-            .disabled(!autoScreensaverUnlocked)
-            .opacity(autoScreensaverUnlocked ? 1 : 0.5)
         }
+    }
+
+    /// Screensavers and their auto-play toggle, folded behind one header.
+    private var screensaversSection: some View {
+        disclosure("Screensavers", icon: "zzz", isExpanded: $screensaversExpanded) {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(screensaverOptions) { screensaverRow($0) }
+                Text("More screensavers arrive with updates.")
+                    .font(Theme.gabarito(13, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .fixedSize(horizontal: false, vertical: true)
+
+                settingToggle(
+                    "Auto screensaver",
+                    icon: "power",
+                    description: autoScreensaverUnlocked
+                        ? "After a minute of idling, play the last opened screensaver. This keeps your screen awake, so watch your battery."
+                        : "Unlocks once you have a few more thoughts.",
+                    isOn: $autoScreensaverEnabled
+                )
+                .disabled(!autoScreensaverUnlocked)
+                .opacity(autoScreensaverUnlocked ? 1 : 0.5)
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    /// A folding section: the header row is a settingLabel with a chevron on the right, and the
+    /// whole row is the tap target. Content indents under the label the way the lists always have
+    /// (header icon frame width 22 + HStack spacing 12). `detail` sits before the chevron, for a
+    /// header that can say what is currently chosen while closed.
+    private func disclosure<Content: View>(
+        _ title: String, icon: String, detail: String? = nil, isExpanded: Binding<Bool>,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Button {
+                Haptics.toggle()
+                withAnimation(.snappy(duration: 0.25)) { isExpanded.wrappedValue.toggle() }
+            } label: {
+                HStack(spacing: 10) {
+                    settingLabel(title, icon: icon)
+                    Spacer(minLength: 0)
+                    if let detail, !isExpanded.wrappedValue {
+                        Text(detail)
+                            .font(Theme.gabarito(15, weight: .regular))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                            .transition(.opacity)
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .rotationEffect(.degrees(isExpanded.wrappedValue ? -180 : 0))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityValue(isExpanded.wrappedValue ? "expanded" : "collapsed")
+
+            if isExpanded.wrappedValue {
+                content()
+                    .padding(.leading, 34)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .clipped()
     }
 
     /// Chooses which Live Activity Fil keeps on the Lock Screen / Dynamic Island. "Folder" pins from a
@@ -242,10 +289,10 @@ struct SettingsView: View {
     /// The footnote is load-bearing: the set is deliberately open-ended, and saying so is what makes
     /// four icons read as a beginning rather than as all there is. Adding art needs no copy change.
     private var appIconSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            settingLabel("App Icon", icon: "app.badge")
-            // Indent rows so their thumbnails line up under the word "App icon"
-            // (header icon frame width 22 + HStack spacing 12), exactly as Screensavers does.
+        // Closed, the header names the icon on the Home Screen; that is the one fact worth showing
+        // without opening the list.
+        let current = appIconOptions.first { $0.assetName == AppIconManager.shared.currentIconName }?.title
+        return disclosure("App Icon", icon: "app.badge", detail: current, isExpanded: $appIconExpanded) {
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(appIconOptions) { appIconRow($0) }
                 Text("More icons arrive with updates.")
@@ -253,7 +300,6 @@ struct SettingsView: View {
                     .foregroundStyle(.white.opacity(0.7))
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.leading, 34)
         }
     }
 
