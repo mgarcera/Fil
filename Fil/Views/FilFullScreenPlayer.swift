@@ -26,6 +26,7 @@ struct FilFullScreenPlayer: View {
     @State private var editing = false          // expand-focused note editor
     @State private var draft = ""               // editor buffer; committed to note.transcript on Done
     @State private var carouselSwiping = false   // true while a horizontal drag is paging the photo carousel
+    @State private var textSelecting = false     // true while the transcript has a selection; handles drag sideways
     @State private var filamentKeyword: FilamentKeyword?   // presents the tapped/selected keyword's filament sheet
     @State private var browserLink: BrowserLink?           // presents the in-app browser for a link fil
     @State private var linkCopied = false                  // brief "copied" state on the URL capsule
@@ -141,7 +142,8 @@ struct FilFullScreenPlayer: View {
     private var navSwipe: some Gesture {
         DragGesture(minimumDistance: 20)
             .onEnded { value in
-                guard !editing, !carouselSwiping else { return }   // let the photo carousel own its own swipe
+                // The photo carousel owns its own swipe, and a selection handle owns its drag.
+                guard !editing, !carouselSwiping, !textSelecting else { return }
                 guard abs(value.translation.width) > abs(value.translation.height),
                       abs(value.translation.width) > 60 else { return }
                 advance(value.translation.width < 0 ? 1 : -1)
@@ -153,6 +155,7 @@ struct FilFullScreenPlayer: View {
         guard notes.indices.contains(next) else { return }
         audio.stop()
         carouselSwiping = false   // a torn-down photo carousel never emits .idle; don't wedge fil-nav
+        textSelecting = false     // the incoming fil's text view starts with nothing selected
         scrollY = 0               // the incoming fil opens with a full, undimmed backdrop blob
         canScrollDown = false     // re-evaluated once the new fil reports its scroll geometry
         showPhotoDetails = false  // the incoming photo starts on the image, not its details
@@ -559,7 +562,8 @@ struct FilFullScreenPlayer: View {
                 onSelectText: { keyword, _ in openFilament(keyword) },
                 onTapHighlight: { keyword in openFilament(keyword) },
                 onMakeTodo: { addSelectionTodo($0) },
-                textColor: .white
+                textColor: .white,
+                onSelectionActive: { textSelecting = $0 }
             )
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 2)
@@ -814,13 +818,13 @@ private struct PhotoStackHero: View {
     }
 
     /// Cheap pixel-dimension read (no full decode) → width / height aspect ratio.
+    /// Honours EXIF orientation. A portrait shot straight from the camera is stored as landscape
+    /// pixels plus a rotate tag; the decoder above applies the tag, so the card has to as well, or a
+    /// tall photo gets a short, wide card and sits small in the middle of it.
     private nonisolated static func aspectRatio(_ data: Data) -> CGFloat {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
               let w = (props[kCGImagePropertyPixelWidth] as? NSNumber)?.doubleValue,
-    /// Honours EXIF orientation. A portrait shot straight from the camera is stored as landscape
-    /// pixels plus a rotate tag; the decoder above applies the tag, so the card has to as well, or a
-    /// tall photo gets a short, wide card and sits small in the middle of it.
               let h = (props[kCGImagePropertyPixelHeight] as? NSNumber)?.doubleValue, h > 0
         else { return 1 }
         let orientation = (props[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1

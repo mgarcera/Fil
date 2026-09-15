@@ -40,6 +40,8 @@ Rules for an entry:
 ### Fixes
 - A photo taken from the composer now fills its card in the player. Portrait shots from the camera
   were being laid out as landscape and sat small in the middle
+- Selecting text in a thought no longer swipes you to the next one. Swiping to page stands down
+  while text is selected; the arrows still work
 
 ---
 

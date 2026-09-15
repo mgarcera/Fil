@@ -15,6 +15,9 @@ struct SelectableTextView: UIViewRepresentable {
     var height: Binding<CGFloat>? = nil
     /// Body text color; defaults to adaptive `.label`. The player passes white for its dark wash.
     var textColor: UIColor? = nil
+    /// Fires with `true` when a selection appears and `false` when it clears. The player uses it to
+    /// stand its swipe-to-page down: dragging a selection handle sideways is not a request to leave.
+    var onSelectionActive: ((Bool) -> Void)? = nil
 
     private var lighterHex: String { Theme.lighterHex(gradientStartHex, gradientEndHex) }
 
@@ -110,6 +113,14 @@ struct SelectableTextView: UIViewRepresentable {
 
     class Coordinator: NSObject, UITextViewDelegate {
         var parent: SelectableTextView
+        private var selectionActive = false
+
+        func textViewDidChangeSelection(_ textView: UITextView) {
+            let active = textView.selectedRange.length > 0
+            guard active != selectionActive else { return }
+            selectionActive = active
+            parent.onSelectionActive?(active)
+        }
 
         init(parent: SelectableTextView) {
             self.parent = parent
