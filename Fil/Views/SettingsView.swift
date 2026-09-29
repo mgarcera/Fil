@@ -5,6 +5,10 @@ import SwiftData
 /// a capsule tab bar over an animated ambient gradient, with a glass card below — but
 /// each tab is a real settings section and every control applies live (no save step).
 struct SettingsView: View {
+    #if DEBUG
+    @State private var showsSandbox = false
+    #endif
+
     /// Screensaver launchers, supplied by ContentView (each dismisses settings, then launches).
     var screensaverOptions: [ScreensaverOption] = []
     /// App icon choices, supplied by ContentView (which owns the Fil Extra gate). Applying one is
@@ -61,6 +65,11 @@ struct SettingsView: View {
         .sheet(isPresented: $showFeedback) {
             FeedbackSheet()
         }
+        #if DEBUG
+        // Full screen, not a sheet: a study is judged at the size the thing ships at, and a sheet
+        // crops the top of every page behind a grabber.
+        .fullScreenCover(isPresented: $showsSandbox) { SandboxRoute() }
+        #endif
     }
 
     // MARK: - Tabs
@@ -458,6 +467,12 @@ struct SettingsView: View {
             Text("Version \(appVersion)")
                 .font(Theme.dmSans(12))
                 .foregroundStyle(.white.opacity(0.5))
+
+            #if DEBUG
+            // The design sandbox. Debug only, so it cannot reach TestFlight with a study mounted.
+            Divider().overlay(Color.white.opacity(0.14))
+            aboutRow("Design sandbox") { showsSandbox = true }
+            #endif
         }
     }
 

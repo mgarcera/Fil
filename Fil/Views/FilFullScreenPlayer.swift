@@ -757,7 +757,12 @@ private struct BrowserLink: Identifiable {
 /// The fil gradient scaled up, heavily blurred and darkened — the soft wash behind the player. As a
 /// sheet's `presentationBackground` it's static (no bloom, since the sheet slides rather than
 /// opacity-crossfading a blurred layer).
-private struct BlurredFilBackground: View {
+/// The wash behind a full-screen fil: its own gradient, blown up and blurred past recognition.
+///
+/// Internal rather than private since 2026-09-28: the paged-home study renders the same wash behind
+/// a folder, and a second copy of four modifiers is how two surfaces start disagreeing about what
+/// Fil's background looks like.
+struct BlurredFilBackground: View {
     let colors: [Color]
     var body: some View {
         LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
