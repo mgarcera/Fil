@@ -131,3 +131,50 @@ the layout it proposed. What survives of it: type only, no folder mark. What wen
 rule, the count, and everything on the arrival screen the user had not written.
 
 **Settled:** the hero is the folder's name, upper left, and nothing else.
+
+---
+
+# The nest, and what it replaced — 2026-09-28
+
+## NotesPage (deleted)
+
+A folder's plain notes consolidated into one Apple Books–style reading page: the folder name as a
+running header greyed and clipped, Newsreader at 19, and — the two details that carried most of the
+resemblance — **first-line indents on continuation paragraphs and hyphenation at 0.9**. Neither is
+reachable from SwiftUI's `Text`; both are `NSParagraphStyle`, so it was a `UITextView`.
+
+Notes opened a new section flush left with space above; continuations indented 20. That is the book
+convention for a break, and it meant two thoughts read as two without a rule between them.
+
+**Why it went:** the block model replaced it within the hour. Every thought became a block in one
+scrolling document, so consolidating *only* the prose into a separate page stopped having a job —
+the whole page was already one document.
+
+**Worth keeping if a reading surface ever comes back:** hyphenation at 0.9, not 1.0. At full
+strength almost every line breaks, the ragged edge disappears, and it reads as justified text that
+was never justified.
+
+## Type, settled
+
+Newsreader across the page — notes, to-dos, link titles, captions, the running header. Helvetica
+survives only in the composer and the chrome. A note is one size, 16, with weight the only thing
+separating its title from its body.
+
+**16, not the 14.5 the body used to be.** Newsreader sets smaller than Helvetica at the same point
+size, so matching the number would have been a step down from what the page read at. The ask was
+"the size of the body text", and that is a size you see rather than a number.
+
+## The axes, settled
+
+Down moves between folders while you are on a cover. One step across takes you into the nest.
+Inside the nest, down belongs to the content and folder paging is switched off.
+
+The axis changes meaning by **depth**, not by scroll position. An earlier model switched horizontal
+from "folders" to "thoughts" depending on how far you had scrolled, which is a change you cannot
+see coming; this one you swiped to reach, the way the rules change inside an app on the home screen.
+
+## The bar, settled
+
+Input, not navigation. It was the transport — chevrons and a position — which said what the axes
+already said, and needed a counter to justify itself. It is now the composer, which is the app's
+premise, and it reports where a thought will land when an insertion point is chosen.

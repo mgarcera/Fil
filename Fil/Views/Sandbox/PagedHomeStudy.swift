@@ -1,6 +1,7 @@
 #if DEBUG
 import SwiftUI
 import SwiftData
+import PhotosUI
 import QuickLook
 
 /// SPIKE — the paged folder home, ported from the HTML prototype 2026-09-28.
@@ -40,13 +41,23 @@ struct PagedHomeStudy: View {
     private var folders: [Folder]
     @Query(sort: [SortDescriptor(\Note.timestamp, order: .reverse)]) private var notes: [Note]
 
-    @State private var page = 0
-    /// Which folder the vertical pager is on, so the rail can both report it and drive it.
+    @State private var folderIndex = 0
     @State private var folderID: Int? = 0
-    /// Which card within that folder. Lifted out of the page 2026-09-28: the bar is static and
-    /// always at the bottom of the screen, so the thing it reports cannot live inside the page
-    /// that scrolls away underneath it.
+    /// 0 is the cover, 1 is the nest. Lifted here because the outer pager has to know it: down
+    /// belongs to the folders at 0 and to the content at 1.
     @State private var card = 0
+    /// Navigate is the resting mode; the other three each open the bar.
+    @State private var barMode: BottomBar.Mode = .navigate
+    /// What the keyboard is covering. Observed rather than assumed, because the room sits above it.
+    @State private var keyboard: CGFloat = 0
+
+    /// The one number both translations read. Keying the animation to THIS rather than to `barMode`
+    /// keeps the keyboard's arrival part of the same movement: the spring retargets mid-flight
+    /// instead of starting a second one.
+    private var lift: CGFloat { barMode == .navigate ? 0 : BottomBar.lift(keyboard: keyboard) }
+
+    /// The bar belongs to the nest, so the page only rises when you are in one.
+    private var inNest: Bool { card > 0 }
 
     private var pinned: Folder? { folders.first { PinnedFolderStore.shared.isPinned($0.id) } }
 
@@ -57,10 +68,13 @@ struct PagedHomeStudy: View {
         return (0..<12).map { folders[$0 % folders.count] }
     }
 
-    /// The chrome takes the colour of the page it is currently over, so it changes with the swipe
-    /// rather than being one grey that suits none of the folders.
-    private var chromePalette: Palette {
-        Palette(pages.indices.contains(page) ? pages[page] : pages[0])
+    /// How many cards a folder's run has after the cover: one for the consolidated reading page
+    /// when it has any prose, plus one per object.
+    static func cardCount(_ folder: Folder) -> Int {
+        let prose = folder.notes.filter {
+            $0.todoRowItems.isEmpty && !$0.isImageFil && !$0.isLinkFil && $0.audioFilePath.isEmpty
+        }
+        return (prose.isEmpty ? 0 : 1) + (folder.notes.count - prose.count)
     }
 
     private var pages: [Folder] {
@@ -71,26 +85,37 @@ struct PagedHomeStudy: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            // Behind everything and never moved. A translation lifts the page off the bottom of
+            // the screen, and whatever is under it is what you see for the length of the
+            // animation — black, before this.
+            (pages.indices.contains(folderIndex)
+             ? AnyView(LinearGradient(colors: [Palette(pages[folderIndex]).groundFrom,
+                                               Palette(pages[folderIndex]).groundTo],
+                                      startPoint: .topLeading, endPoint: .bottomTrailing))
+             : AnyView(Color.black))
+                .ignoresSafeArea()
 
             if pages.isEmpty {
                 Text("No folders yet — make one in the app, then come back.")
-                    .font(Theme.dmSans(14)).foregroundStyle(Theme.secondaryText).padding(40)
+                    .font(StudyType.sans(14)).foregroundStyle(Theme.secondaryText).padding(40)
             } else {
-                // Axes inverted: DOWN moves between folders, ACROSS moves through a folder's
-                // thoughts. Each axis has exactly one meaning again, which is what the other model
-                // could not manage — there, horizontal meant folders on the hero and thoughts once
-                // you had scrolled, and the meaning changed under you.
-                //
-                // The consequence, and it is not small: a folder's contents can no longer scroll
-                // vertically, because down is taken. So the hero stops being something you scroll
-                // PAST and becomes card zero of the run across.
+                // Folders page DOWN. One horizontal step from a folder's cover leads into its
+                // nest, and while you are in there the vertical axis belongs to the content — so
+                // folder paging is switched off rather than competing with the scroll. The axis
+                // changes meaning by DEPTH, which is safe in a way that changing it by scroll
+                // position was not: you can only be in one place, and you swiped to get there.
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(pages.enumerated()), id: \.offset) { i, folder in
-                            CrossedFolderPage(folder: folder, card: $card)
+                            NestFolderPage(folder: folder,
+                                           card: Binding(get: { folderIndex == i ? card : 0 },
+                                                         set: { if folderIndex == i { card = $0 } }))
                                 .containerRelativeFrame([.horizontal, .vertical])
                                 .id(i)
+                                // Only while you are paging folders. Translating the pager makes
+                                // neighbouring pages appear, and trusting that inside a nest
+                                // re-pointed everything at whichever folder drifted into view.
+                                .onAppear { if card == 0 { folderIndex = i } }
                         }
                     }
                     .scrollTargetLayout()
@@ -98,44 +123,67 @@ struct PagedHomeStudy: View {
                 .scrollTargetBehavior(.paging)
                 .scrollIndicators(.hidden)
                 .scrollPosition(id: $folderID)
+                // The whole point: inside the nest, down is the content's.
+                .scrollDisabled(card > 0)
                 .ignoresSafeArea()
-                // A new folder opens on its cover rather than on whichever card number you
-                // happened to be on in the last one.
-                .onChange(of: folderID) { _, _ in card = 0 }
+                .onChange(of: folderID) { _, new in
+                    // Folder paging is off inside a nest, so a change reported while you are in
+                    // one is the scroll view re-snapping under our own translation — never you
+                    // moving. Put it back. Guarding on `old != new` was not enough: raising the
+                    // keyboard moves the pager far enough that the snap is a genuine change, and
+                    // it threw you out of the nest and onto another folder.
+                    //
+                    // The write-back re-fires this handler once with `new == folderIndex`, which
+                    // takes the early return, so it settles rather than looping.
+                    guard card == 0 else {
+                        if new != folderIndex { folderID = folderIndex }
+                        return
+                    }
+                    folderIndex = new ?? 0
+                }
+                // Swiping back out to the cover takes the composer with it, keyboard and all.
+                .onChange(of: card) { _, new in if new == 0 { barMode = .navigate } }
+                // Reachability, not a keyboard inset: everything on screen translates by the
+                // height the bar gained. Padding only made the content taller, which moves nothing
+                // unless you are already at the bottom — and left a black band where the page had
+                // ended. A translation moves the page, the cover, the rail, all of it.
+                .offset(y: -lift)
                 .overlay(alignment: .trailing) {
+                    // Hidden in the nest, because it moves between folders and that is exactly
+                    // what this depth does not do.
                     FolderRail(count: pages.count,
-                               index: Binding(get: { folderID ?? 0 },
-                                              set: { folderID = $0 }))
+                               index: Binding(get: { folderID ?? 0 }, set: { folderID = $0 }))
+                        .opacity(card == 0 ? 1 : 0)
+                        .allowsHitTesting(card == 0)
+                        .animation(.snappy, value: card)
                 }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    TransportBar(card: $card,
-                                 count: pages.indices.contains(folderID ?? 0)
-                                        ? pages[folderID ?? 0].notes.count : 0)
+                .overlay(alignment: .bottom) {
+                    // Outside the page's translation because it carries its own: the bar is
+                    // always full height, sitting `lift` below the screen when shut, and rises
+                    // into the space the page vacates. Both movements are `.offset` under the one
+                    // spring below, which is the only way they stay on the same frame.
+                    BottomBar(folderName: pages.indices.contains(folderIndex)
+                              ? pages[folderIndex].name : nil,
+                              folder: pages.indices.contains(folderIndex) ? pages[folderIndex] : nil,
+                              keyboard: keyboard,
+                              visible: inNest,
+                              mode: $barMode)
+                        .ignoresSafeArea(edges: .bottom)
                 }
+                // ONE animation for the page's translation and the bar's growth. Two separate
+                // ones drift apart by a frame or two mid-flight, and the gap between them is
+                // exactly the band that was flashing.
+                .animation(BottomBar.morph, value: lift)
+                .animation(BottomBar.morph, value: inNest)
+                .onReceive(NotificationCenter.default.publisher(
+                    for: UIResponder.keyboardWillShowNotification)) { n in
+                    keyboard = (n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
+                                as? CGRect)?.height ?? 0
+                }
+                .onReceive(NotificationCenter.default.publisher(
+                    for: UIResponder.keyboardWillHideNotification)) { _ in keyboard = 0 }
             }
 
-            if false {
-            VStack(spacing: 0) {
-                Spacer()
-                PageDots(count: pages.count, index: $page,
-                         pinnedIndex: pinned == nil ? nil : 0,
-                         palette: chromePalette, style: variant)
-                    .padding(.bottom, 14)
-                Dock(bin: notes.filter { $0.folder == nil }.count,
-                     palette: chromePalette, style: variant)
-                    .padding(.bottom, 26)
-            }
-            // Only the scrim variant gets a ground of its own; the other two survive the gradient
-            // by their own means, which is what is being compared.
-            .background(alignment: .bottom) {
-                if variant == "scrim" {
-                    LinearGradient(colors: [.black.opacity(0), .black.opacity(0.45)],
-                                   startPoint: .top, endPoint: .bottom)
-                        .frame(height: 120)
-                        .allowsHitTesting(false)
-                }
-            }
-            }
         }
     }
 }
@@ -194,7 +242,7 @@ private struct FolderPage: View {
 
                         if feed.isEmpty {
                             Text("Nothing filed here yet")
-                                .font(Theme.dmSans(13)).foregroundStyle(palette.faint)
+                                .font(StudyType.sans(13)).foregroundStyle(palette.faint)
                                 .frame(maxWidth: .infinity)
                         } else {
                             Feed(notes: feed, palette: palette)
@@ -240,7 +288,7 @@ private struct FolderPage: View {
                               // the way FilPlayerBlob pauses when it is collapsed out of sight.
                               paused: progress > 0.85)
             Text(folder.name)
-                .font(Theme.instrumentSerif(46))
+                .font(StudyType.serif(46))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 22)
                 .padding(.top, 78)
@@ -262,7 +310,7 @@ private struct FolderPage: View {
                                      seed: Double(abs(folder.id.hashValue % 1000)) / 1000))
                 .frame(width: 22, height: 17)
             Text(folder.name)
-                .font(Theme.instrumentSerif(19))
+                .font(StudyType.serif(19))
                 .foregroundStyle(palette.ink)
                 .lineLimit(1)
             Spacer()
@@ -278,70 +326,6 @@ private struct FolderPage: View {
         .glassEffect(mode == "glass" ? .regular : .identity, in: .rect(cornerRadius: 0))
         .overlay(alignment: .bottom) {
             Rectangle().fill(palette.rail).frame(height: 0.5)
-        }
-    }
-}
-
-// MARK: - The crossed model
-
-/// One folder, read across. Card zero is the cover; every card after it is a thought.
-private struct CrossedFolderPage: View {
-    let folder: Folder
-    /// Owned by the parent, because the bar that reports it is static and this page is not.
-    @Binding var card: Int
-
-    /// The right-hand gutter the folder rail owns. 34 for the rail's hit area, 14 to hold it off
-    /// the screen edge, and 6 so nothing's shadow touches it. Everything here is inset by this on
-    /// the trailing side and by the normal 22 on the leading one — asymmetric on purpose, because
-    /// the rail is a permanent element and not decoration to centre around.
-    static let railGutter: CGFloat = 54
-
-    private var palette: Palette { Palette(folder) }
-    private var feed: [Note] { folder.notes.sorted { $0.timestamp > $1.timestamp } }
-
-    var body: some View {
-        ZStack {
-            // ONE ground for the folder, drawn once. The cover used to paint its own gradient on
-            // top of this one; identical values, two layers, and the seam showed wherever the
-            // blend was not exact. Now the cover is simply this ground with a name on it.
-            LinearGradient(colors: [palette.groundFrom, palette.groundTo],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-                .overlay {
-                    // The same PaperNoise every summary stamp is printed on
-                    // (StampSnippet.swift:61), at half its weight. A stamp is 210 points wide and
-                    // a screen is 390 by 800, so the same 15% reads as dirt here and the tile's
-                    // repeat starts to show.
-                    Image("PaperNoise")
-                        .resizable(resizingMode: .tile)
-                        .blendMode(.multiply)
-                        .opacity(0.07)
-                        .allowsHitTesting(false)
-                }
-                .ignoresSafeArea()
-
-            TabView(selection: $card) {
-                // Card zero: the folder's name on the ground, and nothing else drawn. Centred
-                // vertically, set flush left — the optical centre of a screen rather than the top
-                // of it, which is where the eye lands when there is nothing else to look at.
-                VStack(alignment: .leading, spacing: 0) {
-                    Spacer(minLength: 0)
-                    Text(folder.name)
-                        .font(Theme.instrumentSerif(46))
-                        .foregroundStyle(.white)
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 22)
-                .padding(.trailing, Self.railGutter)
-                .tag(0)
-
-                ForEach(Array(feed.enumerated()), id: \.element.uuid) { i, note in
-                    FullScreenThought(note: note, palette: palette,
-                                      trailingInset: Self.railGutter)
-                        .tag(i + 1)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
         }
     }
 }
@@ -489,6 +473,7 @@ private struct FullScreenThought: View {
         }
         .padding(.leading, 22)
         .padding(.trailing, trailingInset)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .fullScreenCover(item: $preview) { target in
             NativePhotoViewer(urls: target.urls, start: 0) { preview = nil }
                 .ignoresSafeArea()
@@ -500,12 +485,12 @@ private struct FullScreenThought: View {
         case .note:
             VStack(alignment: .leading, spacing: 12) {
                 Text(note.titleLine)
-                    .font(Theme.instrumentSerif(titleSize))
+                    .font(StudyType.serif(titleSize))
                     .foregroundStyle(ink)
                     .lineSpacing(titleSize * 0.13)
                 if !note.bodyAfterTitle.isEmpty {
                     Text(note.bodyAfterTitle)
-                        .font(Theme.dmSans(15))
+                        .font(StudyType.sans(15))
                         .foregroundStyle(muted)
                         .lineSpacing(5)
                 }
@@ -523,11 +508,11 @@ private struct FullScreenThought: View {
                 }
                 VStack(alignment: .leading, spacing: 3) {
                     Text(note.titleLine)
-                        .font(Theme.dmSans(14.5)).italic()
+                        .font(StudyType.sans(14.5)).italic()
                         .foregroundStyle(muted)
                     if !note.bodyAfterTitle.isEmpty {
                         Text(note.bodyAfterTitle)
-                            .font(Theme.dmSans(13.5)).italic()
+                            .font(StudyType.sans(13.5)).italic()
                             .foregroundStyle(muted)
                     }
                 }
@@ -540,14 +525,14 @@ private struct FullScreenThought: View {
                     .scaleEffect(x: 2.4, y: 2.2, anchor: .leading)
                     .frame(height: 42)
                 Text(note.titleLine)
-                    .font(Theme.instrumentSerif(titleSize))
+                    .font(StudyType.serif(titleSize))
                     .foregroundStyle(ink)
             }
 
         case .link:
             VStack(alignment: .leading, spacing: 16) {
                 Text(note.sourceTitle ?? note.sourceURLString ?? "")
-                    .font(Theme.instrumentSerif(30))
+                    .font(StudyType.serif(30))
                     .foregroundStyle(ink)
                     .lineSpacing(3)
                 HStack(spacing: 11) {
@@ -563,7 +548,7 @@ private struct FullScreenThought: View {
         case .todo:
             VStack(alignment: .leading, spacing: 16) {
                 Text(note.titleLine)
-                    .font(Theme.instrumentSerif(28))
+                    .font(StudyType.serif(28))
                     .foregroundStyle(ink)
                 VStack(alignment: .leading, spacing: 13) {
                     ForEach(note.todoRowItems) { item in
@@ -571,7 +556,7 @@ private struct FullScreenThought: View {
                             TodoStatusCircle(isCompleted: item.done, onColor: !onPlate)
                                 .frame(width: 19, height: 19)
                             Text(item.text)
-                                .font(Theme.dmSans(16))
+                                .font(StudyType.sans(16))
                                 .strikethrough(item.done)
                                 .foregroundStyle(item.done ? muted : ink)
                         }
@@ -594,7 +579,7 @@ private struct FullScreenThought: View {
 /// The tint is what makes this legible. On the saturated hexes neither black nor white clears
 /// 4.5:1 across a whole gradient — Reading is 2.64:1 for white at one end and 2.89:1 for black at
 /// the other. Tinted, black clears 15.8 to 17.8:1 on every end of every folder.
-private struct Palette {
+struct Palette {
     let groundFrom: Color
     let groundTo: Color
     let plate: Color
@@ -859,7 +844,7 @@ private struct Feed: View {
             // label; at full opacity in the display face they read as the page's own headings,
             // which is what they are — the only structure the feed has.
             Text(label)
-                .font(Theme.instrumentSerif(21))
+                .font(StudyType.serif(21))
                 .foregroundStyle(palette.ink)
         }
         .padding(.bottom, 22)
@@ -925,7 +910,7 @@ private struct Entry: View {
                         TodoStatusCircle(isCompleted: item.done)
                             .frame(width: 16, height: 16)
                         Text(item.text)
-                            .font(Theme.dmSans(14.5))
+                            .font(StudyType.sans(14.5))
                             .strikethrough(item.done)
                             .foregroundStyle(item.done ? palette.faint : palette.ink)
                     }
@@ -967,7 +952,7 @@ private struct Entry: View {
                         .frame(width: 26, height: 26)
                     VStack(alignment: .leading, spacing: 5) {
                         Text(note.sourceTitle ?? note.sourceURLString ?? "")
-                            .font(Theme.dmSans(13, weight: .medium))
+                            .font(StudyType.sans(13, weight: .medium))
                             .foregroundStyle(palette.ink)
                             .lineLimit(2)
                         if let host = note.sourceURL?.host()?.replacingOccurrences(of: "www.", with: "") {
@@ -994,12 +979,12 @@ private struct Entry: View {
     private var caption: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(note.titleLine)
-                .font(Theme.dmSans(13.5))
+                .font(StudyType.sans(13.5))
                 .italic()
                 .foregroundStyle(palette.soft)
             if !note.bodyAfterTitle.isEmpty {
                 Text(note.bodyAfterTitle)
-                    .font(Theme.dmSans(13))
+                    .font(StudyType.sans(13))
                     .italic()
                     .foregroundStyle(palette.faint)
             }
@@ -1011,11 +996,11 @@ private struct Entry: View {
     private var text: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(note.titleLine)
-                .font(Theme.dmSans(15, weight: .medium))
+                .font(StudyType.sans(15, weight: .medium))
                 .foregroundStyle(palette.ink)
             if !note.bodyAfterTitle.isEmpty {
                 Text(note.bodyAfterTitle)
-                    .font(Theme.dmSans(13.5))
+                    .font(StudyType.sans(13.5))
                     .foregroundStyle(palette.soft)
             }
         }
@@ -1028,7 +1013,7 @@ private struct Entry: View {
 ///
 /// QuickLook reads files, not `Data`, so the bytes go to a temp directory first — the same thing
 /// `ArticleView.openImageFilPreview` does, and for the same reason.
-private struct PhotoPreview: Identifiable {
+struct PhotoPreview: Identifiable {
     let id: UUID
     let urls: [URL]
 
@@ -1060,7 +1045,7 @@ private struct PhotoPreview: Identifiable {
 /// Unverified until seen on device: that `.disabled` removes the control rather than only refusing
 /// the edit. It is the documented meaning, but it is a claim about a system UI and should be looked
 /// at before it is relied on.
-private struct NativePhotoViewer: UIViewControllerRepresentable {
+struct NativePhotoViewer: UIViewControllerRepresentable {
     let urls: [URL]
     let start: Int
     let onClose: () -> Void
@@ -1122,7 +1107,7 @@ private struct Dock: View {
                 .fill(onLight ? palette.rail : .white.opacity(0.32))
                 .frame(width: 30, height: 24)
             VStack(alignment: .leading, spacing: 0) {
-                Text("Bin").font(Theme.gabarito(13, weight: .semibold))
+                Text("Bin").font(StudyType.sans(13, weight: .semibold))
                 Text("\(bin)")
                     .font(Theme.dmMono(10))
                     .foregroundStyle(onLight ? palette.soft : .white.opacity(0.7))

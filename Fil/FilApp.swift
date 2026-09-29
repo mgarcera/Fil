@@ -102,7 +102,12 @@ private extension FilApp {
         let names = [
             "InstrumentSerif-Regular",
             "Gabarito-Regular", "Gabarito-Medium", "Gabarito-SemiBold", "Gabarito-Bold",
-            "Caveat-Regular", "Caveat-Medium", "Caveat-SemiBold", "Caveat-Bold"
+            "Caveat-Regular", "Caveat-Medium", "Caveat-SemiBold", "Caveat-Bold",
+            // Newsreader is a 2026-09-28 type study only — the design sandbox uses it in place of
+            // Instrument Serif. Registering it costs nothing when nothing asks for it; if the
+            // study is abandoned, remove these two and the files in Resources/Fonts.
+            "Newsreader-Regular", "Newsreader-Medium",
+            "Newsreader-SemiBold", "Newsreader-Bold"
         ]
         for name in names {
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }
