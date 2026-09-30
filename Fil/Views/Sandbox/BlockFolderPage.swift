@@ -232,6 +232,23 @@ struct CoverSummary: View {
         .task(id: "\(folder.id)-\(folder.notes.count)") { await load() }
     }
 
+    /// Whether this build was signed with an entitlement, read from the embedded provisioning
+    /// profile — the plist inside its CMS blob carries the `Entitlements` dictionary. `SecTask`
+    /// would be the direct question, but it is not in the public iOS SDK. An App Store build
+    /// has no embedded profile and answers false; that is fine for a study, and a shipped feature
+    /// would decide this at build time anyway.
+    private static func hasEntitlement(_ name: String) -> Bool {
+        guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let open = data.range(of: Data("<plist".utf8)),
+              let close = data.range(of: Data("</plist>".utf8), in: open.lowerBound..<data.endIndex),
+              let plist = try? PropertyListSerialization.propertyList(
+                  from: data[open.lowerBound..<close.upperBound], format: nil) as? [String: Any],
+              let entitlements = plist["Entitlements"] as? [String: Any]
+        else { return false }
+        return (entitlements[name] as? Bool) == true
+    }
+
     private func load() async {
         let key = "\(folder.id)-\(folder.notes.count)"
         if let hit = Self.cache[key] { (text, source) = hit; return }
@@ -248,7 +265,13 @@ struct CoverSummary: View {
             + thoughts.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the cover text."
 
         // 1. Private Cloud Compute. iOS 27, the managed entitlement, a network, and quota.
-        if #available(iOS 27.0, *) {
+        //
+        // The entitlement check comes FIRST and reads the signed binary, because constructing
+        // the model without it is a fatal error, not an `.unavailable` — the app terminated on
+        // signal 5 the moment a cover appeared, before `availability` could be asked:
+        // "FoundationModels/ErrorConversion.swift:140: Fatal error: Missing entitlement". The
+        // entitlement is granted by Apple on request; until then this tier is simply skipped.
+        if #available(iOS 27.0, *), Self.hasEntitlement("com.apple.developer.private-cloud-compute") {
             let pcc = PrivateCloudComputeLanguageModel()
             if case .available = pcc.availability, !pcc.quotaUsage.isLimitReached {
                 let session = LanguageModelSession(model: pcc, instructions: instructions)
