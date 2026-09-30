@@ -219,7 +219,7 @@ struct CoverSummary: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(text)
                 .font(.custom("Fraunces-Regular", size: 17))
-                .lineLimit(4)
+                .lineSpacing(3)
             // Study chrome: which model wrote the line, so the verdict is on the right one.
             if !source.isEmpty {
                 Text(source)
@@ -258,9 +258,12 @@ struct CoverSummary: View {
             .filter { !$0.isEmpty }
         var result = "", by = ""
         #if canImport(FoundationModels)
-        let instructions = "You write the cover of a personal notebook. In two or three plain, "
-            + "specific sentences, say what these entries are about and what they add up to. "
-            + "No quotation marks, no bullet points, no preamble, no more than fifty words."
+        let instructions = "You are a trusted friend who has read someone's notebook and is telling "
+            + "them, warmly and plainly, what they see in it. Speak to them as 'you'. Notice what "
+            + "they keep returning to, what seems to matter, and what these entries add up to — "
+            + "the way a good advisor reflects a person back to themselves. Be specific to what is "
+            + "actually written; never generic. Three or four sentences, under eighty words. No "
+            + "quotation marks, no bullet points, no headings, no preamble."
         let prompt = "The notebook is called \"\(folder.name)\". Its recent entries, newest first:\n"
             + thoughts.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the cover text."
 
@@ -308,10 +311,6 @@ struct NestScreen: View {
     var body: some View {
         Nest(folder: folder, palette: Palette(folder))
             .background { FolderGround(folder: folder, coverImage: coverImage) }
-            // The whole screen in the dark scheme, not just the composer. Its ground is always
-            // dark — a veiled photograph or the palette's floor — and every glass on it (the
-            // bubbles, the back control, the composer) should be the same smoky variant.
-            .environment(\.colorScheme, .dark)
             .toolbar(.hidden, for: .navigationBar)
             // A back control of our own. Hiding the navigation bar also took the interactive pop
             // with it — the edge swipe did nothing on device — so the way out has to be drawn.
@@ -329,6 +328,12 @@ struct NestScreen: View {
                 .padding(.leading, 16)
                 .padding(.top, 4)
             }
+            // OUTERMOST, after the overlay. The whole screen in the dark scheme — its ground is
+            // always dark — so every glass on it is the same smoky variant. This sat above the
+            // overlay for a day, and an overlay's content inherits from outside the modifier it
+            // is attached to: the back control rendered the light variant while the bubbles and
+            // composer rendered dark.
+            .environment(\.colorScheme, .dark)
             .task(id: folder.id) { coverImage = FolderCoverStore.load(folder.id) }
     }
 }
