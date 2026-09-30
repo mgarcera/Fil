@@ -754,12 +754,13 @@ struct RealComposerBar: View {
             }
     }
 
-    /// Text is what unlocks send, the same rule the shipped composer enforces. To-do rows and
-    /// staged photographs ride along on that one note.
+    /// Text or to-do rows unlock send, the same rule the shipped composer enforces. Staged
+    /// photographs ride along on that one note.
     private func send() {
         let body = text.trimmed
-        guard !body.isEmpty else { return }
         let items = todos.map(\.text).map { $0.trimmed }.filter { !$0.isEmpty }
+        // Rows alone are enough; the composer's own send rule says the same.
+        guard !body.isEmpty || !items.isEmpty else { return }
         let note = Note(transcript: body,
                         timestamp: .now,
                         todos: items,

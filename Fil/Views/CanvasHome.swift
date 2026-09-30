@@ -913,7 +913,10 @@ struct CanvasHome: View {
         }
 
         let thought = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !thought.isEmpty else { return }
+        // Text or a to-do row with something in it — the composer's own send rule since
+        // 2026-09-30, when lists stopped needing a line above them. A guard on text alone left
+        // the send button lit and inert for a rows-only list.
+        guard !thought.isEmpty || !composedTodos.isEmpty else { return }
 
         text = ""
 

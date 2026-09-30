@@ -50,9 +50,10 @@ struct ComposerBar: View {
     private var trimmedText: String { text.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var hasText: Bool { !trimmedText.isEmpty }
     private var hasTodoContent: Bool { todos.contains { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } }
-    /// A photo must carry a note — a captionless photo can't be sent, the same way an empty to-do
-    /// row doesn't count. Text is always what unlocks send.
-    private var canSend: Bool { hasText }
+    /// Text or a to-do row with something in it unlocks send. Titles are leaving Fil, so a list no
+    /// longer needs a line above it (2026-09-30). A photo still needs a note: a captionless photo
+    /// can't be sent.
+    private var canSend: Bool { hasText || hasTodoContent }
     /// Staged photos (or to-dos) keep the composer "composing" so the send button stays visible
     /// (dimmed) while the user types the required note, rather than falling back to the search glyph.
     private var isComposing: Bool { hasText || !stagedImageData.isEmpty || hasTodoContent }
@@ -83,6 +84,11 @@ struct ComposerBar: View {
                                 Button { showCamera = true } label: { Label("Take a photo", systemImage: "camera") }
                             }
                         }
+                        // To-do joined the menu on 2026-09-30, and its own button beside the +
+                        // went: one control for every capture kind, so the kinds read as peers.
+                        Section {
+                            Button { addTodoPill() } label: { Label("Add to-do", systemImage: "checklist") }
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 24, weight: .semibold))
@@ -91,11 +97,6 @@ struct ComposerBar: View {
                     }
                     .disabled(isProcessing)
                     .accessibilityLabel("more capture options")
-
-                    Button { addTodoPill() } label: {
-                        captureIcon("checklist")
-                    }
-                    .buttonStyle(.plain).disabled(isProcessing).accessibilityLabel("add to-do")
                 }
 
                 Spacer(minLength: 0)
@@ -165,12 +166,6 @@ struct ComposerBar: View {
 
 
     /// A capture-option icon revealed under the + (matches the composer's 56pt icon buttons).
-    private func captureIcon(_ name: String) -> some View {
-        Image(systemName: name)
-            .font(.system(size: 24, weight: .semibold))
-            .foregroundStyle(Theme.primaryText)
-            .frame(width: 56, height: 56).contentShape(Circle())
-    }
 
     private func handleTodoReturn(for id: UUID) {
         guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
