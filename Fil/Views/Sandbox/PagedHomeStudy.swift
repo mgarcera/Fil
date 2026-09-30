@@ -34,8 +34,6 @@ struct PagedHomeStudy: View {
     /// Axis A: "glass" or "line" — how a thought's bubble is drawn.
     let variant: String
     /// "transport", "bin" or "folder" — what the bottom bar carries.
-    /// Which cover setup axis B has picked.
-    let cover: String
     var stressed: Bool
 
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)])
@@ -88,7 +86,7 @@ struct PagedHomeStudy: View {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(pages.enumerated()), id: \.offset) { i, folder in
-                            CoverPage(folder: folder, style: cover) { opened = folder }
+                            CoverPage(folder: folder) { opened = folder }
                                 .containerRelativeFrame([.horizontal, .vertical])
                                 .id(i)
                                 .onAppear { folderIndex = i }
@@ -115,9 +113,12 @@ struct PagedHomeStudy: View {
 
         }
         .navigationDestination(item: $opened) { NestScreen(folder: $0) }
-        .environment(\.bubbleGlass, variant == "glass")
         .toolbar(.hidden, for: .navigationBar)
         }
+        // On the NavigationStack, not the ZStack inside it. A pushed destination inherits its
+        // environment from the stack, so a value set on the pager never reached the nest — both
+        // bubble chips rendered the default and looked identical.
+        .environment(\.bubbleGlass, variant == "glass")
     }
 }
 

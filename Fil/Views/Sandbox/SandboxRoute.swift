@@ -24,7 +24,7 @@ struct SandboxRoute: View {
     /// A second, independent axis. Two open questions at once is the normal case in a refinement
     /// loop, and folding them into one key gives you nine combinations and no way to read a
     /// verdict.
-    @State private var variantB: String = "editorial"
+    @State private var variantB: String = ""
     @State private var forcedScheme: ColorScheme?
     @State private var stressed = false
 
@@ -46,15 +46,12 @@ struct SandboxRoute: View {
             }
         }
 
-        /// Axis two: the cover's setup — type, rules, line art. Three that differ in kind,
-        /// each meant to read as a magazine cover on the folder's own ground.
+        /// Axis two: free. Last carried the cover setups (settled 2026-09-30: Editorial's
+        /// structure with Plate's face — the losers are in archive/2026-09-28-paged-home/), and
+        /// before that the composer (settled 09-29, archive/2026-09-29-nest-composer/).
         var variantsB: [(key: String, label: String)] {
             switch self {
-            case .pagedHome:
-                // Opened 2026-09-30. (The composer question this axis carried on 09-29 is
-                // settled: the shipped ComposerBar in the home's glass dock; the row it beat
-                // is in archive/2026-09-29-nest-composer/.)
-                [("editorial", "Editorial"), ("poster", "Poster"), ("plate", "Plate")]
+            case .pagedHome: []
             }
         }
     }
@@ -68,7 +65,7 @@ struct SandboxRoute: View {
             Group {
                 switch study {
                 case .pagedHome:
-                    PagedHomeStudy(variant: variant, cover: variantB, stressed: stressed)
+                    PagedHomeStudy(variant: variant, stressed: stressed)
                 }
             }
             // `.container` only. The bare form also ignores the KEYBOARD region, and that is

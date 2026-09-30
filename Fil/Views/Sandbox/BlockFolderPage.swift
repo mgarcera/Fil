@@ -42,8 +42,6 @@ struct FolderGround: View {
 /// own screen and gets one plain container, the way the shipped home's composer has.
 struct CoverPage: View {
     let folder: Folder
-    /// Axis B: `editorial`, `poster` or `plate`.
-    let style: String
     let open: () -> Void
 
     @State private var pick: PhotosPickerItem?
@@ -52,14 +50,8 @@ struct CoverPage: View {
     @Environment(\.homeInset) private var homeInset
 
     var body: some View {
-        Group {
-            switch style {
-            case "poster": poster
-            case "plate":  plate
-            default:       editorial
-            }
-        }
-        .foregroundStyle(.white)
+        editorial
+            .foregroundStyle(.white)
         .padding(.leading, 22)
         .padding(.trailing, 54)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -117,11 +109,11 @@ struct CoverPage: View {
         }
     }
 
-    // MARK: - The three setups
+    // MARK: - The cover
     //
     // Real data only: the folder's name at its real length, its real count, the months its
-    // thoughts actually span. The hard case is the longest name, which each setup has to
-    // survive on its own terms — wrapping, stacking, or scaling.
+    // thoughts actually span. The hard case is the longest name, which wraps to three lines and
+    // scales down from there.
 
     private var count: Int { folder.notes.count }
 
@@ -139,8 +131,11 @@ struct CoverPage: View {
 
     private var folio: String { count == 1 ? "1 THOUGHT" : "\(count) THOUGHTS" }
 
-    /// Editorial: the masthead as it was, with a deck above and a folio below, a hairline
-    /// between. Newsreader carries the name; the small lines are a narrow grotesque, tracked.
+    /// Editorial, in Fraunces. Settled 2026-09-30 from three setups: this structure — a tracked
+    /// deck of months and count above the name, a hairline below — won, carrying the face from
+    /// the Plate setup (Fraunces Black, a soft high-contrast serif) in place of Newsreader.
+    /// Poster (Anton all-caps, the count as a numeral) and Plate (the same face centred in a
+    /// hairline frame with mono folios) are in archive/2026-09-28-paged-home/why.md.
     private var editorial: some View {
         VStack(alignment: .leading, spacing: 10) {
             Spacer(minLength: 0)
@@ -149,7 +144,7 @@ struct CoverPage: View {
                 .tracking(2.4)
                 .opacity(0.8)
             Text(folder.name)
-                .font(StudyType.serif(58, weight: .bold))
+                .font(.custom("Fraunces-Black", size: 54))
                 .lineLimit(3)
                 .minimumScaleFactor(0.55)
                 .lineSpacing(-4)
@@ -158,69 +153,6 @@ struct CoverPage: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
-    /// Poster: one condensed face, all caps, the name as big as it will go and the count as
-    /// a numeral beside its label — the newsstand register, where the number IS the cover.
-    private var poster: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Spacer(minLength: 0)
-            Text(folder.name.uppercased())
-                .font(.custom("Anton-Regular", size: 84))
-                .lineLimit(4)
-                .minimumScaleFactor(0.4)
-                .lineSpacing(-14)
-                .fixedSize(horizontal: false, vertical: true)
-            Rectangle().fill(.white).frame(height: 3)
-            HStack(alignment: .firstTextBaseline, spacing: 14) {
-                Text("\(count)")
-                    .font(.custom("Anton-Regular", size: 96))
-                    .lineSpacing(0)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(count == 1 ? "THOUGHT" : "THOUGHTS")
-                        .font(.custom("ArchivoNarrow-SemiBold", size: 15))
-                        .tracking(3.2)
-                    if !span.isEmpty {
-                        Text(span)
-                            .font(.custom("ArchivoNarrow-Regular", size: 15))
-                            .tracking(1.6)
-                            .opacity(0.8)
-                    }
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
-    /// Plate: line art. A hairline frame, the name centred in a soft black serif, rules above
-    /// and below, mono folios — the literary-masthead register, drawn rather than set.
-    private var plate: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            VStack(spacing: 14) {
-                if !span.isEmpty {
-                    Text(span).font(Theme.dmMono(10)).tracking(2.8).opacity(0.75)
-                }
-                Rectangle().fill(.white.opacity(0.7)).frame(height: 1)
-                Text(folder.name)
-                    .font(.custom("Fraunces-Black", size: 46))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                    .minimumScaleFactor(0.55)
-                    .lineSpacing(-2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.vertical, 6)
-                Rectangle().fill(.white.opacity(0.7)).frame(height: 1)
-                Text(folio).font(Theme.dmMono(10)).tracking(2.8).opacity(0.75)
-            }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 24)
-            .frame(maxWidth: .infinity)
-            .overlay(Rectangle().stroke(.white.opacity(0.7), lineWidth: 1))
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

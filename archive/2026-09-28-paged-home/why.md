@@ -201,3 +201,21 @@ Add | Ask row it beat is in `archive/2026-09-29-nest-composer/`.
 Two materials on purpose: the nest's back control is glass because it is navigation; the
 cover's image control is line art because it is an image choice. Neither verdicted as of
 2026-09-30, nor is Glass vs Hairline on the bubbles — sandbox axis A still carries both.
+
+
+## 2026-09-30 — three cover setups; Editorial with Plate's face
+
+Three that differed in kind, on each folder's real ground with its real name, count and month
+span, flipped on sandbox axis B from a picker moved to the bottom edge for the purpose.
+
+- **Editorial** — Newsreader masthead at 58, a tracked Archivo Narrow deck above it
+  (`SEP – OCT 2026   ·   14 THOUGHTS`), a hairline below. The structure that won.
+- **Poster** — Anton all-caps as large as the name allows (four lines, scaling to 0.4), a 3pt
+  rule, the count as a 96pt numeral beside its label. The newsstand register. Lost.
+- **Plate** — Fraunces Black centred in a hairline frame, rules above and below, mono folios in
+  SF Mono. The literary-masthead register, drawn rather than set. Lost as a layout; **its face
+  won**: "editorial with plates font."
+
+Six faces were added for the round and stay registered: Anton, Archivo Narrow 400/600,
+Fraunces 400/700/900. Only Fraunces Black and Archivo Narrow SemiBold are used by the cover
+now; the rest are parked for the next type study, and the reason is this line.
