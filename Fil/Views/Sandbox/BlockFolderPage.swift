@@ -2,6 +2,9 @@
 import SwiftUI
 import PhotosUI
 import SwiftData
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 /// A folder's own ground: its photograph if it has one — blurred, and veiled by however much its
 /// own brightness requires so white on it clears 7:1 — otherwise its palette gradient.
@@ -42,6 +45,8 @@ struct FolderGround: View {
 /// own screen and gets one plain container, the way the shipped home's composer has.
 struct CoverPage: View {
     let folder: Folder
+    /// Axis B: what sits under the hairline.
+    let line: String
     let open: () -> Void
 
     @State private var pick: PhotosPickerItem?
@@ -150,9 +155,96 @@ struct CoverPage: View {
                 .lineSpacing(-4)
                 .fixedSize(horizontal: false, vertical: true)
             Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
+            underline
+                .padding(.top, 4)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Under the line
+    //
+    // The cover as the folder's surface: what is in here, in a line, without opening it. Three
+    // kinds on axis B. The summary is written on the device by Apple's model, from the thoughts
+    // themselves — which is the only way this can exist under a policy that says thoughts are
+    // "created, stored, and searched entirely on your device".
+
+    @ViewBuilder private var underline: some View {
+        switch line {
+        case "latest":
+            if let newest = folder.notes.max(by: { $0.timestamp < $1.timestamp }) {
+                Text(Self.firstLine(of: newest))
+                    .font(.custom("Fraunces-Regular", size: 17))
+                    .lineLimit(2)
+                    .opacity(0.85)
+            }
+        case "themes":
+            let keys = Array(folder.notes.sorted { $0.timestamp > $1.timestamp }
+                .map { $0.keyword.trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+                .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
+                .prefix(3))
+            if !keys.isEmpty {
+                Text(keys.map { $0.uppercased() }.joined(separator: "   ·   "))
+                    .font(.custom("ArchivoNarrow-Regular", size: 12))
+                    .tracking(2.4)
+                    .opacity(0.8)
+            }
+        default:
+            CoverSummary(folder: folder)
+        }
+    }
+
+    /// A thought's own first line: the transcript's, or the title when it has no transcript.
+    static func firstLine(of note: Note) -> String {
+        let body = note.transcript.isEmpty ? note.title : note.transcript
+        return body.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
+    }
+}
+
+/// One sentence about the folder, written on the device. Cached per folder and count, so it
+/// is generated once per change rather than on every page turn; empty while it thinks.
+struct CoverSummary: View {
+    let folder: Folder
+    @State private var text = ""
+
+    /// Keyed on the folder AND its count, so a new thought re-summarises and a page turn does
+    /// not. Static: the study re-creates this view constantly (Pattern 9).
+    private static var cache: [String: String] = [:]
+
+    var body: some View {
+        Text(text)
+            .font(.custom("Fraunces-Regular", size: 17))
+            .lineLimit(3)
+            .opacity(text.isEmpty ? 0 : 0.85)
+            .task(id: "\(folder.id)-\(folder.notes.count)") { await load() }
+    }
+
+    private func load() async {
+        let key = "\(folder.id)-\(folder.notes.count)"
+        if let hit = Self.cache[key] { text = hit; return }
+        guard !folder.notes.isEmpty else { text = ""; return }
+        let thoughts = folder.notes.sorted { $0.timestamp > $1.timestamp }.prefix(12)
+            .map { CoverPage.firstLine(of: $0) }.filter { !$0.isEmpty }
+        var result = ""
+        #if canImport(FoundationModels)
+        if case .available = SystemLanguageModel.default.availability {
+            let session = LanguageModelSession(instructions:
+                "You write one-line summaries for the cover of a notebook. Plain, specific, "
+                + "no more than eighteen words, one sentence, no quotation marks, no preamble.")
+            let prompt = "The notebook is called \"\(folder.name)\". Its recent entries:\n"
+                + thoughts.map { "- " + $0 }.joined(separator: "\n")
+                + "\nWrite the cover line."
+            if let r = try? await session.respond(to: prompt) {
+                result = r.content.trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+        #endif
+        // No model, or it declined: the newest thought's own line stands in, so the slot is
+        // never blank on a folder that has something in it.
+        if result.isEmpty, let first = thoughts.first { result = first }
+        Self.cache[key] = result
+        text = result
     }
 }
 

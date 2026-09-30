@@ -44,6 +44,8 @@ import QuickLook
 struct PagedHomeStudy: View {
     /// Axis A: "glass" or "line" — how a thought's bubble is drawn.
     let variant: String
+    /// Axis B: what sits under the cover's hairline — "summary", "latest" or "themes".
+    let line: String
     /// "transport", "bin" or "folder" — what the bottom bar carries.
     var stressed: Bool
 
@@ -97,7 +99,7 @@ struct PagedHomeStudy: View {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(pages.enumerated()), id: \.offset) { i, folder in
-                            CoverPage(folder: folder) { opened = folder }
+                            CoverPage(folder: folder, line: line) { opened = folder }
                                 .containerRelativeFrame([.horizontal, .vertical])
                                 .id(i)
                                 .onAppear { folderIndex = i }

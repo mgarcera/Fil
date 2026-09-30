@@ -24,7 +24,7 @@ struct SandboxRoute: View {
     /// A second, independent axis. Two open questions at once is the normal case in a refinement
     /// loop, and folding them into one key gives you nine combinations and no way to read a
     /// verdict.
-    @State private var variantB: String = ""
+    @State private var variantB: String = "summary"
     @State private var forcedScheme: ColorScheme?
     @State private var stressed = false
 
@@ -51,7 +51,11 @@ struct SandboxRoute: View {
         /// before that the composer (settled 09-29, archive/2026-09-29-nest-composer/).
         var variantsB: [(key: String, label: String)] {
             switch self {
-            case .pagedHome: []
+            case .pagedHome:
+                // Opened 2026-09-30: what goes under the cover's hairline. Three kinds — a
+                // sentence the on-device model writes from the thoughts, the newest thought's
+                // own first line, or the folder's recent keywords.
+                [("summary", "Summary"), ("latest", "Latest"), ("themes", "Themes")]
             }
         }
     }
@@ -65,7 +69,7 @@ struct SandboxRoute: View {
             Group {
                 switch study {
                 case .pagedHome:
-                    PagedHomeStudy(variant: variant, stressed: stressed)
+                    PagedHomeStudy(variant: variant, line: variantB, stressed: stressed)
                 }
             }
             // `.container` only. The bare form also ignores the KEYBOARD region, and that is
