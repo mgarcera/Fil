@@ -31,10 +31,11 @@ import QuickLook
 /// `TodoStatusCircle` are the app's own, and the text comes from `Note.titleLine` and
 /// `Note.bodyAfterTitle` rather than from a second line-splitting rule.
 struct PagedHomeStudy: View {
-    /// "none", "plates" or "mixed" — whether content sits on a plate or straight on the ground.
+    /// Axis A: "glass" or "line" — how a thought's bubble is drawn.
     let variant: String
     /// "transport", "bin" or "folder" — what the bottom bar carries.
-    let bar: String
+    /// Which cover setup axis B has picked.
+    let cover: String
     var stressed: Bool
 
     @Query(sort: [SortDescriptor(\Folder.sortIndex), SortDescriptor(\Folder.createdAt, order: .reverse)])
@@ -43,15 +44,9 @@ struct PagedHomeStudy: View {
 
     @State private var folderIndex = 0
     @State private var folderID: Int? = 0
-    /// 0 is the cover, 1 is the nest. Lifted here because the outer pager has to know it: down
-    /// belongs to the folders at 0 and to the content at 1.
     /// The folder whose nest is open, pushed as its own screen. Nothing else on this page
     /// changes while it is; the pager is simply underneath.
     @State private var opened: Folder?
-    /// Navigate is the resting mode; the other three each open the bar.
-
-    /// The folder the nest is showing, which is the only folder either composer may write to.
-    private var current: Folder? { pages.indices.contains(folderIndex) ? pages[folderIndex] : nil }
 
     private var pinned: Folder? { folders.first { PinnedFolderStore.shared.isPinned($0.id) } }
 
@@ -70,13 +65,12 @@ struct PagedHomeStudy: View {
 
     var body: some View {
         // A NavigationStack so a folder can be OPENED rather than paged into. The nest is pushed
-        // with the system's own slide and returns on the system's own back swipe — the same
-        // horizontal step, owned by the framework instead of a page controller.
+        // with the system's own slide and returns from a drawn back control — the same horizontal
+        // step, owned by the framework instead of a page controller.
         NavigationStack {
         ZStack {
-            // Behind everything and never moved. The pages shrink above the keyboard rather than
-            // translating now, but the ground still has to be here: it is what shows under the
-            // cover-to-nest swipe and behind a page that is shorter than the screen.
+            // Behind everything and never moved: the current folder's palette, full bleed, under
+            // the pager. The pushed nest brings its own `FolderGround`.
             (pages.indices.contains(folderIndex)
              ? AnyView(LinearGradient(colors: [Palette(pages[folderIndex]).groundFrom,
                                                Palette(pages[folderIndex]).groundTo],
@@ -88,15 +82,13 @@ struct PagedHomeStudy: View {
                 Text("No folders yet — make one in the app, then come back.")
                     .font(StudyType.sans(14)).foregroundStyle(Theme.secondaryText).padding(40)
             } else {
-                // Folders page DOWN. One horizontal step from a folder's cover leads into its
-                // nest, and while you are in there the vertical axis belongs to the content — so
-                // folder paging is switched off rather than competing with the scroll. The axis
-                // changes meaning by DEPTH, which is safe in a way that changing it by scroll
-                // position was not: you can only be in one place, and you swiped to get there.
+                // Folders page DOWN. A tap on a cover opens its nest as a pushed screen over this
+                // pager, so the vertical axis only ever means folders here — nothing on this page
+                // competes with the scroll.
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(pages.enumerated()), id: \.offset) { i, folder in
-                            CoverPage(folder: folder) { opened = folder }
+                            CoverPage(folder: folder, style: cover) { opened = folder }
                                 .containerRelativeFrame([.horizontal, .vertical])
                                 .id(i)
                                 .onAppear { folderIndex = i }
@@ -107,21 +99,18 @@ struct PagedHomeStudy: View {
                 .scrollTargetBehavior(.paging)
                 .scrollIndicators(.hidden)
                 .scrollPosition(id: $folderID)
-                // `.container`, not the bare form — see SandboxRoute. With the keyboard region
-                // alive, each page shrinks to the space above the keyboard and the composer,
-                // being the nest's bottom inset, rides up with it. No offset, no notification,
-                // no number to get wrong: the way `CanvasHome` does it.
-                //
-                // All container edges: pages must be full height or the next folder's ground
-                // shows in a strip beneath the current cover. The composer clears the home
-                // indicator on its own, via `homeInset`.
+                // `.container`, not the bare form — see SandboxRoute. The bare form also ignores
+                // the keyboard region, and the NavigationStack this sits in needs that region
+                // alive so the pushed nest can shrink above the keyboard. All container edges:
+                // pages must be full height or the next folder's ground shows in a strip under
+                // the current cover. The cover's control and the composer add the home
+                // indicator's inset back through `homeInset`.
                 .ignoresSafeArea(.container)
                 .onChange(of: folderID) { _, new in folderIndex = new ?? 0 }
                 .overlay(alignment: .trailing) {
                     FolderRail(count: pages.count,
                                index: Binding(get: { folderID ?? 0 }, set: { folderID = $0 }))
                 }
-                // Leaving the nest closes whichever composer is mounted.
             }
 
         }

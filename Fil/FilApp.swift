@@ -107,7 +107,11 @@ private extension FilApp {
             // Instrument Serif. Registering it costs nothing when nothing asks for it; if the
             // study is abandoned, remove these two and the files in Resources/Fonts.
             "Newsreader-Regular", "Newsreader-Medium",
-            "Newsreader-SemiBold", "Newsreader-Bold"
+            "Newsreader-SemiBold", "Newsreader-Bold",
+            // 2026-09-30 cover study: a condensed poster face, a narrow grotesque for decks
+            // and folios, and a soft high-contrast serif. Sandbox only, like Newsreader.
+            "Anton-400", "ArchivoNarrow-400", "ArchivoNarrow-600",
+            "Fraunces-400", "Fraunces-700", "Fraunces-900"
         ]
         for name in names {
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }

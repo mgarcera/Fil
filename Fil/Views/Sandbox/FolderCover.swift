@@ -39,11 +39,11 @@ enum FolderCoverStore {
 
     /// Decoded image and solved veil, kept per folder.
     ///
-    /// **This cache is the reason the bar does not stutter.** A SwiftUI `View` is a struct that is
+    /// **This cache is the reason the composer's spring does not stutter over a cover.** A SwiftUI `View` is a struct that is
     /// re-initialised on every render pass of its parent, so anything done in `init` is done per
     /// FRAME, not per appearance. `FolderCoverGround.init` was decoding a 900px JPEG and running a
-    /// 24-round bisection over an 8x8 thumbnail, on the main thread, for every frame of the bottom
-    /// bar's spring — which is why only folders WITH a photograph flashed. Main-thread only, which
+    /// 24-round bisection over an 8x8 thumbnail, on the main thread, for every frame of the
+    /// composer's spring — which is why only folders WITH a photograph flashed. Main-thread only, which
     /// is where SwiftUI initialises views.
     private static var prepared: [UUID: (image: UIImage?, veil: Double)] = [:]
 
@@ -56,7 +56,7 @@ enum FolderCoverStore {
 
     /// Downsampled to 900 on the long edge before it is stored. The image is blurred past
     /// recognition on screen, so full resolution is bytes nobody sees — the same reasoning, and the
-    /// same ImageIO call, as `FilFullScreenPlayer.downsampled(_:)`.
+    /// same ImageIO call, as `PhotoStackHero.downsampled(_:)` in FilFullScreenPlayer.swift.
     static func save(_ data: Data, for id: UUID) {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return }
         let opts: [CFString: Any] = [

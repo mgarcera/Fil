@@ -42,6 +42,8 @@ struct FolderGround: View {
 /// own screen and gets one plain container, the way the shipped home's composer has.
 struct CoverPage: View {
     let folder: Folder
+    /// Axis B: `editorial`, `poster` or `plate`.
+    let style: String
     let open: () -> Void
 
     @State private var pick: PhotosPickerItem?
@@ -50,16 +52,14 @@ struct CoverPage: View {
     @Environment(\.homeInset) private var homeInset
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
-            Text(folder.name)
-                .font(StudyType.serif(46, weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(3)
-                .minimumScaleFactor(0.65)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+        Group {
+            switch style {
+            case "poster": poster
+            case "plate":  plate
+            default:       editorial
+            }
         }
+        .foregroundStyle(.white)
         .padding(.leading, 22)
         .padding(.trailing, 54)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -116,10 +116,117 @@ struct CoverPage: View {
             self.pick = nil
         }
     }
+
+    // MARK: - The three setups
+    //
+    // Real data only: the folder's name at its real length, its real count, the months its
+    // thoughts actually span. The hard case is the longest name, which each setup has to
+    // survive on its own terms — wrapping, stacking, or scaling.
+
+    private var count: Int { folder.notes.count }
+
+    /// "SEP 2026", or "JUL – SEP 2026" when the thoughts span months. Empty folder: nothing.
+    private var span: String {
+        let stamps = folder.notes.map(\.timestamp)
+        guard let first = stamps.min(), let last = stamps.max() else { return "" }
+        let f = DateFormatter(); f.dateFormat = "MMM yyyy"
+        let a = f.string(from: first).uppercased(), b = f.string(from: last).uppercased()
+        if a == b { return a }
+        let m = DateFormatter(); m.dateFormat = "MMM"
+        return Calendar.current.isDate(first, equalTo: last, toGranularity: .year)
+            ? "\(m.string(from: first).uppercased()) – \(b)" : "\(a) – \(b)"
+    }
+
+    private var folio: String { count == 1 ? "1 THOUGHT" : "\(count) THOUGHTS" }
+
+    /// Editorial: the masthead as it was, with a deck above and a folio below, a hairline
+    /// between. Newsreader carries the name; the small lines are a narrow grotesque, tracked.
+    private var editorial: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Spacer(minLength: 0)
+            Text([span, folio].filter { !$0.isEmpty }.joined(separator: "   ·   "))
+                .font(.custom("ArchivoNarrow-SemiBold", size: 12))
+                .tracking(2.4)
+                .opacity(0.8)
+            Text(folder.name)
+                .font(StudyType.serif(58, weight: .bold))
+                .lineLimit(3)
+                .minimumScaleFactor(0.55)
+                .lineSpacing(-4)
+                .fixedSize(horizontal: false, vertical: true)
+            Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    /// Poster: one condensed face, all caps, the name as big as it will go and the count as
+    /// a numeral beside its label — the newsstand register, where the number IS the cover.
+    private var poster: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Spacer(minLength: 0)
+            Text(folder.name.uppercased())
+                .font(.custom("Anton-Regular", size: 84))
+                .lineLimit(4)
+                .minimumScaleFactor(0.4)
+                .lineSpacing(-14)
+                .fixedSize(horizontal: false, vertical: true)
+            Rectangle().fill(.white).frame(height: 3)
+            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                Text("\(count)")
+                    .font(.custom("Anton-Regular", size: 96))
+                    .lineSpacing(0)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(count == 1 ? "THOUGHT" : "THOUGHTS")
+                        .font(.custom("ArchivoNarrow-SemiBold", size: 15))
+                        .tracking(3.2)
+                    if !span.isEmpty {
+                        Text(span)
+                            .font(.custom("ArchivoNarrow-Regular", size: 15))
+                            .tracking(1.6)
+                            .opacity(0.8)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    /// Plate: line art. A hairline frame, the name centred in a soft black serif, rules above
+    /// and below, mono folios — the literary-masthead register, drawn rather than set.
+    private var plate: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+            VStack(spacing: 14) {
+                if !span.isEmpty {
+                    Text(span).font(Theme.dmMono(10)).tracking(2.8).opacity(0.75)
+                }
+                Rectangle().fill(.white.opacity(0.7)).frame(height: 1)
+                Text(folder.name)
+                    .font(.custom("Fraunces-Black", size: 46))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.55)
+                    .lineSpacing(-2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 6)
+                Rectangle().fill(.white.opacity(0.7)).frame(height: 1)
+                Text(folio).font(Theme.dmMono(10)).tracking(2.8).opacity(0.75)
+            }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
+            .overlay(Rectangle().stroke(.white.opacity(0.7), lineWidth: 1))
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
 }
 
 /// The nest as a screen of its own. One scroll view, the composer as its bottom inset, the
-/// folder's ground behind it, and the system's back swipe to leave.
+/// folder's ground behind it, and a drawn back control to leave — hiding the navigation bar
+/// takes the edge swipe with it.
 struct NestScreen: View {
     let folder: Folder
     @State private var coverImage: Data?
@@ -204,8 +311,8 @@ private struct Nest: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // No running header. It named the folder, and so does the composer at the bottom —
-            // "add to CommunityHealth" — permanently and without costing a row.
+            // No running header. It named the folder, and so does the composer's placeholder
+            // ("Add to CommunityHealth"), permanently and without costing a row.
             Color.clear.frame(height: 12)
 
             ScrollView {
@@ -242,13 +349,6 @@ private struct Nest: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
-            // A CONTENT MARGIN, not bottom padding on the content.
-            //
-            // Padding made the content taller without telling the scroll view anything, so its
-            // resting position was still the raw bottom edge — which runs underneath the floating
-            // composer. `scrollTo(edge: .bottom)` then landed there faithfully and the newest
-            // thought sat behind the glass. A content margin insets the scroll view's own notion
-            // of where content ends, so resting at the bottom rests ABOVE the composer.
             // THE SAME LAYER. The composer was an overlay on the pager while this scroll view
             // sat three levels inside it, so every attempt to clear it was arithmetic between two
             // coordinate spaces the scroll view could not see — content padding, then a content
@@ -264,13 +364,13 @@ private struct Nest: View {
             // The CONTENT's bottom edge, not the last bubble's. `scrollTo(anchor: .bottom)` lines
             // an item up with the scroll view's own bottom edge, which runs underneath the
             // composer — so the thought you just sent was scrolled to exactly where you could not
-            // see it. Scrolling to the edge respects the clearance padding instead.
+            // see it. Scrolling to the edge respects the composer's inset instead.
             //
             // One mechanism: `.scrollPosition` seeded at `.bottom` gives the resting position too,
             // so there is no `.defaultScrollAnchor` alongside it to disagree with.
             .scrollPosition($position)
-            // Three things send it back to the end, and all three go through `toBottom()` so the
-            // scroll is only ever driven from one place.
+            // Two things send it back to the end, and both go through `toBottom()` so the scroll
+            // is only ever driven from one place.
             .onChange(of: blocks.count) { _, _ in toBottom() }
             .onChange(of: composing) { _, up in if up { toBottom() } }
         }
@@ -357,7 +457,7 @@ private struct Block: View {
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     // One voice: no heading weight, no first-line emphasis. A thought is what was
-                    // written, at one size, and the rule beneath it is what says where it ends.
+                    // written, at one size, and the bubble is what says where it ends.
                     // 16 rather than the body's old 14.5 because Newsreader sets smaller than
                     // Helvetica at the same point size.
                     Text(note.transcript)
@@ -382,7 +482,11 @@ private struct Block: View {
             // photograph ground keeps showing through; glass keeps that and gives the bubble the
             // composer's own material, so the two read as one family.
             if bubbleGlass {
-                Color.clear.glassEffect(.regular, in: ChatBubble())
+                // `.clear`, not `.regular`. Regular is the control material — it carries its own
+                // fill so text stays legible over anything — and on the nest's already-dark
+                // ground that fill read as a milky slab under white type. Clear is the media
+                // material: the ground shows through and the bubble is a lens, not a plate.
+                Color.clear.glassEffect(.clear, in: ChatBubble())
             } else {
                 ChatBubble().stroke(.white.opacity(0.4), lineWidth: 1)
             }
@@ -471,20 +575,18 @@ private extension String {
     var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
 }
 
-/// The shipped `ComposerBar`, mounted in the nest's bar slot so the two can be flipped between on
-/// the device rather than argued about.
+/// The shipped `ComposerBar`, in the home's own glass dock, as the nest's bottom inset.
 ///
-/// Adapted, not ported: it is given the nest's black slab instead of the home's liquid-glass dock,
-/// forced to the dark scheme so its asset-catalog colours resolve against that slab, and handed a
-/// `contextLabel` so its placeholder reads "add to {folder}" the way the nest bar's does. Its own
-/// information architecture is untouched, which is the thing under test — capture lives in a `+`
-/// menu (Record / Add photo / Take a photo) plus a checklist button, where the nest bar makes the
-/// four capture types peers on a row.
+/// It won the 2026-09-29 bake-off against a grouped Add | Ask row built for the nest (that row
+/// is in archive/2026-09-29-nest-composer/why.md, with the one thing it did better: capture
+/// types as peers instead of a `+` menu). Adapted, not ported: it gets `CanvasHome`'s dock
+/// treatment, is forced to the dark scheme so its asset-catalogue colours resolve on the nest's
+/// ground, and is handed a `contextLabel` for its placeholder.
 struct RealComposerBar: View {
-    /// One spring for the whole movement: the dock rising and the page rising are the same
-    /// gesture's consequence, so they cannot be tuned apart. A spring also retargets when
-    /// interrupted, so the keyboard's height arriving a beat late redirects the movement instead
-    /// of starting a second one.
+    /// The one spring the nest moves on: the scroll to the end of the thread, and the composer's
+    /// bottom inset going to zero as the keyboard takes over as the floor. Snappy rather than the
+    /// Island's own settle, because this is tapped constantly. (It once also carried a hand-rolled
+    /// page lift; the system raises the nest now, and that lift is gone.)
     static let morph: Animation = .spring(response: 0.34, dampingFraction: 0.86)
 
     let folder: Folder?
@@ -507,7 +609,10 @@ struct RealComposerBar: View {
                     selectedPhotos: $photos,
                     stagedImageData: staged,
                     isProcessing: false,
-                    contextLabel: folder?.name,
+                    // `ComposerBar` renders this verbatim; the shipped caller supplies the
+                    // prefix itself (CanvasHome: "Add to \(name)"). Passing the bare name
+                    // printed "CommunityHealth" as the placeholder.
+                    contextLabel: folder.map { "Add to \($0.name)" },
                     focus: $focus,
                     onSend: send,
                     onRecordVoice: {},

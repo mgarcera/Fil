@@ -24,7 +24,7 @@ struct SandboxRoute: View {
     /// A second, independent axis. Two open questions at once is the normal case in a refinement
     /// loop, and folding them into one key gives you nine combinations and no way to read a
     /// verdict.
-    @State private var variantB: String = "nest"
+    @State private var variantB: String = "editorial"
     @State private var forcedScheme: ColorScheme?
     @State private var stressed = false
 
@@ -32,7 +32,7 @@ struct SandboxRoute: View {
         case pagedHome = "Paged home"
         var id: String { rawValue }
 
-        /// Axis one: does a thought sit on a plate, or straight on the ground?
+        /// Axis one: how a thought's bubble is drawn — glass, or the hairline.
         ///
         /// The reference Mason brought on 2026-09-28 has no plates at all — white text directly on
         /// a dark ground — and ours is the inverse. "mixed" splits it: prose on the ground, objects
@@ -46,13 +46,15 @@ struct SandboxRoute: View {
             }
         }
 
-        /// Axis two: which composer sits in the nest's bar slot.
+        /// Axis two: the cover's setup — type, rules, line art. Three that differ in kind,
+        /// each meant to read as a magazine cover on the folder's own ground.
         var variantsB: [(key: String, label: String)] {
             switch self {
             case .pagedHome:
-                // Settled 2026-09-29: the shipped ComposerBar in the home's glass dock. The
-                // grouped Add | Ask row it beat is in archive/2026-09-29-nest-composer/.
-                []
+                // Opened 2026-09-30. (The composer question this axis carried on 09-29 is
+                // settled: the shipped ComposerBar in the home's glass dock; the row it beat
+                // is in archive/2026-09-29-nest-composer/.)
+                [("editorial", "Editorial"), ("poster", "Poster"), ("plate", "Plate")]
             }
         }
     }
@@ -62,11 +64,11 @@ struct SandboxRoute: View {
         // still visible. The pager ignores it so pages run full height, and the composer adds it
         // back on its own.
         GeometryReader { geo in
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottom) {
             Group {
                 switch study {
                 case .pagedHome:
-                    PagedHomeStudy(variant: variant, bar: variantB, stressed: stressed)
+                    PagedHomeStudy(variant: variant, cover: variantB, stressed: stressed)
                 }
             }
             // `.container` only. The bare form also ignores the KEYBOARD region, and that is
@@ -91,7 +93,8 @@ struct SandboxRoute: View {
         }
     }
 
-    /// Pinned to the top on a blurred capsule, because a study whose variants each fill the screen
+    /// Pinned to the BOTTOM on a blurred capsule, above the home indicator — the top is where the
+    /// cover's title and the nest's back control live now (moved 2026-09-30). Originally pinned to the top because a study whose variants each fill the screen
     /// puts its own controls out of reach — and then two of three variants get judged in whatever
     /// state the buttons were last left in.
     private var controls: some View {
@@ -107,10 +110,10 @@ struct SandboxRoute: View {
         .padding(.vertical, 7)
         .background(.ultraThinMaterial, in: Capsule())
         .overlay(Capsule().stroke(Theme.divider, lineWidth: 0.5))
-        .padding(.top, 6)
+        .padding(.bottom, 6)
     }
 
-    /// One axis of the switcher. Split out because the row is now two axes plus four utilities,
+    /// One axis of the switcher. Split out because the row is now two axes plus three utilities,
     /// and as one expression the type checker gives up on it.
     private func chips(_ items: [(key: String, label: String)],
                        selected: String,
