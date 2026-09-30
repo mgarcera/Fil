@@ -142,8 +142,8 @@ struct CoverPage: View {
 
     /// Editorial, in Fraunces. Settled 2026-09-30 from three setups: this structure won,
     /// carrying the face from the Plate setup (Fraunces Black) in place of Newsreader. The deck
-    /// moved from above the name to beneath it the same day — the name leads, the deck follows,
-    /// then the hairline. Poster (Anton all-caps, the count as a numeral) and Plate (the same
+    /// moved from above the name to beneath the summary the same day — the name leads, the rule,
+    /// then what's in here, then the deck. Poster (Anton all-caps, the count as a numeral) and Plate (the same
     /// face centred in a hairline frame) are in archive/2026-09-28-paged-home/why.md.
     private var editorial: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -154,15 +154,17 @@ struct CoverPage: View {
                 .minimumScaleFactor(0.55)
                 .lineSpacing(-4)
                 .fixedSize(horizontal: false, vertical: true)
+            Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
+            underline
+                .padding(.top, 4)
+            // The deck closes the cover: name, rule, what's in here, then the months and count.
             if !deck.isEmpty {
                 Text(deck)
                     .font(.custom("ArchivoNarrow-SemiBold", size: 12))
                     .tracking(2.4)
                     .opacity(0.8)
+                    .padding(.top, 4)
             }
-            Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 2)
-            underline
-                .padding(.top, 4)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -216,6 +218,7 @@ struct CoverSummary: View {
     let folder: Folder
     @State private var text = ""
     @State private var source = ""
+    @State private var thinking = false
 
     /// Keyed on the folder AND its count, so a new thought re-summarises and a page turn does
     /// not. Static: the study re-creates this view constantly (Pattern 9).
@@ -223,18 +226,25 @@ struct CoverSummary: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(text)
-                .font(.custom("Fraunces-Regular", size: 17))
-                .lineSpacing(3)
-            // Study chrome: which model wrote the line, so the verdict is on the right one.
-            if !source.isEmpty {
+            if thinking {
+                // Three dots while the model writes — the wait is a beat per folder on device,
+                // and an empty slot for that beat read as a folder with nothing to say.
+                ThinkingDots()
+                    .padding(.vertical, 6)
+            } else if !text.isEmpty {
+                Text(text)
+                    .font(.custom("Fraunces-Regular", size: 17))
+                    .lineSpacing(3)
+                    .opacity(0.85)
+                // Study chrome: which model wrote the line, so the verdict is on the right one.
                 Text(source)
                     .font(.custom("ArchivoNarrow-Regular", size: 11))
                     .tracking(2)
                     .opacity(0.55)
             }
+            // Neither: the model is unavailable or declined, and the slot stays empty rather
+            // than standing another line in for it.
         }
-        .opacity(text.isEmpty ? 0 : 0.85)
         .task(id: "\(folder.id)-\(folder.notes.count)") { await load() }
     }
 
@@ -259,6 +269,8 @@ struct CoverSummary: View {
         let key = "\(folder.id)-\(folder.notes.count)"
         if let hit = Self.cache[key] { (text, source) = hit; return }
         guard !folder.notes.isEmpty else { text = ""; source = ""; return }
+        thinking = true
+        defer { thinking = false }
         let thoughts = folder.notes.sorted { $0.timestamp > $1.timestamp }.prefix(24)
             .map { String((($0.transcript.isEmpty ? $0.title : $0.transcript)).prefix(400)) }
             .filter { !$0.isEmpty }
@@ -297,10 +309,8 @@ struct CoverSummary: View {
             }
         }
         #endif
-        // 3. The newest thought's own line, so the slot is never blank on a folder with contents.
-        if result.isEmpty, let first = thoughts.first {
-            result = first.split(whereSeparator: \.isNewline).first.map(String.init) ?? first; by = "LATEST THOUGHT"
-        }
+        // No third tier. If neither model answers, the slot is empty — a stand-in line pretended
+        // to be a summary and read as one.
         Self.cache[key] = (result, by)
         text = result; source = by
     }
@@ -754,6 +764,26 @@ extension EnvironmentValues {
     var bubbleGlass: Bool {
         get { self[BubbleGlassKey.self] }
         set { self[BubbleGlassKey.self] = newValue }
+    }
+}
+
+/// Three dots breathing in sequence. Driven by one Bool flipped on appear, so `body` runs once and
+/// Core Animation carries the pulse — Pattern 1 in `swiftui-animation-performance`.
+private struct ThinkingDots: View {
+    @State private var on = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<3, id: \.self) { i in
+                Circle()
+                    .fill(.white)
+                    .frame(width: 6, height: 6)
+                    .opacity(on ? 0.9 : 0.25)
+                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)
+                        .delay(Double(i) * 0.18), value: on)
+            }
+        }
+        .onAppear { on = true }
     }
 }
 #endif
