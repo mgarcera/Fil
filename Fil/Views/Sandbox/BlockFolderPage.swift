@@ -229,9 +229,17 @@ struct CoverSummary: View {
     @State private var source = ""
     @State private var thinking = false
 
-    /// Keyed on the folder AND its count, so a new thought re-summarises and a page turn does
-    /// not. Static: the study re-creates this view constantly (Pattern 9).
+    /// Keyed on the folder AND its content signature, so a new thought re-summarises and a page
+    /// turn, or a relaunch, does not. Memory first; `CoverSummaryStore` beneath it on disk. Static:
+    /// the study re-creates this view constantly (Pattern 9).
     private static var cache: [String: (String, String)] = [:]
+
+    /// What the summary was written for: the count and the newest timestamp. The same idea as
+    /// `Folder.summarySignature` on the shipped caption — add or edit a thought and it changes.
+    private var signature: String {
+        let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
+        return "\(folder.notes.count)-\(newest)"
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -254,7 +262,7 @@ struct CoverSummary: View {
             // Neither: the model is unavailable or declined, and the slot stays empty rather
             // than standing another line in for it.
         }
-        .task(id: "\(folder.id)-\(folder.notes.count)") { await load() }
+        .task(id: "\(folder.id)-\(signature)") { await load() }
     }
 
     /// Whether this build was signed with an entitlement, read from the embedded provisioning
@@ -275,10 +283,13 @@ struct CoverSummary: View {
     }
 
     private func load() async {
-        let key = "\(folder.id)-\(folder.notes.count)"
+        let key = "\(folder.id)-\(signature)"
         finished = false
         defer { finished = true }
         if let hit = Self.cache[key] { (text, source) = hit; return }
+        if let hit = CoverSummaryStore.load(folder.id, signature: signature) {
+            Self.cache[key] = hit; (text, source) = hit; return
+        }
         guard !folder.notes.isEmpty else { text = ""; source = ""; return }
         thinking = true
         defer { thinking = false }
@@ -323,6 +334,9 @@ struct CoverSummary: View {
         // No third tier. If neither model answers, the slot is empty — a stand-in line pretended
         // to be a summary and read as one.
         Self.cache[key] = (result, by)
+        // An empty answer is not stored on disk, so it is asked again next time rather than
+        // remembered as the folder's summary.
+        if !result.isEmpty { CoverSummaryStore.save(result, source: by, for: folder.id, signature: signature) }
         text = result; source = by
     }
 }
@@ -795,6 +809,38 @@ private struct ThinkingDots: View {
             }
         }
         .onAppear { on = true }
+    }
+}
+
+/// The cover summaries on disk, so a relaunch does not re-ask the model for every folder. One JSON
+/// file beside the cover images, keyed by folder id, each entry carrying the signature it was
+/// written for. Study-only, like `FolderCoverStore`: if this ships it becomes fields on `Folder`,
+/// the way the Claude caption already has `summary` and `summarySignature`.
+enum CoverSummaryStore {
+    private struct Entry: Codable { var signature: String; var text: String; var source: String }
+
+    private static var url: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("SandboxFolderCovers", isDirectory: true)
+        try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        return base.appendingPathComponent("summaries.json")
+    }
+
+    private static var entries: [String: Entry] = {
+        guard let data = try? Data(contentsOf: url),
+              let decoded = try? JSONDecoder().decode([String: Entry].self, from: data) else { return [:] }
+        return decoded
+    }()
+
+    /// The stored summary if it was written for THIS signature; a stale one is a miss.
+    static func load(_ id: UUID, signature: String) -> (String, String)? {
+        guard let e = entries[id.uuidString], e.signature == signature else { return nil }
+        return (e.text, e.source)
+    }
+
+    static func save(_ text: String, source: String, for id: UUID, signature: String) {
+        entries[id.uuidString] = Entry(signature: signature, text: text, source: source)
+        if let data = try? JSONEncoder().encode(entries) { try? data.write(to: url, options: .atomic) }
     }
 }
 #endif
