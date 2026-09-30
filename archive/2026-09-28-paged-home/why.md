@@ -178,3 +178,26 @@ see coming; this one you swiped to reach, the way the rules change inside an app
 Input, not navigation. It was the transport — chevrons and a position — which said what the axes
 already said, and needed a counter to justify itself. It is now the composer, which is the app's
 premise, and it reports where a thought will land when an insertion point is chosen.
+
+## 2026-09-29 — the nest became a screen
+
+The horizontal step from cover to nest was a `TabView(.page)` per folder, inside the vertical
+pager. That put a `UIPageViewController` between two SwiftUI scroll views: the page controller
+turned pages whether or not the `card` binding accepted the write, `folderIndex` drifted when a
+lazy neighbour's `onAppear` fired, and the composer's safe area and keyboard had to survive
+three container boundaries. Five composer fixes went out that night, each adjusting a number on
+a relationship the inner scroll view could not see, before a console stream from the device
+showed the scroll view *growing* by the keyboard's height instead of translating.
+
+Mason named it: "the composer and the vertical scroll view are layered too differently." The
+nest is now pushed in a `NavigationStack` from the cover — the same horizontal slide, owned by
+the framework — and gets one plain container, the way the shipped home's composer has. The
+`card` axis, the guards, the write-back, the offset and the keyboard notification all went with
+it. A glass back control replaces the edge swipe, which a hidden navigation bar takes away.
+
+The composer itself is the shipped `ComposerBar` in `CanvasHome`'s glass dock; the grouped
+Add | Ask row it beat is in `archive/2026-09-29-nest-composer/`.
+
+Two materials on purpose: the nest's back control is glass because it is navigation; the
+cover's image control is line art because it is an image choice. Neither verdicted as of
+2026-09-30, nor is Glass vs Hairline on the bubbles — sandbox axis A still carries both.
