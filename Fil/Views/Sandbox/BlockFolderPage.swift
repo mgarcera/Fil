@@ -52,6 +52,9 @@ struct CoverPage: View {
     @State private var pick: PhotosPickerItem?
     @State private var coverImage: Data?
     @State private var choosing = false
+    /// The deck waits for the line above it. On the Summary chip that is the model finishing;
+    /// on the others there is nothing to wait for.
+    @State private var lineReady = false
     @Environment(\.homeInset) private var homeInset
 
     var body: some View {
@@ -157,17 +160,21 @@ struct CoverPage: View {
             Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
             underline
                 .padding(.top, 4)
-            // The deck closes the cover: name, rule, what's in here, then the months and count.
-            if !deck.isEmpty {
+            // The deck closes the cover: name, rule, what's in here, then the months and count —
+            // and only once what's in here has arrived, so it never sits under the dots.
+            if !deck.isEmpty, lineReady {
                 Text(deck)
                     .font(.custom("ArchivoNarrow-SemiBold", size: 12))
                     .tracking(2.4)
                     .opacity(0.8)
                     .padding(.top, 4)
+                    .transition(.opacity)
             }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .animation(.easeOut(duration: 0.35), value: lineReady)
+        .onChange(of: line, initial: true) { _, new in lineReady = new != "summary" }
     }
 
     // MARK: - Under the line
@@ -200,7 +207,7 @@ struct CoverPage: View {
                     .opacity(0.8)
             }
         default:
-            CoverSummary(folder: folder)
+            CoverSummary(folder: folder, finished: $lineReady)
         }
     }
 
@@ -216,6 +223,8 @@ struct CoverPage: View {
 /// the newest thought's line when neither can. Cached per folder and count for the session.
 struct CoverSummary: View {
     let folder: Folder
+    /// True once the request has ended — text or not — so the cover can lay out what follows.
+    @Binding var finished: Bool
     @State private var text = ""
     @State private var source = ""
     @State private var thinking = false
@@ -267,6 +276,8 @@ struct CoverSummary: View {
 
     private func load() async {
         let key = "\(folder.id)-\(folder.notes.count)"
+        finished = false
+        defer { finished = true }
         if let hit = Self.cache[key] { (text, source) = hit; return }
         guard !folder.notes.isEmpty else { text = ""; source = ""; return }
         thinking = true
