@@ -3,62 +3,110 @@ import SwiftUI
 import PhotosUI
 import SwiftData
 
-/// A folder as one vertical page of blocks, 2026-09-28.
-///
-/// **The axes.** Horizontal moves between folders; vertical scrolls this page. Nothing pages
-/// vertically any more, which is what frees that axis for a drag — long-press to reorder now
-/// contests only the scroll, and iOS already arbitrates that pair. Under the crossed model the same
-/// gesture would have been the third meaning on one axis.
-///
-/// **One face on the page.** Every word a user wrote or that names their content is Newsreader:
-/// notes, to-dos, link titles, captions, the running header. Helvetica survives only in the
-/// composer and the chrome, which is where a UI face belongs and a reading face does not.
-///
-/// **Blocks, not cards.** Every thought is a block in one document rather than a screen of its own,
-/// so a folder is read by scrolling rather than by paging, and its order is something you arrange.
-/// That is the Notion/Craft claim, and it is a different one from the feed's: the feed sorted by
-/// recency because people find their own things by recognition, where blocks say the arrangement
-/// itself carries meaning.
-/// A folder's two cards: its cover, and one horizontal step across into the nest.
-///
-/// **The axes, by depth.** Down moves between folders while you are on a cover. Across takes you
-/// into the nest. Inside the nest, down belongs to the content and folder paging is off — set by
-/// the parent, which is why `card` is a binding rather than local state.
-struct NestFolderPage: View {
+/// A folder's own ground: its photograph if it has one — blurred, and veiled by however much its
+/// own brightness requires so white on it clears 7:1 — otherwise its palette gradient.
+/// Shared by the cover and the nest so the two read as one place.
+struct FolderGround: View {
     let folder: Folder
-    @Binding var card: Int
+    let coverImage: Data?
+
+    var body: some View {
+        let palette = Palette(folder)
+        Group {
+            if let coverImage {
+                FolderCoverGround(data: coverImage, id: folder.id)
+            } else {
+                LinearGradient(colors: [palette.groundFrom, palette.groundTo],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .overlay {
+                        Image("PaperNoise")
+                            .resizable(resizingMode: .tile)
+                            .blendMode(.multiply)
+                            .opacity(0.07)
+                            .allowsHitTesting(false)
+                    }
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+/// One folder's page in the vertical pager: the cover, and nothing else.
+///
+/// The nest is no longer a card beside it. It was — a `TabView(.page)` per folder, which put a
+/// `UIPageViewController` between the SwiftUI pager and the nest's own scroll view. Three
+/// scrolling containers across two frameworks: the page controller turned pages whether or not
+/// the `card` binding accepted the write, `folderIndex` drifted on lazy neighbours' `onAppear`,
+/// and safe area and keyboard had to survive three boundaries to reach the composer. Every
+/// composer bug on 2026-09-29 was one of those. Now a folder OPENS: the nest is pushed as its
+/// own screen and gets one plain container, the way the shipped home's composer has.
+struct CoverPage: View {
+    let folder: Folder
+    let open: () -> Void
 
     @State private var pick: PhotosPickerItem?
     @State private var coverImage: Data?
-
-    private var palette: Palette { Palette(folder) }
+    @State private var choosing = false
+    @Environment(\.homeInset) private var homeInset
 
     var body: some View {
-        TabView(selection: $card) {
-            cover.tag(0)
-            Nest(folder: folder, palette: palette).tag(1)
+        VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 0)
+            Text(folder.name)
+                .font(StudyType.serif(46, weight: .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(3)
+                .minimumScaleFactor(0.65)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
-        .background {
-            // The folder's own photograph if it has one — blurred, and veiled by however much its
-            // own brightness requires so white on it clears 7:1. Otherwise the gradient.
-            Group {
-                if let coverImage {
-                    FolderCoverGround(data: coverImage, id: folder.id)
-                } else {
-                    LinearGradient(colors: [palette.groundFrom, palette.groundTo],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing)
-                        .overlay {
-                            Image("PaperNoise")
-                                .resizable(resizingMode: .tile)
-                                .blendMode(.multiply)
-                                .opacity(0.07)
-                                .allowsHitTesting(false)
-                        }
+        .padding(.leading, 22)
+        .padding(.trailing, 54)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        // The cover control, lower right: an image glyph in a hairline circle, line art like the
+        // capsule it replaced rather than the glass the back button wears — a cover is an image
+        // choice, not navigation. The controls that sat under the title live in here now, so the
+        // cover is the name and the ground and nothing else.
+        .overlay(alignment: .bottomTrailing) {
+            Menu {
+                Button {
+                    choosing = true
+                } label: {
+                    Label(coverImage == nil ? "Add cover" : "Change cover",
+                          systemImage: "photo.on.rectangle.angled")
                 }
+                if coverImage != nil {
+                    Button(role: .destructive) {
+                        FolderCoverStore.clear(folder.id)
+                        coverImage = nil
+                    } label: {
+                        Label("Remove cover", systemImage: "trash")
+                    }
+                }
+            } label: {
+                Image(systemName: "photo")
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .frame(width: 44, height: 44)
+                    .overlay(Circle().stroke(.white.opacity(0.45), lineWidth: 1))
+                    .contentShape(Circle())
             }
-            .ignoresSafeArea()
+            .buttonStyle(.plain)
+            .padding(.trailing, 16)
+            // The pager ignores the container's bottom inset so pages run full height; the
+            // control adds it back, the same way the composer does.
+            .padding(.bottom, 16 + homeInset)
         }
+        .photosPicker(isPresented: $choosing, selection: $pick, matching: .images)
+        // Into the folder: a tap anywhere on the cover. Buttons above still win their own taps.
+        //
+        // No swipe. A leading drag was here as a simultaneous gesture, and a drag that competes
+        // with a scroll view loses — after coming back from the nest the pager would not page
+        // until you swiped slowly enough for the scroll to win the touch. Same lesson the nest
+        // learned with swipe-to-reveal: on a surface whose job is scrolling, nothing else drags.
+        .onTapGesture { open() }
+        .background { FolderGround(folder: folder, coverImage: coverImage) }
         .task(id: folder.id) { coverImage = FolderCoverStore.load(folder.id) }
         .task(id: pick) {
             guard let pick,
@@ -68,44 +116,36 @@ struct NestFolderPage: View {
             self.pick = nil
         }
     }
+}
 
-    private var cover: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
-            Text(folder.name)
-                .font(StudyType.serif(46, weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(3)
-                .minimumScaleFactor(0.65)
-                .fixedSize(horizontal: false, vertical: true)
-            // The only control on a cover.
-            PhotosPicker(selection: $pick, matching: .images) {
-                Label(coverImage == nil ? "Add a cover" : "Change cover",
-                      systemImage: "photo.on.rectangle.angled")
-                    .font(StudyType.sans(13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.85))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 9)
-                    .overlay(Capsule().stroke(.white.opacity(0.45), lineWidth: 1))
-            }
-            .padding(.top, 24)
+/// The nest as a screen of its own. One scroll view, the composer as its bottom inset, the
+/// folder's ground behind it, and the system's back swipe to leave.
+struct NestScreen: View {
+    let folder: Folder
+    @State private var coverImage: Data?
+    @Environment(\.dismiss) private var dismiss
 
-            if coverImage != nil {
-                Button("Remove") {
-                    FolderCoverStore.clear(folder.id)
-                    coverImage = nil
+    var body: some View {
+        Nest(folder: folder, palette: Palette(folder))
+            .background { FolderGround(folder: folder, coverImage: coverImage) }
+            .toolbar(.hidden, for: .navigationBar)
+            // A back control of our own. Hiding the navigation bar also took the interactive pop
+            // with it — the edge swipe did nothing on device — so the way out has to be drawn.
+            // Same glass as the composer, upper left where the system's would be.
+            .overlay(alignment: .topLeading) {
+                Button { dismiss() } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
                 }
-                .font(Theme.dmMono(10))
-                .tracking(1.4)
-                .foregroundStyle(.white.opacity(0.5))
-                .padding(.top, 10)
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .padding(.leading, 16)
+                .padding(.top, 4)
             }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.leading, 22)
-        .padding(.trailing, 54)
-        .frame(maxWidth: .infinity, alignment: .leading)
+            .task(id: folder.id) { coverImage = FolderCoverStore.load(folder.id) }
     }
 }
 
@@ -113,8 +153,13 @@ struct NestFolderPage: View {
 private struct Nest: View {
     let folder: Folder
     let palette: Palette
+    /// Whether the composer has the keyboard up. Local: the nest is the only thing that reacts,
+    /// by returning to the end of the thread so the newest thought sits above the keyboard.
+    @State private var composing = false
 
     @State private var order: [UUID] = []
+    /// Rests at the end of the thread and is nudged back there whenever a thought arrives.
+    @State private var position = ScrollPosition(edge: .bottom)
 
     private var blocks: [Note] {
         let byID = Dictionary(folder.notes.map { ($0.uuid, $0) }, uniquingKeysWith: { a, _ in a })
@@ -144,11 +189,24 @@ private struct Nest: View {
         return "\(day)  \(time.string(from: date))"
     }
 
+    /// Scroll to the end of the thread, one runloop turn late.
+    ///
+    /// The delay is the whole point. `onChange` fires while SwiftUI is still processing the update
+    /// that added the bubble, so scrolling right then goes to the PREVIOUS bottom — the new
+    /// thought lands below the fold, underneath the composer, which is exactly what it looked
+    /// like. Yielding once lets the new content and any clearance change be laid out first.
+    private func toBottom() {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(50))
+            withAnimation(RealComposerBar.morph) { position.scrollTo(edge: .bottom) }
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // No running header. It named the folder, and so does the composer at the bottom —
             // "add to CommunityHealth" — permanently and without costing a row.
-            Color.clear.frame(height: 62)
+            Color.clear.frame(height: 12)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -181,18 +239,40 @@ private struct Nest: View {
                         }
                     }
                 }
-                // The bar's own height plus a margin. `.safeAreaInset` on the pager cannot do
-                // this for us: `.ignoresSafeArea()` is applied to that scroll before the inset is
-                // attached, so the inset sits outside a view that has already opted out.
-                .padding(.bottom, BottomBar.clearance)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
-            // Opens on the newest thought, and stays there as thoughts are added — the thread
-            // behaviour, not a list's. `.defaultScrollAnchor` rather than a `ScrollViewReader`
-            // because it sets the resting position instead of animating to one after layout,
-            // so there is no visible jump on entering the nest.
-            .defaultScrollAnchor(.bottom)
+            // A CONTENT MARGIN, not bottom padding on the content.
+            //
+            // Padding made the content taller without telling the scroll view anything, so its
+            // resting position was still the raw bottom edge — which runs underneath the floating
+            // composer. `scrollTo(edge: .bottom)` then landed there faithfully and the newest
+            // thought sat behind the glass. A content margin insets the scroll view's own notion
+            // of where content ends, so resting at the bottom rests ABOVE the composer.
+            // THE SAME LAYER. The composer was an overlay on the pager while this scroll view
+            // sat three levels inside it, so every attempt to clear it was arithmetic between two
+            // coordinate spaces the scroll view could not see — content padding, then a content
+            // margin, then a measured dock height, each adjusting a number on a relationship that
+            // only ever agreed by accident. As a bottom safe-area inset the scroll view reserves
+            // exactly the composer's height, whatever it grows to, and nothing is measured.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                RealComposerBar(folder: folder, focused: $composing)
+            }
+
+            // Opens on the newest thought and returns there when one arrives.
+            //
+            // The CONTENT's bottom edge, not the last bubble's. `scrollTo(anchor: .bottom)` lines
+            // an item up with the scroll view's own bottom edge, which runs underneath the
+            // composer — so the thought you just sent was scrolled to exactly where you could not
+            // see it. Scrolling to the edge respects the clearance padding instead.
+            //
+            // One mechanism: `.scrollPosition` seeded at `.bottom` gives the resting position too,
+            // so there is no `.defaultScrollAnchor` alongside it to disagree with.
+            .scrollPosition($position)
+            // Three things send it back to the end, and all three go through `toBottom()` so the
+            // scroll is only ever driven from one place.
+            .onChange(of: blocks.count) { _, _ in toBottom() }
+            .onChange(of: composing) { _, up in if up { toBottom() } }
         }
         .padding(.leading, 22)
         .padding(.trailing, 22)
@@ -210,6 +290,7 @@ private struct Nest: View {
 private struct Block: View {
     let note: Note
     let palette: Palette
+    @Environment(\.bubbleGlass) private var bubbleGlass
 
     @State private var preview: PhotoPreview?
 
@@ -297,7 +378,14 @@ private struct Block: View {
         // Room for the tail on the trailing side, so the text never runs into it.
         .padding(.trailing, 22)
         .background {
-            ChatBubble().stroke(.white.opacity(0.4), lineWidth: 1)
+            // Two treatments, flipped on the sandbox's first axis. The hairline was chosen so a
+            // photograph ground keeps showing through; glass keeps that and gives the bubble the
+            // composer's own material, so the two read as one family.
+            if bubbleGlass {
+                Color.clear.glassEffect(.regular, in: ChatBubble())
+            } else {
+                ChatBubble().stroke(.white.opacity(0.4), lineWidth: 1)
+            }
         }
         // .trailing, not .leading. The bubble hugs its content, so a short one sat at the LEFT
         // of this 300-wide box — and the box was what got right-aligned, not the bubble.
@@ -379,256 +467,118 @@ struct FolderDots: View {
     }
 }
 
-/// The bar, as a set of modes rather than one control.
+private extension String {
+    var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
+}
+
+/// The shipped `ComposerBar`, mounted in the nest's bar slot so the two can be flipped between on
+/// the device rather than argued about.
 ///
-/// **Navigate** is the resting state and costs no height — you are already navigating, so the bar
-/// stays out of the way. The other three each expand it, because each is a place you type.
-///
-/// Text and Photo write real `Note`s into the real folder; To-Do writes a single-item one. Voice,
-/// Chat and Search are shape only and say so on their own line rather than offering a dead control.
-/// The real composer is `ComposerBar`, which already carries the field, the to-do pills, photo and
-/// checklist controls, a send/mic button and a `contextLabel` reading "add to {folder}"; search is
-/// `CanvasHome`'s existing query mode, which `ComposerBar` also already models with `searchMode`.
-struct BottomBar: View {
-    let folderName: String?
-    let folder: Folder?
-    /// How much of the screen the keyboard is covering right now, 0 when it is down.
-    let keyboard: CGFloat
-    /// Only inside a nest. Paging folders is navigation and carries no composer — a bar on that
-    /// page can only name the folder it thinks is centred, which is a weaker claim than "the
-    /// folder you opened", and it was already getting that wrong.
-    let visible: Bool
-    @Binding var mode: Mode
-
-    @Environment(\.modelContext) private var context
-    @State private var draft = ""
-    @State private var pick: PhotosPickerItem?
-    @FocusState private var writing: Bool
-
-    /// Seven states, but never seven buttons. At rest the row offers two words; choosing one
-    /// replaces the row with that group's members, so the most the bar ever shows is four.
-    enum Mode: String, CaseIterable, Identifiable {
-        case navigate, text, photo, todo, voice, chat, search
-        var id: String { rawValue }
-
-        var label: String {
-            switch self {
-            case .navigate: "Navigate"
-            case .todo:     "To-Do"
-            default:        rawValue.capitalized
-            }
-        }
-
-        /// Which row this mode belongs to. `navigate` belongs to neither: it is the state of
-        /// having nothing selected, so the row falls back to the two group names.
-        var group: Group? {
-            switch self {
-            case .navigate:                     nil
-            case .text, .photo, .todo, .voice:  .add
-            case .chat, .search:                .ask
-            }
-        }
-
-        /// What the field says in this mode.
-        func placeholder(_ folder: String?) -> String {
-            switch self {
-            case .navigate: ""
-            case .text:     folder.map { "add to \($0)" } ?? "a thought"
-            case .photo:    "choose a photograph"
-            case .todo:     "a thing to do"
-            case .voice:    "hold to record"
-            case .chat:     folder.map { "ask about \($0)" } ?? "ask about your thoughts"
-            case .search:   "search your thoughts"
-            }
-        }
-    }
-
-    enum Group: String, CaseIterable, Identifiable {
-        case add, ask
-        var id: String { rawValue }
-        var label: String { rawValue.capitalized }
-
-        var members: [Mode] {
-            switch self {
-            case .add: [.text, .photo, .todo, .voice]
-            case .ask: [.chat, .search]
-            }
-        }
-
-        /// What choosing the group lands on. Text and Chat are the ones you reach for without
-        /// thinking, so they are what the group opens to.
-        var entry: Mode { self == .add ? .text : .chat }
-    }
-
-    /// One spring for the whole movement: the bar rising and the page rising are the same
-    /// gesture's consequence, so they cannot be tuned apart. Snappy rather than the Island's own
-    /// slower settle, because this is tapped constantly. A spring also retargets when interrupted,
-    /// so the keyboard's height arriving a beat late redirects the movement instead of starting a
-    /// second one.
+/// Adapted, not ported: it is given the nest's black slab instead of the home's liquid-glass dock,
+/// forced to the dark scheme so its asset-catalog colours resolve against that slab, and handed a
+/// `contextLabel` so its placeholder reads "add to {folder}" the way the nest bar's does. Its own
+/// information architecture is untouched, which is the thing under test — capture lives in a `+`
+/// menu (Record / Add photo / Take a photo) plus a checklist button, where the nest bar makes the
+/// four capture types peers on a row.
+struct RealComposerBar: View {
+    /// One spring for the whole movement: the dock rising and the page rising are the same
+    /// gesture's consequence, so they cannot be tuned apart. A spring also retargets when
+    /// interrupted, so the keyboard's height arriving a beat late redirects the movement instead
+    /// of starting a second one.
     static let morph: Animation = .spring(response: 0.34, dampingFraction: 0.86)
 
-    /// The field line's height. There is no writing room any more: the field rides on top of the
-    /// keyboard the way Messages does, so this plus the keyboard is the whole translation.
-    static let field: CGFloat = 56
+    let folder: Folder?
+    /// Reported to the nest so it can scroll to the end when the keyboard comes up.
+    @Binding var focused: Bool
+    /// The home indicator's height, read above the pager's `ignoresSafeArea`. Added beneath the
+    /// composer while the keyboard is down; when it is up the keyboard is the floor instead.
+    @Environment(\.homeInset) private var homeInset
 
-    /// Room plus keyboard: one number, so the page's translation and the bar's have a single
-    /// source and a single animation. Two values here would be two movements — see Pattern 8 in
-    /// `swiftui-animation-performance`.
-    static func lift(keyboard: CGFloat) -> CGFloat { field + keyboard }
-
-    /// What the scroll above has to leave clear: the options row plus its padding, with a margin.
-    /// The page does not reflow when the bar opens — it translates — so this is the resting size.
-    static let clearance: CGFloat = 96
-
-    /// Far enough below the screen that the whole bar is gone. Offsetting it away rather than
-    /// removing it with an `if`: an insertion cross-fades on top of the travel, and the swipe
-    /// between cover and nest is exactly when that would show.
-    static let hidden: CGFloat = 170
-
-    /// How far the black is drawn past the bar's own bottom edge. The keyboard's top corners are
-    /// rounded and it lives in a window above the app, so this slab is occluded everywhere except
-    /// in those two corners — which is the only place it was needed.
-    static let underlap: CGFloat = 90
-
-    private var open: Bool { mode != .navigate }
-
-    /// The words on the row right now: the two group names at rest, that group's members once one
-    /// is chosen. Never both.
-    private var row: [(id: String, label: String, lit: Bool, tap: () -> Void)] {
-        if let group = mode.group {
-            group.members.map { m in
-                (m.id, m.label, mode == m, { mode = (mode == m) ? .navigate : m })
-            }
-        } else {
-            Group.allCases.map { g in
-                (g.id, g.label, false, { mode = g.entry })
-            }
-        }
-    }
+    @Environment(\.modelContext) private var context
+    @State private var text = ""
+    @State private var todos: [ComposerTodo] = []
+    @State private var photos: [PhotosPickerItem] = []
+    @State private var staged: [Data] = []
+    @FocusState private var focus: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            // The row never moves within the bar. Everything that opens does so BENEATH it, so the
-            // words are in the same place whether the bar is shut or open.
-            HStack(spacing: 0) {
-                ForEach(row, id: \.id) { item in
-                    Button(action: item.tap) {
-                        Text(item.label)
-                            // ONE face for every state. Selection used to swap HelveticaNeue for
-                            // HelveticaNeue-Medium, and a different face resource is a different
-                            // view to SwiftUI — so mid-translation it cross-faded the old row
-                            // against the new one at two heights. Opacity carries selection
-                            // instead, which is a property rather than an identity.
-                            .font(StudyType.sans(14))
-                            .foregroundStyle(.white.opacity(item.lit ? 1 : 0.4))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 6)
-            // The row's WORDS change when a group opens, which is a view swap, and a swap
-            // cross-fades on top of the bar's travel. Swapping instantly keeps the movement one
-            // thing — the same fix the field line below needs.
-            .id(mode.group?.id ?? "groups")
-            .animation(nil, value: mode)
+        ComposerBar(text: $text,
+                    todos: $todos,
+                    selectedPhotos: $photos,
+                    stagedImageData: staged,
+                    isProcessing: false,
+                    contextLabel: folder?.name,
+                    focus: $focus,
+                    onSend: send,
+                    onRecordVoice: {},
+                    onRemoveStagedImage: { staged.remove(at: $0) },
+                    onCapturePhoto: { staged.append($0) })
+            // The home's own dock treatment, lifted from `CanvasHome`: pad 14, glass at a 30
+            // radius, then inset 12 / 8 so it FLOATS rather than meeting the screen edges. The
+            // glass lives in the dock, not in `ComposerBar` — which is why mounting the composer
+            // on a slab was the wrong comparison.
+            .padding(14)
+            // The home dock's own 30.
+            .glassEffect(.regular, in: .rect(cornerRadius: 30))
+            .padding(.horizontal, 12)
+            // 8 above the floor, the shipped dock's gap. The floor is the home indicator when the
+            // keyboard is down and the keyboard when it is up, so the inset goes to zero with
+            // focus — on the same spring, so it is one movement with the keyboard's.
+            .padding(.bottom, 8 + (focus ? 0 : homeInset))
+            .animation(Self.morph, value: focus)
+            .frame(maxWidth: .infinity)
+            // Forced dark because the nest's ground always is, and `Theme.primaryText` resolves
+            // from the asset catalogue — in light it would be dark text on dark glass.
+            .environment(\.colorScheme, .dark)
+            // No offset of its own. The keyboard region is alive all the way down, so the
+            // system raises it — this is the nest's bottom inset, and the nest shrinks.
+            .onChange(of: focus) { _, f in focused = f }
 
-            // Always rendered at full height, in every mode. The line is never resized and never
-            // inserted — it is simply below the screen when shut.
-            field
-                .frame(height: Self.field)
-                .frame(maxWidth: .infinity)
-        }
-        .padding(.bottom, 22)
-        .frame(maxWidth: .infinity)
-        .background { Color.black.padding(.bottom, -Self.underlap) }
-        // Shut, the field line hangs below the screen. Open, the whole bar is pushed up by the
-        // keyboard so the line sits ON TOP of it. The page moves by the sum of the two.
-        .offset(y: visible ? (open ? -keyboard : Self.field) : Self.hidden)
-        // Focus follows the mode in the same transaction that moves the bar, so the keyboard comes
-        // up with the movement rather than after it. Photo and Voice want no keyboard.
-        .onChange(of: mode) { _, new in
-            writing = [.text, .todo, .chat, .search].contains(new)
-        }
-        .task(id: pick) {
-            guard let pick,
-                  let data = try? await pick.loadTransferable(type: Data.self) else { return }
-            let note = Note(timestamp: .now, imageData: data)
-            note.folder = folder
-            context.insert(note)
-            try? context.save()
-            self.pick = nil
-        }
+            .task(id: photos.map(\.itemIdentifier)) {
+                guard !photos.isEmpty else { return }
+                var loaded: [Data] = []
+                for item in photos {
+                    if let d = try? await item.loadTransferable(type: Data.self) { loaded.append(d) }
+                }
+                staged = loaded
+            }
     }
 
-    /// Writes a real `Note` into the real folder — the study reads the live store, so a thought
-    /// sent here is a thought you have. The field clears and keeps focus: thoughts arrive in
-    /// bursts, and closing the bar after each one would cost a tap per thought.
+    /// Text is what unlocks send, the same rule the shipped composer enforces. To-do rows and
+    /// staged photographs ride along on that one note.
     private func send() {
-        let text = draft.trimmed
-        guard !text.isEmpty else { return }
-        let note: Note
-        switch mode {
-        case .text:  note = Note(transcript: text, timestamp: .now)
-        case .todo:  note = Note(timestamp: .now, todos: [text])
-        default:     return
-        }
+        let body = text.trimmed
+        guard !body.isEmpty else { return }
+        let items = todos.map(\.text).map { $0.trimmed }.filter { !$0.isEmpty }
+        let note = Note(transcript: body,
+                        timestamp: .now,
+                        todos: items,
+                        imageData: staged.first)
         note.folder = folder
         context.insert(note)
         try? context.save()
-        draft = ""
-    }
-
-    /// One line, on the keyboard. Photo hands off to the picker and Voice is not built yet, so
-    /// each mode says what it is rather than pretending to a field it does not have.
-    private var field: some View {
-        HStack(spacing: 14) {
-            switch mode {
-            case .photo:
-                PhotosPicker(selection: $pick, matching: .images) {
-                    Label(mode.placeholder(folderName), systemImage: "photo.on.rectangle")
-                        .font(StudyType.sans(17))
-                        .foregroundStyle(.white.opacity(0.75))
-                }
-                Spacer(minLength: 0)
-            case .voice:
-                // Not built. Says so rather than offering a control that does nothing.
-                Image(systemName: "mic.fill").font(.system(size: 18))
-                Text("recording is not wired up yet")
-                    .font(StudyType.sans(15))
-                    .foregroundStyle(.white.opacity(0.4))
-                Spacer(minLength: 0)
-            default:
-                TextField("", text: $draft, prompt:
-                            Text(mode.placeholder(folderName)).foregroundStyle(.white.opacity(0.4)),
-                          axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(StudyType.sans(17))
-                    .foregroundStyle(.white)
-                    .tint(.white)
-                    .focused($writing)
-
-                Button(action: send) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 30))
-                        .foregroundStyle(.white.opacity(draft.trimmed.isEmpty ? 0.35 : 0.9))
-                }
-                .buttonStyle(.plain)
-                .disabled(draft.trimmed.isEmpty || ![.text, .todo].contains(mode))
-            }
-        }
-        .foregroundStyle(.white.opacity(0.8))
-        .padding(.horizontal, 20)
-        // The mode's own controls swap as the bar moves. Without a stable identity the same
-        // cross-fade happens here, one layer down.
-        .id(mode)
-        .animation(nil, value: mode)
+        text = ""
+        todos = []
+        photos = []
+        staged = []
     }
 }
 
-private extension String {
-    var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
+/// The bottom safe-area inset as read before any ancestor ignores it — see `SandboxRoute`.
+private struct HomeInsetKey: EnvironmentKey { static let defaultValue: CGFloat = 0 }
+extension EnvironmentValues {
+    var homeInset: CGFloat {
+        get { self[HomeInsetKey.self] }
+        set { self[HomeInsetKey.self] = newValue }
+    }
+}
+
+/// Whether a thought's bubble is drawn in glass or as a hairline — the sandbox's first axis.
+private struct BubbleGlassKey: EnvironmentKey { static let defaultValue = true }
+extension EnvironmentValues {
+    var bubbleGlass: Bool {
+        get { self[BubbleGlassKey.self] }
+        set { self[BubbleGlassKey.self] = newValue }
+    }
 }
 #endif

@@ -20,11 +20,11 @@ struct SandboxRoute: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var study: Study = .pagedHome
-    @State private var variant: String = "none"
+    @State private var variant: String = "glass"
     /// A second, independent axis. Two open questions at once is the normal case in a refinement
     /// loop, and folding them into one key gives you nine combinations and no way to read a
     /// verdict.
-    @State private var variantB: String = "transport"
+    @State private var variantB: String = "nest"
     @State private var forcedScheme: ColorScheme?
     @State private var stressed = false
 
@@ -40,22 +40,28 @@ struct SandboxRoute: View {
         var variants: [(key: String, label: String)] {
             switch self {
             case .pagedHome:
-                // Settled 2026-09-28: no plates. White straight on the ground, as in the reference.
-                []
+                // Reopened 2026-09-29 for the bubble itself: the hairline it has had, or the
+                // same glass the composer sits on.
+                [("glass", "Glass"), ("line", "Hairline")]
             }
         }
 
-        /// Axis two: what the bottom bar carries beyond the transport.
+        /// Axis two: which composer sits in the nest's bar slot.
         var variantsB: [(key: String, label: String)] {
             switch self {
             case .pagedHome:
-                // Settled: the bar carries the transport and nothing else.
+                // Settled 2026-09-29: the shipped ComposerBar in the home's glass dock. The
+                // grouped Add | Ask row it beat is in archive/2026-09-29-nest-composer/.
                 []
             }
         }
     }
 
     var body: some View {
+        // Read here, above the ignoring: this is the only place the home indicator's inset is
+        // still visible. The pager ignores it so pages run full height, and the composer adds it
+        // back on its own.
+        GeometryReader { geo in
         ZStack(alignment: .top) {
             Group {
                 switch study {
@@ -63,11 +69,22 @@ struct SandboxRoute: View {
                     PagedHomeStudy(variant: variant, bar: variantB, stressed: stressed)
                 }
             }
-            .ignoresSafeArea()
+            // `.container` only. The bare form also ignores the KEYBOARD region, and that is
+            // what broke the composer: nothing below here could be raised by the keyboard, so
+            // the study reconstructed the lift by hand from a notification, through three
+            // container layers, and it came out as height rather than translation.
+            //
+            // All container edges, so pages are full height and stack with no seam. Respecting
+            // the bottom made every page 34pt short and the outer gradient showed in the gap
+            // under a cover. The composer gets the inset back through `homeInset`.
+            .ignoresSafeArea(.container)
 
             controls
         }
         .preferredColorScheme(forcedScheme)
+        .environment(\.homeInset, geo.safeAreaInsets.bottom)
+        }
+        .ignoresSafeArea(.container, edges: [.top, .horizontal])
         .onChange(of: study) { _, new in
             variant = new.variants.first?.key ?? ""
             variantB = new.variantsB.first?.key ?? ""

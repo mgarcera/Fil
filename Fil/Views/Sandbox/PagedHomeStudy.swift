@@ -45,19 +45,13 @@ struct PagedHomeStudy: View {
     @State private var folderID: Int? = 0
     /// 0 is the cover, 1 is the nest. Lifted here because the outer pager has to know it: down
     /// belongs to the folders at 0 and to the content at 1.
-    @State private var card = 0
+    /// The folder whose nest is open, pushed as its own screen. Nothing else on this page
+    /// changes while it is; the pager is simply underneath.
+    @State private var opened: Folder?
     /// Navigate is the resting mode; the other three each open the bar.
-    @State private var barMode: BottomBar.Mode = .navigate
-    /// What the keyboard is covering. Observed rather than assumed, because the room sits above it.
-    @State private var keyboard: CGFloat = 0
 
-    /// The one number both translations read. Keying the animation to THIS rather than to `barMode`
-    /// keeps the keyboard's arrival part of the same movement: the spring retargets mid-flight
-    /// instead of starting a second one.
-    private var lift: CGFloat { barMode == .navigate ? 0 : BottomBar.lift(keyboard: keyboard) }
-
-    /// The bar belongs to the nest, so the page only rises when you are in one.
-    private var inNest: Bool { card > 0 }
+    /// The folder the nest is showing, which is the only folder either composer may write to.
+    private var current: Folder? { pages.indices.contains(folderIndex) ? pages[folderIndex] : nil }
 
     private var pinned: Folder? { folders.first { PinnedFolderStore.shared.isPinned($0.id) } }
 
@@ -68,15 +62,6 @@ struct PagedHomeStudy: View {
         return (0..<12).map { folders[$0 % folders.count] }
     }
 
-    /// How many cards a folder's run has after the cover: one for the consolidated reading page
-    /// when it has any prose, plus one per object.
-    static func cardCount(_ folder: Folder) -> Int {
-        let prose = folder.notes.filter {
-            $0.todoRowItems.isEmpty && !$0.isImageFil && !$0.isLinkFil && $0.audioFilePath.isEmpty
-        }
-        return (prose.isEmpty ? 0 : 1) + (folder.notes.count - prose.count)
-    }
-
     private var pages: [Folder] {
         let rest = pool.filter { $0.id != pinned?.id }
         guard let pinned else { return rest }
@@ -84,10 +69,14 @@ struct PagedHomeStudy: View {
     }
 
     var body: some View {
+        // A NavigationStack so a folder can be OPENED rather than paged into. The nest is pushed
+        // with the system's own slide and returns on the system's own back swipe — the same
+        // horizontal step, owned by the framework instead of a page controller.
+        NavigationStack {
         ZStack {
-            // Behind everything and never moved. A translation lifts the page off the bottom of
-            // the screen, and whatever is under it is what you see for the length of the
-            // animation — black, before this.
+            // Behind everything and never moved. The pages shrink above the keyboard rather than
+            // translating now, but the ground still has to be here: it is what shows under the
+            // cover-to-nest swipe and behind a page that is shorter than the screen.
             (pages.indices.contains(folderIndex)
              ? AnyView(LinearGradient(colors: [Palette(pages[folderIndex]).groundFrom,
                                                Palette(pages[folderIndex]).groundTo],
@@ -107,15 +96,10 @@ struct PagedHomeStudy: View {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(pages.enumerated()), id: \.offset) { i, folder in
-                            NestFolderPage(folder: folder,
-                                           card: Binding(get: { folderIndex == i ? card : 0 },
-                                                         set: { if folderIndex == i { card = $0 } }))
+                            CoverPage(folder: folder) { opened = folder }
                                 .containerRelativeFrame([.horizontal, .vertical])
                                 .id(i)
-                                // Only while you are paging folders. Translating the pager makes
-                                // neighbouring pages appear, and trusting that inside a nest
-                                // re-pointed everything at whichever folder drifted into view.
-                                .onAppear { if card == 0 { folderIndex = i } }
+                                .onAppear { folderIndex = i }
                         }
                     }
                     .scrollTargetLayout()
@@ -123,67 +107,27 @@ struct PagedHomeStudy: View {
                 .scrollTargetBehavior(.paging)
                 .scrollIndicators(.hidden)
                 .scrollPosition(id: $folderID)
-                // The whole point: inside the nest, down is the content's.
-                .scrollDisabled(card > 0)
-                .ignoresSafeArea()
-                .onChange(of: folderID) { _, new in
-                    // Folder paging is off inside a nest, so a change reported while you are in
-                    // one is the scroll view re-snapping under our own translation — never you
-                    // moving. Put it back. Guarding on `old != new` was not enough: raising the
-                    // keyboard moves the pager far enough that the snap is a genuine change, and
-                    // it threw you out of the nest and onto another folder.
-                    //
-                    // The write-back re-fires this handler once with `new == folderIndex`, which
-                    // takes the early return, so it settles rather than looping.
-                    guard card == 0 else {
-                        if new != folderIndex { folderID = folderIndex }
-                        return
-                    }
-                    folderIndex = new ?? 0
-                }
-                // Swiping back out to the cover takes the composer with it, keyboard and all.
-                .onChange(of: card) { _, new in if new == 0 { barMode = .navigate } }
-                // Reachability, not a keyboard inset: everything on screen translates by the
-                // height the bar gained. Padding only made the content taller, which moves nothing
-                // unless you are already at the bottom — and left a black band where the page had
-                // ended. A translation moves the page, the cover, the rail, all of it.
-                .offset(y: -lift)
+                // `.container`, not the bare form — see SandboxRoute. With the keyboard region
+                // alive, each page shrinks to the space above the keyboard and the composer,
+                // being the nest's bottom inset, rides up with it. No offset, no notification,
+                // no number to get wrong: the way `CanvasHome` does it.
+                //
+                // All container edges: pages must be full height or the next folder's ground
+                // shows in a strip beneath the current cover. The composer clears the home
+                // indicator on its own, via `homeInset`.
+                .ignoresSafeArea(.container)
+                .onChange(of: folderID) { _, new in folderIndex = new ?? 0 }
                 .overlay(alignment: .trailing) {
-                    // Hidden in the nest, because it moves between folders and that is exactly
-                    // what this depth does not do.
                     FolderRail(count: pages.count,
                                index: Binding(get: { folderID ?? 0 }, set: { folderID = $0 }))
-                        .opacity(card == 0 ? 1 : 0)
-                        .allowsHitTesting(card == 0)
-                        .animation(.snappy, value: card)
                 }
-                .overlay(alignment: .bottom) {
-                    // Outside the page's translation because it carries its own: the bar is
-                    // always full height, sitting `lift` below the screen when shut, and rises
-                    // into the space the page vacates. Both movements are `.offset` under the one
-                    // spring below, which is the only way they stay on the same frame.
-                    BottomBar(folderName: pages.indices.contains(folderIndex)
-                              ? pages[folderIndex].name : nil,
-                              folder: pages.indices.contains(folderIndex) ? pages[folderIndex] : nil,
-                              keyboard: keyboard,
-                              visible: inNest,
-                              mode: $barMode)
-                        .ignoresSafeArea(edges: .bottom)
-                }
-                // ONE animation for the page's translation and the bar's growth. Two separate
-                // ones drift apart by a frame or two mid-flight, and the gap between them is
-                // exactly the band that was flashing.
-                .animation(BottomBar.morph, value: lift)
-                .animation(BottomBar.morph, value: inNest)
-                .onReceive(NotificationCenter.default.publisher(
-                    for: UIResponder.keyboardWillShowNotification)) { n in
-                    keyboard = (n.userInfo?[UIResponder.keyboardFrameEndUserInfoKey]
-                                as? CGRect)?.height ?? 0
-                }
-                .onReceive(NotificationCenter.default.publisher(
-                    for: UIResponder.keyboardWillHideNotification)) { _ in keyboard = 0 }
+                // Leaving the nest closes whichever composer is mounted.
             }
 
+        }
+        .navigationDestination(item: $opened) { NestScreen(folder: $0) }
+        .environment(\.bubbleGlass, variant == "glass")
+        .toolbar(.hidden, for: .navigationBar)
         }
     }
 }
@@ -330,49 +274,7 @@ private struct FolderPage: View {
     }
 }
 
-// MARK: - The bar
-
-/// Static, always at the bottom of the screen, outside the pager.
-///
-/// It reports and drives the horizontal position within whichever folder is showing. Putting it
-/// inside the folder page made it slide away with the page on a vertical swipe, which read as the
-/// controls leaving rather than the content moving. Half of why the reference feels settled is
-/// that the page ends in something instead of fading out at the bottom of the screen.
-private struct TransportBar: View {
-    @Binding var card: Int
-    let count: Int
-
-    var body: some View {
-        HStack(spacing: 36) {
-            Button { step(-1) } label: {
-                Image(systemName: "chevron.left").font(.system(size: 20))
-                    .frame(width: 44, height: 44).contentShape(Rectangle())
-            }
-            .disabled(card == 0).opacity(card == 0 ? 0.28 : 1)
-
-            Text(card == 0 ? "COVER" : "\(card) / \(count)")
-                .font(Theme.dmMono(10)).tracking(1.6)
-                .frame(width: 66)
-
-            Button { step(1) } label: {
-                Image(systemName: "chevron.right").font(.system(size: 20))
-                    .frame(width: 44, height: 44).contentShape(Rectangle())
-            }
-            .disabled(card >= count).opacity(card >= count ? 0.28 : 1)
-        }
-        .foregroundStyle(.white)
-        .padding(.top, 6)
-        .padding(.bottom, 26)
-        .frame(maxWidth: .infinity)
-        .background(Color.black.opacity(0.92))
-    }
-
-    private func step(_ d: Int) {
-        withAnimation(.snappy) { card = max(0, min(count, card + d)) }
-    }
-}
-
-// MARK: - The folder rail// MARK: - The folder rail
+// MARK: - The folder rail
 
 /// Which folder you are on, down the right edge, and how to get to another one.
 ///
