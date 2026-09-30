@@ -2,6 +2,9 @@
 import SwiftUI
 import PhotosUI
 import SwiftData
+#if canImport(FoundationModels)
+import FoundationModels
+#endif
 
 /// A folder's own ground: its photograph if it has one — blurred, and veiled by however much its
 /// own brightness requires so white on it clears 7:1 — otherwise its palette gradient.
@@ -161,13 +164,12 @@ struct CoverPage: View {
 
     // MARK: - Under the line
     //
-    // The cover as the folder's surface: what is in here, in a line, without opening it. Three
-    // kinds on axis B. The summary is the app's own folder caption — `Folder.summary`, written by
-    // `ClaudeSurfacingService.describeFolder` for Fil Extra subscribers, which the privacy page
-    // covers (text sent to Anthropic, not used for training, deleted within 30 days). A first cut
-    // here used Apple's on-device model on a misreading of that page; the shipped path is the
-    // one that ships.
-
+    // The cover as the folder's surface: what is in here, in a few lines, without opening it.
+    // Three kinds on axis B. The summary is written by Apple's Foundation Models: the server
+    // model on Private Cloud Compute where it can be reached (iOS 27, the managed entitlement,
+    // a network, quota left), the on-device model beneath it, and the newest thought's own
+    // line beneath that. The app's Claude caption (`Folder.summary`) is a separate, shipped
+    // feature and is left alone here.
     @ViewBuilder private var underline: some View {
         switch line {
         case "latest":
@@ -201,57 +203,74 @@ struct CoverPage: View {
     }
 }
 
-/// The folder's caption, `Folder.summary` — the same one the folder browser's "Summarize" writes.
-/// Shown when it exists; requested once when it does not and the reader is a Fil Extra subscriber.
-/// Not subscribed: the newest thought's own line stands in, so the slot is never blank on a folder
-/// with something in it. No paywall from a cover.
+/// A short summary of the folder from Apple's Foundation Models — Private Cloud Compute first,
+/// for the larger context and stronger reasoning, the on-device model when PCC cannot be reached,
+/// the newest thought's line when neither can. Cached per folder and count for the session.
 struct CoverSummary: View {
     let folder: Folder
-    @Environment(\.modelContext) private var context
+    @State private var text = ""
+    @State private var source = ""
 
-    /// Folders asked this session, keyed on id and count, so a page turn does not re-ask and a
-    /// new thought does. Static: the study re-creates this view constantly (Pattern 9).
-    private static var asked: Set<String> = []
-
-    private var stored: String { folder.summary.trimmingCharacters(in: .whitespacesAndNewlines) }
+    /// Keyed on the folder AND its count, so a new thought re-summarises and a page turn does
+    /// not. Static: the study re-creates this view constantly (Pattern 9).
+    private static var cache: [String: (String, String)] = [:]
 
     var body: some View {
-        let shown = stored.isEmpty
-            ? (folder.notes.max(by: { $0.timestamp < $1.timestamp }).map(CoverPage.firstLine) ?? "")
-            : stored
-        Text(shown)
-            .font(.custom("Fraunces-Regular", size: 17))
-            .lineLimit(3)
-            .opacity(shown.isEmpty ? 0 : 0.85)
-            .task(id: "\(folder.id)-\(folder.notes.count)") { await describe() }
+        VStack(alignment: .leading, spacing: 6) {
+            Text(text)
+                .font(.custom("Fraunces-Regular", size: 17))
+                .lineLimit(4)
+            // Study chrome: which model wrote the line, so the verdict is on the right one.
+            if !source.isEmpty {
+                Text(source)
+                    .font(.custom("ArchivoNarrow-Regular", size: 11))
+                    .tracking(2)
+                    .opacity(0.55)
+            }
+        }
+        .opacity(text.isEmpty ? 0 : 0.85)
+        .task(id: "\(folder.id)-\(folder.notes.count)") { await load() }
     }
 
-    /// The shipped path, verbatim in shape: `FilFolderBrowser.runSummarize`. Inputs are each
-    /// thought's first 240 characters and its badge text; the reply's first sentence is stored.
-    private func describe() async {
+    private func load() async {
         let key = "\(folder.id)-\(folder.notes.count)"
-        guard stored.isEmpty, !folder.notes.isEmpty, !Self.asked.contains(key),
-              StoreManager.shared.isPro else { return }
-        Self.asked.insert(key)
-        let inputs = folder.notes.map { note in
-            FilClusterInput(id: note.uuid,
-                            text: String((note.transcript.isEmpty ? note.title : note.transcript).prefix(240)),
-                            keyword: note.displayBadgeText)
-        }
-        let txn = StoreManager.shared.proTransactionID ?? ""
-        guard let summary = try? await ClaudeSurfacingService.shared.describeFolder(
-            name: folder.name, fils: inputs, transactionID: txn), !summary.isEmpty else { return }
-        await MainActor.run {
-            folder.summary = Self.firstSentence(summary)
-            try? context.save()
-        }
-    }
+        if let hit = Self.cache[key] { (text, source) = hit; return }
+        guard !folder.notes.isEmpty else { text = ""; source = ""; return }
+        let thoughts = folder.notes.sorted { $0.timestamp > $1.timestamp }.prefix(24)
+            .map { String((($0.transcript.isEmpty ? $0.title : $0.transcript)).prefix(400)) }
+            .filter { !$0.isEmpty }
+        var result = "", by = ""
+        #if canImport(FoundationModels)
+        let instructions = "You write the cover of a personal notebook. In two or three plain, "
+            + "specific sentences, say what these entries are about and what they add up to. "
+            + "No quotation marks, no bullet points, no preamble, no more than fifty words."
+        let prompt = "The notebook is called \"\(folder.name)\". Its recent entries, newest first:\n"
+            + thoughts.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the cover text."
 
-    /// One sentence for a caption, as the browser keeps it.
-    private static func firstSentence(_ text: String) -> String {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let end = t.firstIndex(where: { ".!?".contains($0) }) else { return t }
-        return String(t[...end])
+        // 1. Private Cloud Compute. iOS 27, the managed entitlement, a network, and quota.
+        if #available(iOS 27.0, *) {
+            let pcc = PrivateCloudComputeLanguageModel()
+            if case .available = pcc.availability, !pcc.quotaUsage.isLimitReached {
+                let session = LanguageModelSession(model: pcc, instructions: instructions)
+                if let r = try? await session.respond(to: prompt) {
+                    result = r.content.trimmingCharacters(in: .whitespacesAndNewlines); by = "PRIVATE CLOUD COMPUTE"
+                }
+            }
+        }
+        // 2. The on-device model — no network, no quota, no entitlement.
+        if result.isEmpty, case .available = SystemLanguageModel.default.availability {
+            let session = LanguageModelSession(instructions: instructions)
+            if let r = try? await session.respond(to: prompt) {
+                result = r.content.trimmingCharacters(in: .whitespacesAndNewlines); by = "ON DEVICE"
+            }
+        }
+        #endif
+        // 3. The newest thought's own line, so the slot is never blank on a folder with contents.
+        if result.isEmpty, let first = thoughts.first {
+            result = first.split(whereSeparator: \.isNewline).first.map(String.init) ?? first; by = "LATEST THOUGHT"
+        }
+        Self.cache[key] = (result, by)
+        text = result; source = by
     }
 }
 
