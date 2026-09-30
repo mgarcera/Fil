@@ -167,6 +167,10 @@ struct NestScreen: View {
     var body: some View {
         Nest(folder: folder, palette: Palette(folder))
             .background { FolderGround(folder: folder, coverImage: coverImage) }
+            // The whole screen in the dark scheme, not just the composer. Its ground is always
+            // dark — a veiled photograph or the palette's floor — and every glass on it (the
+            // bubbles, the back control, the composer) should be the same smoky variant.
+            .environment(\.colorScheme, .dark)
             .toolbar(.hidden, for: .navigationBar)
             // A back control of our own. Hiding the navigation bar also took the interactive pop
             // with it — the edge swipe did nothing on device — so the way out has to be drawn.
@@ -414,11 +418,12 @@ private struct Block: View {
             // photograph ground keeps showing through; glass keeps that and gives the bubble the
             // composer's own material, so the two read as one family.
             if bubbleGlass {
-                // `.clear`, not `.regular`. Regular is the control material — it carries its own
-                // fill so text stays legible over anything — and on the nest's already-dark
-                // ground that fill read as a milky slab under white type. Clear is the media
-                // material: the ground shows through and the bubble is a lens, not a plate.
-                Color.clear.glassEffect(.clear, in: ChatBubble())
+                // `.regular`, the composer's own material. It looked milkier than the composer
+                // once, and a round went to `.clear` for it — but the material was never the
+                // difference. The composer is forced to the dark scheme and glass renders a
+                // smokier variant there; the bubbles inherited the app's scheme and got the
+                // light variant. The nest is dark now (see `NestScreen`), so they match.
+                Color.clear.glassEffect(.regular, in: ChatBubble())
             } else {
                 ChatBubble().stroke(.white.opacity(0.4), lineWidth: 1)
             }
@@ -484,25 +489,6 @@ struct ChatBubble: Shape {
         return p
     }
 }
-
-/// Where you are in the folders, now that the bottom bar has stopped being navigation.
-struct FolderDots: View {
-    let count: Int
-    @Binding var index: Int
-
-    var body: some View {
-        HStack(spacing: 7) {
-            ForEach(0..<count, id: \.self) { i in
-                Circle()
-                    .fill(.white.opacity(i == index ? 0.95 : 0.38))
-                    .frame(width: 6, height: 6)
-            }
-        }
-        .shadow(color: .black.opacity(0.35), radius: 4)
-        .animation(.snappy, value: index)
-    }
-}
-
 private extension String {
     var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
 }
