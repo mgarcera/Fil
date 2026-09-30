@@ -134,27 +134,33 @@ struct CoverPage: View {
             ? "\(m.string(from: first).uppercased()) – \(b)" : "\(a) – \(b)"
     }
 
-    private var folio: String { count == 1 ? "1 THOUGHT" : "\(count) THOUGHTS" }
+    /// "SEP 2026 • 15": the months and the bare count, a bullet between. No word for the count —
+    /// on a cover the number is enough, and the unit is the notebook itself.
+    private var deck: String {
+        [span, count > 0 ? "\(count)" : ""].filter { !$0.isEmpty }.joined(separator: "  •  ")
+    }
 
-    /// Editorial, in Fraunces. Settled 2026-09-30 from three setups: this structure — a tracked
-    /// deck of months and count above the name, a hairline below — won, carrying the face from
-    /// the Plate setup (Fraunces Black, a soft high-contrast serif) in place of Newsreader.
-    /// Poster (Anton all-caps, the count as a numeral) and Plate (the same face centred in a
-    /// hairline frame with mono folios) are in archive/2026-09-28-paged-home/why.md.
+    /// Editorial, in Fraunces. Settled 2026-09-30 from three setups: this structure won,
+    /// carrying the face from the Plate setup (Fraunces Black) in place of Newsreader. The deck
+    /// moved from above the name to beneath it the same day — the name leads, the deck follows,
+    /// then the hairline. Poster (Anton all-caps, the count as a numeral) and Plate (the same
+    /// face centred in a hairline frame) are in archive/2026-09-28-paged-home/why.md.
     private var editorial: some View {
         VStack(alignment: .leading, spacing: 10) {
             Spacer(minLength: 0)
-            Text([span, folio].filter { !$0.isEmpty }.joined(separator: "   ·   "))
-                .font(.custom("ArchivoNarrow-SemiBold", size: 12))
-                .tracking(2.4)
-                .opacity(0.8)
             Text(folder.name)
                 .font(.custom("Fraunces-Black", size: 54))
                 .lineLimit(3)
                 .minimumScaleFactor(0.55)
                 .lineSpacing(-4)
                 .fixedSize(horizontal: false, vertical: true)
-            Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
+            if !deck.isEmpty {
+                Text(deck)
+                    .font(.custom("ArchivoNarrow-SemiBold", size: 12))
+                    .tracking(2.4)
+                    .opacity(0.8)
+            }
+            Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 2)
             underline
                 .padding(.top, 4)
             Spacer(minLength: 0)
