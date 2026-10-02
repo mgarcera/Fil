@@ -465,6 +465,7 @@ private struct Block: View {
     let note: Note
     let palette: Palette
     @State private var filament: FilamentTarget?
+    @State private var player = AudioPlayerViewModel()
     @Environment(\.modelContext) private var context
 
     @State private var preview: PhotoPreview?
@@ -540,10 +541,14 @@ private struct Block: View {
                     // outlines one inside the other read as a mistake.
                 }
             } else if !note.audioFilePath.isEmpty {
+                // The shipped playback row: play/pause on the left, bars at their own fixed
+                // width, the time label — so the bubble hugs it. Light scheme inside the white
+                // paper so its Theme colours resolve as ink. The player loads on appear; `load`
+                // only reads duration, playback activates the session off the main thread.
                 VStack(alignment: .leading, spacing: 10) {
-                    CompactWaveformView(duration: note.duration, color: .white.opacity(0.85))
-                        .scaleEffect(x: 1.8, y: 1.6, anchor: .leading)
-                        .frame(height: 30)
+                    PlaybackWaveformView(player: player, totalDuration: note.duration)
+                        .environment(\.colorScheme, .light)
+                        .onAppear { player.load(path: note.audioFilePath) }
                     caption
                 }
             } else {
@@ -619,17 +624,20 @@ private struct Block: View {
         }
     }
 
+    /// Under a photograph or a recording: the thought's own words, in the same Lexend 14 as a
+    /// text bubble, upright and ink — the dim italic Newsreader was for dark glass (2026-10-01).
     private var caption: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(note.titleLine)
-                .font(StudyType.serif(15)).italic()
-                .foregroundStyle(.white.opacity(0.75))
+                .font(.custom("Lexend-Regular", size: 14))
+                .foregroundStyle(.black.opacity(0.9))
             if !note.bodyAfterTitle.isEmpty {
                 Text(note.bodyAfterTitle)
-                    .font(StudyType.serif(15)).italic()
-                    .foregroundStyle(.white.opacity(0.58))
+                    .font(.custom("Lexend-Regular", size: 14))
+                    .foregroundStyle(.black.opacity(0.65))
             }
         }
+        .lineSpacing(4)
     }
 }
 
