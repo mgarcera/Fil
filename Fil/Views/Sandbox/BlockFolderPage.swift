@@ -472,6 +472,9 @@ private struct Nest: View {
                         }
                     }
                 }
+                // The 22 lives on the content, not around the scroll view: the composer is the
+                // scroll view's safe-area inset and must run to the dock's own 12, as in prod.
+                .padding(.horizontal, 22)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .scrollIndicators(.hidden)
@@ -500,8 +503,6 @@ private struct Nest: View {
             .onChange(of: blocks.count) { _, _ in toBottom() }
             .onChange(of: composing) { _, up in if up { toBottom() } }
         }
-        .padding(.leading, 22)
-        .padding(.trailing, 22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: folder.id) {
             if order.isEmpty {
@@ -700,9 +701,6 @@ struct RealComposerBar: View {
     let folder: Folder?
     /// Reported to the nest so it can scroll to the end when the keyboard comes up.
     @Binding var focused: Bool
-    /// The home indicator's height, read above the pager's `ignoresSafeArea`. Added beneath the
-    /// composer while the keyboard is down; when it is up the keyboard is the floor instead.
-    @Environment(\.homeInset) private var homeInset
 
     @Environment(\.modelContext) private var context
     @State private var text = ""
@@ -734,11 +732,9 @@ struct RealComposerBar: View {
             // The home dock's own 30.
             .glassEffect(.regular, in: .rect(cornerRadius: 30))
             .padding(.horizontal, 12)
-            // 8 above the floor, the shipped dock's gap. The floor is the home indicator when the
-            // keyboard is down and the keyboard when it is up, so the inset goes to zero with
-            // focus — on the same spring, so it is one movement with the keyboard's.
-            .padding(.bottom, 8 + (focus ? 0 : homeInset))
-            .animation(Self.morph, value: focus)
+            // 8 beneath, as the shipped dock has. A pushed screen keeps the window's bottom inset
+            // on its own, so adding the measured one here stacked two — the dock sat high.
+            .padding(.bottom, 8)
             .frame(maxWidth: .infinity)
             // Forced dark because the nest's ground always is, and `Theme.primaryText` resolves
             // from the asset catalogue — in light it would be dark text on dark glass.
