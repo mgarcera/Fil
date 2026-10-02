@@ -135,95 +135,79 @@ struct CoverPage: View {
                 // A 2pt black outline on the glyphs themselves (2026-10-01). It read as "2D, flat,
                 // paper" — the language the rest of this page now follows. See `TextOutline`.
                 .modifier(TextOutline(color: .black, width: 2))
-            // The months and count as a stamp, set exactly as the nest's day separators are —
-            // centred, tracked, small — in place of the hairline and the deck (2026-10-01).
-            if !stamp.isEmpty {
-                Text(stamp)
-                    .font(StudyType.sans(11))
-                    .tracking(0.6)
-                    .foregroundStyle(.white.opacity(0.5))
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 10)
-            }
-            // The summary in a message bubble of its own, leading, tail on the left: the folder's
-            // voice answering yours, the first turn of the conversation the nest continues.
+            // The summary as a run of message bubbles, leading: the folder's voice answering
+            // yours, the first turn of the conversation the nest continues. The stamp that sat
+            // above it went on 2026-10-01; the name and the bubbles are the whole cover.
             CoverSummary(folder: folder)
-                .padding(.top, 2)
+                .padding(.top, 12)
             Spacer(minLength: 0)
         }
         .padding(.top, 84)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    /// "MAY – AUG 2026  ·  4", or "SEP 2026  ·  15" in one month. Empty folder: nothing.
-    private var stamp: String {
-        let n = folder.notes.count
-        let stamps = folder.notes.map(\.timestamp)
-        guard n > 0, let first = stamps.min(), let last = stamps.max() else { return "" }
-        let my = DateFormatter(); my.dateFormat = "MMM yyyy"; let m = DateFormatter(); m.dateFormat = "MMM"
-        let a = my.string(from: first).uppercased(), b = my.string(from: last).uppercased()
-        let span = a == b ? b
-            : Calendar.current.isDate(first, equalTo: last, toGranularity: .year)
-                ? "\(m.string(from: first).uppercased()) – \(b)" : "\(a) – \(b)"
-        return "\(span)  ·  \(n)"
-    }
-
 }
 
-/// A short summary of the folder from Apple's Foundation Models — Private Cloud Compute first,
-/// for the larger context and stronger reasoning, the on-device model when PCC cannot be reached,
-/// the newest thought's line when neither can. Cached per folder and count for the session.
+/// The folder's summary as a run of short messages from Apple's Foundation Models — Private Cloud
+/// Compute where it can be reached, the on-device model beneath it. Two to four bubbles, one line
+/// each, in the voice axis A names. Cached per folder, content and voice for the session, and on
+/// disk beneath that.
 struct CoverSummary: View {
     let folder: Folder
-    @State private var text = ""
-    @State private var source = ""
+    @Environment(\.summaryVoice) private var voice
+    @State private var messages: [String] = []
     @State private var thinking = false
+    /// Flipped once the messages land; the bubbles spring in off it, staggered.
+    @State private var shown = false
 
+    private static var cache: [String: [String]] = [:]
 
-    /// Keyed on the folder AND its content signature, so a new thought re-summarises and a page
-    /// turn, or a relaunch, does not. Memory first; `CoverSummaryStore` beneath it on disk. Static:
-    /// the study re-creates this view constantly (Pattern 9).
-    private static var cache: [String: (String, String)] = [:]
-
-    /// What the summary was written for: the count and the newest timestamp. The same idea as
-    /// `Folder.summarySignature` on the shipped caption — add or edit a thought and it changes.
+    /// What the summary was written for: the count and the newest timestamp, plus the voice and
+    /// a format version, so a reworded prompt never reads a stale paragraph back.
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "\(folder.notes.count)-\(newest)"
+        return "v2-\(voice)-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 8) {
             if thinking {
-                // Three skeleton lines where the text will land, inside the bubble.
                 VStack(alignment: .leading, spacing: 10) {
-                    SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12)
                     SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12)
                     SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12).frame(maxWidth: 160)
                 }
                 .padding(.vertical, 5)
                 .frame(width: 240, alignment: .leading)
-            } else if !text.isEmpty {
-                // The composer's own reveal, uncapped so every glyph gets its turn; black ink on
-                // paper, settling at 0.9.
-                AnimatedGradientRevealText(text: text, elementDuration: 0.2,
-                                           perElementDelay: 0.004, minDuration: 0.4,
-                                           settledOpacity: 0.9)
-                    .font(.custom("Lexend-Regular", size: 14))
-                    .foregroundStyle(.black)
-                    .lineSpacing(4)
+                .modifier(PaperBubble(tail: .leading))
+            } else {
+                ForEach(Array(messages.enumerated()), id: \.offset) { i, line in
+                    Text(line)
+                        .font(.custom("Lexend-Regular", size: 14))
+                        .foregroundStyle(.black.opacity(0.9))
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .modifier(PaperBubble(tail: i == messages.count - 1 ? .leading : .none))
+                        // Pop: from 0.8 with a slight overshoot and settle, each 120ms after the
+                        // last — successive texts arriving. One Bool drives it; Core Animation
+                        // tweens the scale and opacity (Pattern 1).
+                        .scaleEffect(shown ? 1 : 0.8, anchor: .bottomLeading)
+                        .opacity(shown ? 1 : 0)
+                        .animation(.spring(response: 0.36, dampingFraction: 0.58).delay(Double(i) * 0.12), value: shown)
+                }
             }
         }
-        .modifier(PaperBubble(tail: .leading))
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, 24)
         .task(id: "\(folder.id)-\(signature)") { await load() }
+        .onChange(of: messages) { _, new in
+            shown = false
+            if !new.isEmpty { Task { @MainActor in try? await Task.sleep(for: .milliseconds(30)); shown = true } }
+        }
     }
 
     /// Whether this build was signed with an entitlement, read from the embedded provisioning
-    /// profile — the plist inside its CMS blob carries the `Entitlements` dictionary. `SecTask`
-    /// would be the direct question, but it is not in the public iOS SDK. An App Store build
-    /// has no embedded profile and answers false; that is fine for a study, and a shipped feature
-    /// would decide this at build time anyway.
+    /// profile — `SecTask` is not in the public iOS SDK. An App Store build has no embedded profile
+    /// and answers false, which is fine for a study.
     private static func hasEntitlement(_ name: String) -> Bool {
         guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
               let data = try? Data(contentsOf: url),
@@ -236,60 +220,69 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
+    /// The two voices on axis A. Both ask for two to four one-line messages; what differs is the
+    /// register. Casual is texting — lowercase, contractions, no slang that dates, no emoji. Warm
+    /// is the trusted friend in normal case.
+    private var instructions: String {
+        let shape = "Write two to four separate messages, one per line, each a single sentence under "
+            + "eighteen words, as if sending them one after another. Say what they keep coming back "
+            + "to, what seems to matter, and what it adds up to — specific to what is actually "
+            + "written, never generic. No preamble, no bullets, no numbering, no quotation marks, "
+            + "no hashtags, no emoji."
+        switch voice {
+        case "warm":
+            return "You are a trusted friend who has read someone's notebook and is texting them, warmly "
+                + "and plainly, what you see in it. Speak to them as 'you', in normal sentence case. " + shape
+        default:
+            return "You're texting a close friend about their notebook, like you'd actually text: all "
+                + "lowercase, contractions, short, direct, kind. Talk to them as 'you'. No slang that "
+                + "will sound dated in a year. " + shape
+        }
+    }
+
     private func load() async {
         let key = "\(folder.id)-\(signature)"
-        if let hit = Self.cache[key] { (text, source) = hit; return }
-        if let hit = CoverSummaryStore.load(folder.id, signature: signature) {
-            Self.cache[key] = hit; (text, source) = hit; return
+        if let hit = Self.cache[key] { messages = hit; return }
+        if let (text, _) = CoverSummaryStore.load(folder.id, signature: signature) {
+            let lines = Self.split(text); Self.cache[key] = lines; messages = lines; return
         }
-        guard !folder.notes.isEmpty else { text = ""; source = ""; return }
+        guard !folder.notes.isEmpty else { messages = []; return }
         thinking = true
         defer { thinking = false }
         let thoughts = folder.notes.sorted { $0.timestamp > $1.timestamp }.prefix(24)
             .map { String((($0.transcript.isEmpty ? $0.title : $0.transcript)).prefix(400)) }
             .filter { !$0.isEmpty }
-        var result = "", by = ""
+        var result = ""
         #if canImport(FoundationModels)
-        let instructions = "You are a trusted friend who has read someone's notebook and is telling "
-            + "them, warmly and plainly, what they see in it. Speak to them as 'you'. Notice what "
-            + "they keep returning to, what seems to matter, and what these entries add up to — "
-            + "the way a good advisor reflects a person back to themselves. Be specific to what is "
-            + "actually written; never generic. Three or four sentences, under eighty words. No "
-            + "quotation marks, no bullet points, no headings, no preamble."
         let prompt = "The notebook is called \"\(folder.name)\". Its recent entries, newest first:\n"
-            + thoughts.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the cover text."
-
-        // 1. Private Cloud Compute. iOS 27, the managed entitlement, a network, and quota.
-        //
-        // The entitlement check comes FIRST and reads the signed binary, because constructing
-        // the model without it is a fatal error, not an `.unavailable` — the app terminated on
-        // signal 5 the moment a cover appeared, before `availability` could be asked:
-        // "FoundationModels/ErrorConversion.swift:140: Fatal error: Missing entitlement". The
-        // entitlement is granted by Apple on request; until then this tier is simply skipped.
+            + thoughts.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the messages."
+        // 1. Private Cloud Compute — entitlement first; constructing the model without it traps.
         if #available(iOS 27.0, *), Self.hasEntitlement("com.apple.developer.private-cloud-compute") {
             let pcc = PrivateCloudComputeLanguageModel()
             if case .available = pcc.availability, !pcc.quotaUsage.isLimitReached {
                 let session = LanguageModelSession(model: pcc, instructions: instructions)
-                if let r = try? await session.respond(to: prompt) {
-                    result = r.content.trimmingCharacters(in: .whitespacesAndNewlines); by = "PRIVATE CLOUD COMPUTE"
-                }
+                if let r = try? await session.respond(to: prompt) { result = r.content }
             }
         }
-        // 2. The on-device model — no network, no quota, no entitlement.
+        // 2. The on-device model.
         if result.isEmpty, case .available = SystemLanguageModel.default.availability {
             let session = LanguageModelSession(instructions: instructions)
-            if let r = try? await session.respond(to: prompt) {
-                result = r.content.trimmingCharacters(in: .whitespacesAndNewlines); by = "ON DEVICE"
-            }
+            if let r = try? await session.respond(to: prompt) { result = r.content }
         }
         #endif
-        // No third tier. If neither model answers, the slot is empty — a stand-in line pretended
-        // to be a summary and read as one.
-        Self.cache[key] = (result, by)
-        // An empty answer is not stored on disk, so it is asked again next time rather than
-        // remembered as the folder's summary.
-        if !result.isEmpty { CoverSummaryStore.save(result, source: by, for: folder.id, signature: signature) }
-        text = result; source = by
+        let lines = Self.split(result)
+        Self.cache[key] = lines
+        if !lines.isEmpty { CoverSummaryStore.save(lines.joined(separator: "\n"), source: voice, for: folder.id, signature: signature) }
+        messages = lines
+    }
+
+    /// One message per line, bullets and numbering stripped, at most four.
+    private static func split(_ text: String) -> [String] {
+        let lines: [String] = text.split(whereSeparator: \.isNewline)
+            .map { String($0).trimmingCharacters(in: .whitespaces) }
+            .map { $0.replacingOccurrences(of: #"^(\d+[.)]|[-•*])\s*"#, with: "", options: .regularExpression) }
+            .filter { !$0.isEmpty }
+        return Array(lines.prefix(4))
     }
 }
 
@@ -300,7 +293,6 @@ struct NestScreen: View {
     let folder: Folder
     @State private var coverImage: Data?
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.chromeStyle) private var chrome
 
     var body: some View {
         Nest(folder: folder, palette: Palette(folder))
@@ -317,12 +309,12 @@ struct NestScreen: View {
                 Button { dismiss() } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(chrome == "paper" ? .black : .white)
+                        .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .modifier(ChromeCircle())
+                .glassEffect(.regular.interactive(), in: .circle)
                 .padding(.leading, 16)
                 .padding(.top, 4)
             }
@@ -471,7 +463,6 @@ private struct Nest: View {
 private struct Block: View {
     let note: Note
     let palette: Palette
-    @Environment(\.litStyle) private var litStyle
     @State private var filament: FilamentTarget?
 
     @State private var preview: PhotoPreview?
@@ -546,7 +537,7 @@ private struct Block: View {
                     // colour and a heavier weight, as FilCard.highlighted does, and a link so a
                     // tap on the word opens its filament. The bubble's own tint and dark ground
                     // are the only differences from the card.
-                    Text(Self.lit(note, style: litStyle))
+                    Text(Self.lit(note))
                         .font(.custom("Lexend-Regular", size: 14))
                         .foregroundStyle(.black.opacity(0.9))
                         .lineSpacing(4)
@@ -650,7 +641,6 @@ struct RealComposerBar: View {
     let folder: Folder?
     /// Reported to the nest so it can scroll to the end when the keyboard comes up.
     @Binding var focused: Bool
-    @Environment(\.chromeStyle) private var chrome
 
     @Environment(\.modelContext) private var context
     @State private var text = ""
@@ -679,16 +669,16 @@ struct RealComposerBar: View {
             // glass lives in the dock, not in `ComposerBar` — which is why mounting the composer
             // on a slab was the wrong comparison.
             .padding(14)
-            // The home dock's own 30, in whichever material axis B says.
-            .modifier(ChromePanel(radius: 30))
+            // The home dock's own 30. Glass, settled 2026-10-01 against paper and line art.
+            .glassEffect(.regular, in: .rect(cornerRadius: 30))
             .padding(.horizontal, 12)
             // 8 beneath, as the shipped dock has. A pushed screen keeps the window's bottom inset
             // on its own, so adding the measured one here stacked two — the dock sat high.
             .padding(.bottom, 8)
             .frame(maxWidth: .infinity)
-            // Dark on glass or line art so `Theme.primaryText` resolves light; on paper the dock
-            // is white and the controls go to the light scheme's ink.
-            .environment(\.colorScheme, chrome == "paper" ? .light : .dark)
+            // Forced dark because the nest's ground always is, and `Theme.primaryText` resolves
+            // from the asset catalogue — in light it would be dark text on dark glass.
+            .environment(\.colorScheme, .dark)
             // No offset of its own. The keyboard region is alive all the way down, so the
             // system raises it — this is the nest's bottom inset, and the nest shrinks.
             .onChange(of: focus) { _, f in focused = f }
@@ -733,15 +723,6 @@ extension EnvironmentValues {
     }
 }
 
-/// How a lit filament word reads on white — "tint", "underline" or "band" — the sandbox's first axis.
-private struct LitStyleKey: EnvironmentKey { static let defaultValue = "tint" }
-/// The nest's chrome — "paper", "glass" or "line" — the sandbox's second axis.
-private struct ChromeStyleKey: EnvironmentKey { static let defaultValue = "paper" }
-extension EnvironmentValues {
-    var litStyle: String { get { self[LitStyleKey.self] } set { self[LitStyleKey.self] = newValue } }
-    var chromeStyle: String { get { self[ChromeStyleKey.self] } set { self[ChromeStyleKey.self] = newValue } }
-}
-
 /// The keyword whose filament a tap asked for; `Identifiable` so a sheet can present it.
 private struct FilamentTarget: Identifiable { let keyword: String; var id: String { keyword } }
 
@@ -749,37 +730,29 @@ private extension Block {
     /// `FilCard.highlighted`'s treatment, carried into the bubble: every attached keyword's range
     /// in the fil's lighter gradient colour at a heavier weight, each range a link the bubble's
     /// `openURL` handler turns into the keyword's popup.
-    /// Three readings of a lit word on white, on axis A: the fil's own gradient colour at full
-    /// strength; black underlined; or black on a pale band of the fil's colour.
-    static func lit(_ note: Note, style: String) -> AttributedString {
+    /// A lit word on paper: black at Lexend Medium on a yellow highlight band — one colour for
+    /// every fil, a marker pen on a page (settled 2026-10-01 over the fil's own colour and an
+    /// underline). Each range is a link the bubble's `openURL` handler turns into the popup.
+    static let highlight = Color(red: 1.0, green: 0.92, blue: 0.35)
+    static func lit(_ note: Note) -> AttributedString {
         var a = AttributedString(note.transcript)
         let keywords = note.attachments.map(\.keyword)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         guard !keywords.isEmpty else { return a }
-        let color = Color(hex: note.gradientStartHex)
         for k in keywords {
             let enc = k.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? k
             var start = a.startIndex
             while start < a.endIndex, let range = a[start...].range(of: k, options: .caseInsensitive) {
                 a[range].font = .custom("Lexend-Medium", size: 14)
+                a[range].foregroundColor = .black
+                a[range].backgroundColor = Self.highlight
                 a[range].link = URL(string: "fil-filament://\(enc)")
-                switch style {
-                case "underline":
-                    a[range].foregroundColor = .black
-                    a[range].underlineStyle = .single
-                case "band":
-                    a[range].foregroundColor = .black
-                    a[range].backgroundColor = color.opacity(0.22)
-                default:
-                    a[range].foregroundColor = color
-                }
                 start = range.upperBound
             }
         }
         return a
     }
 }
-
 
 /// The cover summaries on disk, so a relaunch does not re-ask the model for every folder. One JSON
 /// file beside the cover images, keyed by folder id, each entry carrying the signature it was
@@ -865,10 +838,11 @@ private struct TextOutline: ViewModifier {
     }
 }
 
-/// The paper bubble: white, a 2pt black border, the chat tail on one side. The direction the
+/// The paper bubble: white, a 2pt black border, the chat tail on one side — or none, for a
+/// bubble mid-run; only the last of a sender's run has a tail, as in Messages. The direction the
 /// cover's black-edged name named (2026-10-01).
 private struct PaperBubble: ViewModifier {
-    enum Tail { case leading, trailing }
+    enum Tail { case leading, trailing, none }
     let tail: Tail
 
     func body(content: Content) -> some View {
@@ -877,47 +851,25 @@ private struct PaperBubble: ViewModifier {
             .padding(.leading, tail == .leading ? 22 : 16)
             .padding(.trailing, tail == .trailing ? 22 : 16)
             .background {
-                let shape = ChatBubble()
+                // Softened from full white: "a bit aggressive on the eyes". One shape; the tail is
+                // drawn trailing and a leading bubble is the same shape mirrored.
                 ZStack {
-                    shape.fill(.white)
-                    shape.stroke(.black, lineWidth: 2)
+                    if tail == .none {
+                        RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white.opacity(0.86))
+                        RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(.black, lineWidth: 2)
+                    } else {
+                        ChatBubble().fill(.white.opacity(0.86))
+                        ChatBubble().stroke(.black, lineWidth: 2)
+                    }
                 }
-                // One shape; the tail is drawn trailing, and a leading bubble is the same shape
-                // mirrored.
                 .scaleEffect(x: tail == .leading ? -1 : 1)
             }
     }
 }
 
-/// The nest's chrome in axis B's material: a white bordered panel, the glass it was, or an
-/// outline on the ground.
-private struct ChromePanel: ViewModifier {
-    let radius: CGFloat
-    @Environment(\.chromeStyle) private var chrome
-    func body(content: Content) -> some View {
-        switch chrome {
-        case "paper":
-            content.background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(.white))
-                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(.black, lineWidth: 2))
-        case "line":
-            content.overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(.black, lineWidth: 2))
-        default:
-            content.glassEffect(.regular, in: .rect(cornerRadius: radius))
-        }
-    }
-}
-
-private struct ChromeCircle: ViewModifier {
-    @Environment(\.chromeStyle) private var chrome
-    func body(content: Content) -> some View {
-        switch chrome {
-        case "paper":
-            content.background(Circle().fill(.white)).overlay(Circle().stroke(.black, lineWidth: 2))
-        case "line":
-            content.overlay(Circle().stroke(.black, lineWidth: 2))
-        default:
-            content.glassEffect(.regular.interactive(), in: .circle)
-        }
-    }
+/// The cover summary's voice — "casual" or "warm" — the sandbox's first axis.
+private struct SummaryVoiceKey: EnvironmentKey { static let defaultValue = "casual" }
+extension EnvironmentValues {
+    var summaryVoice: String { get { self[SummaryVoiceKey.self] } set { self[SummaryVoiceKey.self] = newValue } }
 }
 #endif
