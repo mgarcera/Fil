@@ -161,6 +161,21 @@ struct CoverSummary: View {
 
     private static var cache: [String: [String]] = [:]
 
+    /// A sign-off after the run, one of three, chosen per folder from its id — so it reads as
+    /// random across folders and holds still across page turns and relaunches. Mason's words,
+    /// 2026-10-01: the summary names what it is, and hands the judgement back.
+    private static let signoffs = [
+        "but i'm your on-device AI, so you should check on these.",
+        "my AI eyes are good, but yours are better.",
+        "just my take as your on-device AI.",
+    ]
+    private var signoff: String {
+        let seed = folder.id.uuidString.utf8.reduce(0) { ($0 &+ Int($1)) & 0xFFFF }
+        return Self.signoffs[seed % Self.signoffs.count]
+    }
+    /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
+    private var shownMessages: [String] { messages.isEmpty ? [] : messages + [signoff] }
+
     /// What the summary was written for: the count and the newest timestamp, plus a format
     /// version, so a reworded prompt never reads a stale answer back (v8: Mason's prompt, observer).
     private var signature: String {
@@ -179,13 +194,13 @@ struct CoverSummary: View {
                 .frame(width: 240, alignment: .leading)
                 .modifier(PaperBubble(tail: .leading))
             } else {
-                ForEach(Array(messages.enumerated()), id: \.offset) { i, line in
+                ForEach(Array(shownMessages.enumerated()), id: \.offset) { i, line in
                     Text(line)
                         .font(.custom("Lexend-Regular", size: 14))
                         .foregroundStyle(.black.opacity(0.9))
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
-                        .modifier(PaperBubble(tail: i == messages.count - 1 ? .leading : .none))
+                        .modifier(PaperBubble(tail: i == shownMessages.count - 1 ? .leading : .none))
                         // Pop: from 0.8 with a slight overshoot and settle, each 120ms after the
                         // last — successive texts arriving. One Bool drives it; Core Animation
                         // tweens the scale and opacity (Pattern 1).
