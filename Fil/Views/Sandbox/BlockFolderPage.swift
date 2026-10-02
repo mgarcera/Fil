@@ -161,12 +161,12 @@ struct CoverSummary: View {
 
     private static var cache: [String: [String]] = [:]
 
-    /// One sign-off after the run, the same on every folder. Mason's words, 2026-10-01: the
-    /// summary signs its name. Three seeded variants and then "just my take as your on-device
+    /// The sign-off after the run, two bubbles, the same on every folder. Mason's words,
+    /// 2026-10-01, set verbatim: the summary signs its name. Three seeded variants and then "just my take as your on-device
     /// AI." came before it the same evening.
-    private var signoff: String { "sincerely, your on-device ai." }
+    private var signoff: [String] { ["sincerely,", "your on device-ai"] }
     /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
-    private var shownMessages: [String] { messages.isEmpty ? [] : messages + [signoff] }
+    private var shownMessages: [String] { messages.isEmpty ? [] : messages + signoff }
 
     /// What the summary was written for: the count and the newest timestamp, plus a format
     /// version, so a reworded prompt never reads a stale answer back (v8: Mason's prompt, observer).
