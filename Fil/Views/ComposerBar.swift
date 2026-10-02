@@ -267,12 +267,12 @@ struct ComposerBar: View {
             }
         } else if isComposing {
             Button(action: sendWithDissolve) {
-                beamedCircle(symbol: "arrow.up", weight: .bold).opacity(canSend ? 1 : 0.4)
+                glyphPill("arrow.up", filled: true).opacity(canSend ? 1 : 0.4)
             }
             .buttonStyle(.plain).disabled(isProcessing || !canSend).accessibilityLabel("send thought")
         } else {
             Button(action: onEnterSearch) {
-                pill("search")
+                glyphPill("magnifyingglass")
             }
             .buttonStyle(.plain).accessibilityLabel("search your thoughts")
         }
@@ -301,7 +301,8 @@ struct ComposerBar: View {
         }
     }
 
-    /// A capsule with a word in it, for the two resting controls: "more" and "search".
+    /// A capsule with a word in it. "more" is the only one left: search went back to its glyph
+    /// on 2026-10-02 and kept the pill's height.
     private func pill(_ title: String) -> some View {
         Text(title)
             .font(.custom("Lexend-Medium", size: 13))
@@ -311,6 +312,21 @@ struct ComposerBar: View {
             .contentShape(Capsule())
     }
 
+    /// The trailing slot at the pill's own size: search at rest, send while composing, one
+    /// footprint for both (2026-10-02). 34 is what `pill` measures — Lexend-Medium 13 between
+    /// 9 points of padding — so swapping the word for a glyph moved nothing else in the dock.
+    /// `filled` inverts it for send, which is the primary action and still reads as one.
+    private func glyphPill(_ symbol: String, filled: Bool = false) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(filled ? Theme.background : Theme.primaryText)
+            .frame(width: 34, height: 34)
+            .background(filled ? Theme.primaryText : Theme.activeTabBackground, in: Circle())
+            .contentShape(Circle())
+    }
+
+    /// Search mode's own controls, which stay at 56: that mode fills the screen and its action is
+    /// the only thing on it.
     private func beamedCircle(symbol: String, weight: Font.Weight) -> some View {
         Image(systemName: symbol).font(.system(size: 20, weight: weight)).foregroundStyle(Theme.background)
             .frame(width: 56, height: 56)

@@ -369,7 +369,9 @@ struct NestScreen: View {
                         if !selecting { selected.removeAll() }
                     }
                 } label: {
-                    Image(systemName: selecting ? "xmark" : "checkmark.circle")
+                    // A bare checkmark, not the circled one (2026-10-02): the glass is already
+                    // the circle, so the symbol's own ring was a second one inside it.
+                    Image(systemName: selecting ? "xmark" : "checkmark")
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(width: 44, height: 44)
