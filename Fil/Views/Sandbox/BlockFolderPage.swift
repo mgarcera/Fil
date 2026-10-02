@@ -172,7 +172,7 @@ struct CoverSummary: View {
     /// version, so a reworded prompt never reads a stale answer back (v10: Mason's prompt, one topic per line).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v10-\(folder.notes.count)-\(newest)"
+        return "v11-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -228,18 +228,18 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Mason's own words, 2026-10-01 (fourth revision: no em dashes, three to four, one topic per
-    /// line), set verbatim after five rounds of mine. The shape stays
-    /// described, never shown; the cap is five messages now, so `split` keeps five.
+    /// Mason's own words, 2026-10-01 (fifth revision: two to three messages, "no dashes",
+    /// exclaiming allowed, the one-topic-per-line clause dropped), set verbatim after five
+    /// rounds of mine. The shape stays described, never shown; `split` still caps at five.
     private var instructions: String {
         "you're texting the person who wrote these notes and you know them well. write like a "
-        + "younger person. use full sentences, all lowercase, contractions, and no em dashes. be "
+        + "younger person. use full sentences, all lowercase, contractions, and no dashes. be "
         + "direct and kind. the person is always 'you'. you're summarizing their notes as though "
         + "you're refreshing their memory. the notes are not directed towards you, you are an "
         + "observer. you are not simply repeating nor restating what they wrote. you can ask "
-        + "questions. write three to four messages, one topic per line. the folder's title and "
-        + "its topic words are not the content. everything comes from the entries and nothing "
-        + "else. no slang, no hashtags, no emojis."
+        + "questions and exclaim. write two to three messages. the folder's title and its topic "
+        + "words are not the content. everything comes from the entries and nothing else. no "
+        + "slang, no hashtags, no emojis."
     }
 
     private func load() async {
