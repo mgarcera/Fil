@@ -149,7 +149,7 @@ struct CoverPage: View {
 }
 
 /// The folder's summary as a run of short messages from Apple's Foundation Models — Private Cloud
-/// Compute where it can be reached, the on-device model beneath it. Two to three bubbles, one
+/// Compute where it can be reached, the on-device model beneath it. One or two bubbles, one
 /// line each, in Mason's own prompt. Cached per folder and content for the session,
 /// and on disk beneath that.
 struct CoverSummary: View {
@@ -164,7 +164,7 @@ struct CoverSummary: View {
     /// The sign-off after the run, one bubble, the same on every folder. Mason's words,
     /// 2026-10-01, set verbatim (two bubbles were tried and reverted): the summary signs its name. Three seeded variants and then "just my take as your on-device
     /// AI." came before it the same evening.
-    private var signoff: [String] { ["summarized by your on-device ai."] }
+    private var signoff: [String] { ["on-device ai"] }
     /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + signoff }
 
@@ -172,7 +172,7 @@ struct CoverSummary: View {
     /// version, so a reworded prompt never reads a stale answer back (v10: Mason's prompt, one topic per line).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v12-\(folder.notes.count)-\(newest)"
+        return "v13-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -228,18 +228,19 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Mason's own words, 2026-10-01 (sixth revision: "not contradictory, but inquisitive"), set
-    /// verbatim after five rounds of mine. The shape stays described, never shown; `split` caps
-    /// at three to match "two to three".
+    /// Mason's own words, 2026-10-01 (seventh revision: one to two messages, the em dash
+    /// substitution spelled out), set verbatim after five rounds of mine. The shape stays
+    /// described, never shown; `split` caps at two to match "1 to 2".
     private var instructions: String {
         "you're texting the person who wrote these notes and you know them well. write like a "
-        + "younger person. use full sentences, all lowercase, contractions, and no dashes. be "
-        + "direct and kind, not contradictory, but inquisitive. the person is always 'you'. "
-        + "you're summarizing their notes as though you're refreshing their memory. the notes "
-        + "are not directed towards you, you are an observer. you are not simply repeating nor "
-        + "restating what they wrote. you can ask questions and exclaim. write two to three "
-        + "messages. the folder's title and its topic words are not the content. everything "
-        + "comes from the entries and nothing else. no slang, no hashtags, no emojis."
+        + "younger person. use full sentences, all lowercase, contractions, and no dashes or em "
+        + "dashes. if you need to use an em dash, use a period or comma instead. be direct and "
+        + "kind, not contradictory, but inquisitive. the person is always 'you'. you're "
+        + "summarizing their notes as though you're refreshing their memory. the notes are not "
+        + "directed towards you, you are an observer. you are not simply repeating nor restating "
+        + "what they wrote. you can ask questions and exclaim. write 1 to 2 messages. the "
+        + "folder's title and its topic words are not the content. everything comes from the "
+        + "entries and nothing else. no slang, no hashtags, no emojis."
     }
 
     private func load() async {
@@ -280,13 +281,13 @@ struct CoverSummary: View {
         messages = lines
     }
 
-    /// One message per line, bullets and numbering stripped, at most three.
+    /// One message per line, bullets and numbering stripped, at most two.
     private static func split(_ text: String) -> [String] {
         let lines: [String] = text.split(whereSeparator: \.isNewline)
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .map { $0.replacingOccurrences(of: #"^(\d+[.)]|[-•*])\s*"#, with: "", options: .regularExpression) }
             .filter { !$0.isEmpty }
-        return Array(lines.prefix(3))
+        return Array(lines.prefix(2))
     }
 }
 
