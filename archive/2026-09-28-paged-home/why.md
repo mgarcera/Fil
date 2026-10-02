@@ -267,3 +267,10 @@ never asked was what the summary is for. Settled by cards:
   is not on Fil Extra; Private Cloud Compute waits on Apple's entitlement.
 - Voice stays casual lowercase, no greetings; two to four bubbles springing in; no example
   sentences in the prompt, ever — the shape is described, never shown.
+
+## 2026-10-01 — the arc's end is a different app
+
+Mason, late on the first of October: Fil comes off the App Store; what this sandbox became ships as a
+new app, under a new name, free, in the notes or utilities category, "keeping thoughts in a familiar
+but unique format." Fil stays as archival content. The port the arc was heading toward is not into
+Fil's codebase; it is out of it. Everything above is the record of how the successor was found.
