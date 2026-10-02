@@ -162,10 +162,10 @@ struct CoverSummary: View {
     private static var cache: [String: [String]] = [:]
 
     /// What the summary was written for: the count and the newest timestamp, plus a format
-    /// version, so a reworded prompt never reads a stale answer back (v7: Mason's prompt, up to five).
+    /// version, so a reworded prompt never reads a stale answer back (v8: Mason's prompt, observer).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v7-\(folder.notes.count)-\(newest)"
+        return "v8-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -219,15 +219,17 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Mason's own words, 2026-10-01, set verbatim after five rounds of mine. The shape stays
+    /// Mason's own words, 2026-10-01 (second revision: refreshing their memory, an observer), set
+    /// verbatim after five rounds of mine. The shape stays
     /// described, never shown; the cap is five messages now, so `split` keeps five.
     private var instructions: String {
         "you're texting the person who wrote these notes and you know them well. write like a "
         + "younger person. use all lowercase and contractions. be direct and kind. the person is "
-        + "always 'you'. you're summarizing their notes. write three to five messages, one per "
-        + "line, and one a plain sentence observing what they wrote. the folder's title and its "
-        + "topic words are not the content, what is written is. everything comes from the entries "
-        + "and nothing else. no slang, no hashtags, no emojis."
+        + "always 'you'. you're summarizing their notes as though you're refreshing their memory. "
+        + "the notes are not directed towards you, you are an observer. write three to five "
+        + "messages, one per line, plain sentences observing what they wrote. the folder's title "
+        + "and its topic words are not the content, what is written is. everything comes from the "
+        + "entries and nothing else. no slang, no hashtags, no emojis."
     }
 
     private func load() async {
