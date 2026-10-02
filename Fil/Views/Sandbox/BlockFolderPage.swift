@@ -161,18 +161,10 @@ struct CoverSummary: View {
 
     private static var cache: [String: [String]] = [:]
 
-    /// A sign-off after the run, one of three, chosen per folder from its id — so it reads as
-    /// random across folders and holds still across page turns and relaunches. Mason's words,
-    /// 2026-10-01: the summary names what it is, and hands the judgement back.
-    private static let signoffs = [
-        "but i'm your on-device AI, so you should check on these.",
-        "my AI eyes are good, but yours are better.",
-        "just my take as your on-device AI.",
-    ]
-    private var signoff: String {
-        let seed = folder.id.uuidString.utf8.reduce(0) { ($0 &+ Int($1)) & 0xFFFF }
-        return Self.signoffs[seed % Self.signoffs.count]
-    }
+    /// One sign-off after the run, the same on every folder. Mason's words, 2026-10-01: the
+    /// summary names what it is and hands the judgement back. Three seeded variants were tried
+    /// and cut to this one the same evening.
+    private var signoff: String { "just my take as your on-device AI." }
     /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + [signoff] }
 
