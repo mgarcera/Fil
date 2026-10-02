@@ -817,6 +817,11 @@ private extension Block {
     /// A lit word on paper: black at Lexend Medium on a yellow highlight band — one colour for
     /// every fil, a marker pen on a page (settled 2026-10-01 over the fil's own colour and an
     /// underline). Each range is a link the bubble's `openURL` handler turns into the popup.
+    ///
+    /// PARKED, not dead: the bubble's text moved into the shipped `SelectableTextView` the same
+    /// evening so filaments can be made by selection, and that view draws its own highlight. The
+    /// verdict is the yellow band, so this is the reference for carrying the band into
+    /// `SelectableTextView`; it goes when that is done.
     static let highlight = Color(red: 1.0, green: 0.92, blue: 0.35)
     static func lit(_ note: Note) -> AttributedString {
         var a = AttributedString(note.transcript)
