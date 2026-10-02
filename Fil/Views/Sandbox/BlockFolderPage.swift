@@ -169,7 +169,8 @@ struct CoverSummary: View {
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + signoff }
 
     /// What the summary was written for: the count and the newest timestamp, plus a format
-    /// version, so a reworded prompt never reads a stale answer back (v10: Mason's prompt, one topic per line).
+    /// version, so a reworded prompt never reads a stale answer back. It stays v18 through the
+    /// sentence-case change: that happens in `split`, which runs on the cached text as well.
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
         return "v18-\(folder.notes.count)-\(newest)"
@@ -282,13 +283,36 @@ struct CoverSummary: View {
         messages = lines
     }
 
-    /// One message per line, bullets and numbering stripped, at most two.
+    /// One message per line, bullets and numbering stripped, sentence-cased, at most two.
     private static func split(_ text: String) -> [String] {
         let lines: [String] = text.split(whereSeparator: \.isNewline)
             .map { String($0).trimmingCharacters(in: .whitespaces) }
             .map { $0.replacingOccurrences(of: #"^(\d+[.)]|[-•*])\s*"#, with: "", options: .regularExpression) }
             .filter { !$0.isEmpty }
+            .map(sentenceCased)
         return Array(lines.prefix(2))
+    }
+
+    /// The case the prompt asks for, applied after the fact. Asking was not enough: the
+    /// instructions are 131 words with no capital in them, the scaffold under them is lowercase
+    /// too, and the entries are Mason's own lowercase writing — the model copies the form it is
+    /// shown over the form it is told (a quoted folder name came back quoted in every message
+    /// the same way). So the first letter of the line, and of anything after a full stop,
+    /// question mark or exclamation, is raised here where it is certain. Nothing else is
+    /// touched: a lowercase word mid-sentence is left as the model wrote it.
+    nonisolated private static func sentenceCased(_ line: String) -> String {
+        var out = ""
+        var raiseNext = true
+        for ch in line {
+            if raiseNext, ch.isLetter {
+                out += String(ch).uppercased()
+                raiseNext = false
+            } else {
+                out.append(ch)
+                if ch == "." || ch == "!" || ch == "?" { raiseNext = true }
+            }
+        }
+        return out
     }
 }
 
