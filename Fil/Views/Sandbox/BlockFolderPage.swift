@@ -195,6 +195,13 @@ struct CoverSummary: View {
     @State private var source = ""
     @State private var thinking = false
 
+    /// The lead in Medium, the prose in Light, as one string so it wraps as one.
+    private var styled: AttributedString {
+        var a = AttributedString(lead); a.font = .custom("Lexend-Medium", size: 16)
+        var b = AttributedString(text); b.font = .custom("Lexend-Light", size: 16)
+        return a + b
+    }
+
     /// "(4 from May to Aug 2026) - ": the count and the months, as the first words of the
     /// summary rather than a line of their own. One month: "(4 in Sep 2026) - ".
     private var lead: String {
@@ -239,12 +246,12 @@ struct CoverSummary: View {
                 // the tail never revealed and the animation looked stopped. The search cadence
                 // tightened instead — 0.004 a glyph, so ~300 characters finish in about 1.4s
                 // and every glyph gets its turn.
+                // Lexend for the summary (2026-10-01): a reading face, where Fraunces is the
+                // name's display face. 16 rather than 17 — Lexend sets wide. Two weights in one
+                // wrapping line: Medium on the count-and-months lead, Light on the prose.
                 AnimatedGradientRevealText(text: lead + text, elementDuration: 0.2,
                                            perElementDelay: 0.004, minDuration: 0.4,
-                                           settledOpacity: 0.85)
-                    // Lexend for the summary (2026-10-01): a reading face, where Fraunces is the
-                    // name's display face. 16 rather than 17 — Lexend sets wide.
-                    .font(.custom("Lexend-Regular", size: 16))
+                                           settledOpacity: 0.85, attributed: styled)
                     .lineSpacing(4)
             }
             // Neither: the model is unavailable or declined, and the slot stays empty rather
