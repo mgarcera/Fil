@@ -164,7 +164,7 @@ struct CoverSummary: View {
     /// The sign-off after the run, one bubble, the same on every folder. Mason's words,
     /// 2026-10-01, set verbatim (two bubbles were tried and reverted): the summary signs its name. Three seeded variants and then "just my take as your on-device
     /// AI." came before it the same evening.
-    private var signoff: [String] { ["on-device AI"] }
+    private var signoff: [String] { ["On-device AI"] }
     /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + signoff }
 
@@ -172,7 +172,7 @@ struct CoverSummary: View {
     /// version, so a reworded prompt never reads a stale answer back (v10: Mason's prompt, one topic per line).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v15-\(folder.notes.count)-\(newest)"
+        return "v16-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -228,19 +228,19 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Mason's own words, 2026-10-01 (ninth revision: "title case", "short" messages), set
-    /// verbatim after five rounds of mine. The shape stays described, never shown; `split`
-    /// caps at two to match "1 to 2".
+    /// Mason's own words, 2026-10-01 (tenth revision: "short sentences", case left to the
+    /// model), set verbatim after five rounds of mine. The shape stays described, never shown;
+    /// `split` caps at two to match "1 to 2".
     private var instructions: String {
         "you're texting the person who wrote these notes and you know them well. write like a "
-        + "younger person. use full sentences, title case, contractions, and no dashes or em "
-        + "dashes. if you need to use an em dash, use a period or comma instead. be direct and "
-        + "kind, not contradictory, but inquisitive. the person is always 'you'. you're "
-        + "summarizing their notes as though you're refreshing their memory. the notes are not "
-        + "directed towards you, you are an observer. you are not simply repeating nor restating "
-        + "what they wrote. you can ask questions and exclaim. write 1 to 2 short messages. the "
-        + "folder's title and its topic words are not the content. everything comes from the "
-        + "entries and nothing else. no slang, no hashtags, no emojis."
+        + "younger person. use short sentences, contractions, and no dashes or em dashes. if you "
+        + "need to use an em dash, use a period or comma instead. be direct and kind, not "
+        + "contradictory, but inquisitive. the person is always 'you'. you're summarizing their "
+        + "notes as though you're refreshing their memory. the notes are not directed towards "
+        + "you, you are an observer. you are not simply repeating nor restating what they wrote. "
+        + "you can ask questions and exclaim. write 1 to 2 short messages. the folder's title "
+        + "and its topic words are not the content. everything comes from the entries and "
+        + "nothing else. no slang, no hashtags, no emojis."
     }
 
     private func load() async {
