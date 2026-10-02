@@ -220,4 +220,4 @@ Six faces were added for the round and stay registered: Anton, Archivo Narrow 40
 Fraunces 400/700/900. Only Fraunces Black and Archivo Narrow SemiBold are used by the cover
 now; the rest are parked for the next type study, and the reason is this line.
 
-2026-10-01: the summary's face is Lexend at 16 (Fraunces stays on the name) — Medium on the count-and-months lead, Light on the prose, after a first pass in Regular. Lexend Regular stays in the bundle, parked; the reason is this line.
+2026-10-01: the summary's face is Lexend at 16 (Fraunces stays on the name) — Medium on the count-and-months lead, Light on the prose, after a first pass in Regular. Light read thin on the prose and Regular came back the same day; Lexend Light stays in the bundle, parked, and the reason is this line.
