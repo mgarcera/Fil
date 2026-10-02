@@ -16,6 +16,12 @@ import SwiftUI
 /// Declining stays available where Apple wants it: the system prompt itself. Typing stays
 /// available because this sheet only appears on a deliberate record tap.
 struct MicPrimingSheet: View {
+    /// The app's own name, from the bundle: "Fil" today, the successor's name the day it is
+    /// renamed, with no edit here. Copy set by Mason, 2026-10-01.
+    private static var appName: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName")
+         ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleName")) as? String ?? "Fil"
+    }
     let onContinue: () -> Void
 
     var body: some View {
@@ -25,11 +31,11 @@ struct MicPrimingSheet: View {
                 .foregroundStyle(Theme.primaryText)
                 .padding(.top, 8)
 
-            Text("Talk to Fil")
+            Text("Record")
                 .font(Theme.dmSans(22, weight: .bold))
                 .foregroundStyle(Theme.primaryText)
 
-            Text("Fil turns what you say into a titled note — right on your device. To record, it needs your microphone and speech recognition. You can always just type instead.")
+            Text("\(Self.appName) transcribes your speech into text on your device. To record, allow the permission.")
                 .font(Theme.dmSans(15))
                 .foregroundStyle(Theme.secondaryText)
                 .multilineTextAlignment(.center)
