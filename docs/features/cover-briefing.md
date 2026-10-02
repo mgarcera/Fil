@@ -128,9 +128,17 @@ endpoint uses.
    same signature as the on-device run.
 
 Step 2 and 3 being separate is the whole safety argument, and it is not new: `fil-a-folder.md`
-specifies the same split. **The model proposes queries; the worker resolves URLs.** A small model
-asked for a citation will produce a plausible one, and a plausible fabricated link about a city
-services programme is the failure that ends trust in the feature on the day it ships.
+specifies the same split. **The model proposes queries; the worker resolves URLs.**
+
+The reason is sharper than "models make links up", which measurement on 2026-10-02 showed is not
+quite the problem. Asked for citations, Apple's on-device model returned a mix: `arxiv.org`
+resolved 200, `www.icml.org` did not resolve at all, and a documentation URL came back 404 because
+it carried one underscore the real page does not have. So a local model does emit real URLs, and
+it has no way to tell you which of its URLs are real. **Nothing a model outputs is a citation
+until something resolves it.** That is why resolution belongs on the worker in every tier.
+
+Measured with the Foundation Models framework on macOS 26.6.2 with Apple Intelligence enabled,
+and every URL checked with `curl -L`. No iOS 27 device was exercised.
 
 ## The client
 
@@ -166,6 +174,19 @@ folder, not an inherited one.
 
 The cap matters more than the unit price. A briefing is ambient rather than human-paced, so a
 daily per-user ceiling and the signature cache are what keep the subscription solvent.
+
+## The free half has a coverage gap, and it is bigger than "old phones"
+
+`SystemLanguageModel` has three distinct unavailable reasons, not one: `deviceNotEligible`,
+`appleIntelligenceNotEnabled`, `modelNotReady`. Apple Intelligence needs an A17 Pro or newer with
+8 GB of RAM, **7 GB of free storage** for the downloaded assets, and the user to have switched it
+on. A current phone with a full disk, or one belonging to someone who never turned the feature on,
+gets the same nothing an iPhone 13 does.
+
+`CoverSummary.load()` today has no branch for this. The availability check fails, `result` stays
+empty, `split("")` returns nothing, and the cover renders its title with blank space under it. For
+the successor, whose cover IS the product, a silent blank is the wrong answer to a condition this
+common. Whatever v1 does here, it needs a deliberate one.
 
 ## Out of v1
 
