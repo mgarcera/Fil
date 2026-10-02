@@ -92,10 +92,8 @@ struct ComposerBar: View {
                             Button { addTodoPill() } label: { Label("Add to-do", systemImage: "checklist") }
                         }
                     } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundStyle(Theme.primaryText)
-                            .frame(width: 56, height: 56).contentShape(Circle())
+                        // A pill that says what it is (2026-10-01), where a + glyph was.
+                        pill("more")
                     }
                     .disabled(isProcessing)
                     .accessibilityLabel("more capture options")
@@ -274,11 +272,7 @@ struct ComposerBar: View {
             .buttonStyle(.plain).disabled(isProcessing || !canSend).accessibilityLabel("send thought")
         } else {
             Button(action: onEnterSearch) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Theme.background)
-                    .frame(width: 56, height: 56)
-                    .background(Theme.primaryText, in: Circle())
+                pill("search")
             }
             .buttonStyle(.plain).accessibilityLabel("search your thoughts")
         }
@@ -305,6 +299,16 @@ struct ComposerBar: View {
             try? await Task.sleep(for: .seconds(hold))
             dissolvingText = nil
         }
+    }
+
+    /// A capsule with a word in it, for the two resting controls: "more" and "search".
+    private func pill(_ title: String) -> some View {
+        Text(title)
+            .font(.custom("Lexend-Medium", size: 13))
+            .foregroundStyle(Theme.primaryText)
+            .padding(.horizontal, 14).padding(.vertical, 9)
+            .background(Theme.activeTabBackground, in: Capsule())
+            .contentShape(Capsule())
     }
 
     private func beamedCircle(symbol: String, weight: Font.Weight) -> some View {

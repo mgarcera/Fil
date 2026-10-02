@@ -45,6 +45,8 @@ struct PlaybackWaveformView: View {
     var player: AudioPlayerViewModel
     let totalDuration: TimeInterval
     var showsPlayButton: Bool = true
+    /// Optional font for the time label; nil keeps the mono the shipped home uses (2026-10-01).
+    var labelFont: Font? = nil
     private let barCount = 24
 
     var body: some View {
@@ -71,7 +73,7 @@ struct PlaybackWaveformView: View {
             }
 
             Text(timeLabel)
-                .font(Theme.dmMono(11))
+                .font(labelFont ?? Theme.dmMono(11))
                 .foregroundStyle(Theme.secondaryText)
                 .monospacedDigit()
         }

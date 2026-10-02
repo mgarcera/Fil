@@ -187,12 +187,14 @@ struct CoverSummary: View {
                 .modifier(PaperBubble(tail: .leading))
             } else {
                 ForEach(Array(shownMessages.enumerated()), id: \.offset) { i, line in
+                    // The last bubble is the sign-off: white outline, white text, no fill.
+                    let isSignoff = i == shownMessages.count - 1
                     Text(line)
                         .font(.custom("Lexend-Regular", size: 14))
-                        .foregroundStyle(.black.opacity(0.9))
+                        .foregroundStyle(isSignoff ? .white : .black.opacity(0.9))
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
-                        .modifier(PaperBubble(tail: i == shownMessages.count - 1 ? .leading : .none))
+                        .modifier(PaperBubble(tail: isSignoff ? .leading : .none, outlined: isSignoff))
                         // Pop: from 0.8 with a slight overshoot and settle, each 120ms after the
                         // last — successive texts arriving. One Bool drives it; Core Animation
                         // tweens the scale and opacity (Pattern 1).
@@ -407,7 +409,7 @@ private struct Nest: View {
                             if i == 0 || !Calendar.current.isDate(note.timestamp,
                                                                   inSameDayAs: blocks[i - 1].timestamp) {
                                 Text(Self.stamp(note.timestamp))
-                                    .font(StudyType.sans(11))
+                                    .font(.custom("Lexend-Light", size: 11))
                                     .tracking(0.6)
                                     .foregroundStyle(.white.opacity(0.5))
                                     .frame(maxWidth: .infinity)
@@ -531,9 +533,9 @@ private struct Block: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(note.sourceTitle ?? note.sourceURLString ?? "")
                                 .font(.custom("Lexend-Medium", size: 14))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(.black.opacity(0.9))
                             if let host = note.sourceURL?.host()?.replacingOccurrences(of: "www.", with: "") {
-                                Text(host).font(Theme.dmMono(10.5)).foregroundStyle(.white.opacity(0.55))
+                                Text(host).font(.custom("Lexend-Regular", size: 11)).foregroundStyle(.black.opacity(0.55))
                             }
                         }
                     }
@@ -546,7 +548,8 @@ private struct Block: View {
                 // paper so its Theme colours resolve as ink. The player loads on appear; `load`
                 // only reads duration, playback activates the session off the main thread.
                 VStack(alignment: .leading, spacing: 10) {
-                    PlaybackWaveformView(player: player, totalDuration: note.duration)
+                    PlaybackWaveformView(player: player, totalDuration: note.duration,
+                                         labelFont: .custom("Lexend-Regular", size: 12))
                         .environment(\.colorScheme, .light)
                         .onAppear { player.load(path: note.audioFilePath) }
                     caption
@@ -595,6 +598,10 @@ private struct Block: View {
                                 lineSpacing: 4,
                                 keywordForeground: .black,
                                 keywordBackground: UIColor(Self.highlight))
+                            // Light scheme on the text view itself: its link attributes use
+                            // `UIColor.label`, which the nest's forced dark scheme turned white —
+                            // every lit word and link read white on the paper.
+                            .environment(\.colorScheme, .light)
                         }
                 }
             }
@@ -971,6 +978,9 @@ private struct TextOutline: ViewModifier {
 private struct PaperBubble: ViewModifier {
     enum Tail { case leading, trailing, none }
     let tail: Tail
+    /// White outline, no fill, for the summary's sign-off (2026-10-01): the model's bubbles are
+    /// paper, the signature is drawn on the ground.
+    var outlined: Bool = false
 
     func body(content: Content) -> some View {
         content
@@ -981,12 +991,14 @@ private struct PaperBubble: ViewModifier {
                 // Softened from full white: "a bit aggressive on the eyes". One shape; the tail is
                 // drawn trailing and a leading bubble is the same shape mirrored.
                 ZStack {
+                    let fill: Color = outlined ? .clear : .white.opacity(0.86)
+                    let line: Color = outlined ? .white : .black
                     if tail == .none {
-                        RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white.opacity(0.86))
-                        RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(.black, lineWidth: 2)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous).fill(fill)
+                        RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(line, lineWidth: 2)
                     } else {
-                        ChatBubble().fill(.white.opacity(0.86))
-                        ChatBubble().stroke(.black, lineWidth: 2)
+                        ChatBubble().fill(fill)
+                        ChatBubble().stroke(line, lineWidth: 2)
                     }
                 }
                 .scaleEffect(x: tail == .leading ? -1 : 1)
