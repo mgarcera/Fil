@@ -162,9 +162,9 @@ struct CoverSummary: View {
     private static var cache: [String: [String]] = [:]
 
     /// One sign-off after the run, the same on every folder. Mason's words, 2026-10-01: the
-    /// summary names what it is and hands the judgement back. Three seeded variants were tried
-    /// and cut to this one the same evening.
-    private var signoff: String { "just my take as your on-device AI." }
+    /// summary signs its name. Three seeded variants and then "just my take as your on-device
+    /// AI." came before it the same evening.
+    private var signoff: String { "sincerely, your on-device ai." }
     /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + [signoff] }
 
