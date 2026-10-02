@@ -11,10 +11,6 @@ struct AnimatedGradientRevealText: View {
     /// opaque). Lower it to let the colors read vividly during the reveal while the
     /// resting text fades back to a muted, placeholder-like level.
     var settledOpacity: Double = 1
-    /// Optional styled form of `text` — runs of different fonts or weights inside one wrapping
-    /// line. The reveal is timed from `text`; this only changes what is drawn. Additive (2026-10-01,
-    /// for the folder cover's "(4 from May to Aug 2026) - …" lead-in in a heavier weight).
-    var attributed: AttributedString? = nil
 
     @State private var animationStartDate = Date()
 
@@ -34,7 +30,7 @@ struct AnimatedGradientRevealText: View {
 
     var body: some View {
         TimelineView(.animation) { context in
-            (attributed.map { Text($0) } ?? Text(text))
+            Text(text)
                 .textRenderer(
                     GradientRevealTextRenderer(
                         elapsedTime: min(
