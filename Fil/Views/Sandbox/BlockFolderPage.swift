@@ -162,10 +162,10 @@ struct CoverSummary: View {
     private static var cache: [String: [String]] = [:]
 
     /// What the summary was written for: the count and the newest timestamp, plus a format
-    /// version, so a reworded prompt never reads a stale answer back (v3: no greetings).
+    /// version, so a reworded prompt never reads a stale answer back (v4: no quoted words, 'you').
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v3-\(folder.notes.count)-\(newest)"
+        return "v4-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -219,20 +219,28 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Casual lowercase texting — settled 2026-10-01 over the warm normal-case friend. No
-    /// greetings or openers: the model reached for "hey" and "yeah" and they were the first
-    /// thing cut. Two to four one-line messages, specific to what is written.
+    /// Casual lowercase texting — settled 2026-10-01 over the warm normal-case friend.
+    ///
+    /// Rewritten the same evening from a screenshot: the model was quoting every topic word,
+    /// talking about the writer as "they", and summarising keywords instead of entries. Each
+    /// came from the prompt — the notebook's name was shown in quotes, the instruction said
+    /// "talk to them", and "specific" was never defined. So: the name goes in unquoted, the
+    /// person is "you" and only "you", and specific means a thing from an entry — a name, a
+    /// place, a plan, a worry — not the notebook's subject.
     private var instructions: String {
-        "You're texting a close friend about their notebook, like you'd actually text: all "
-        + "lowercase, contractions, short, direct, kind. Talk to them as 'you'. No slang that "
-        + "will sound dated in a year. Start straight in on the content: no greeting, no "
-        + "opener, no 'hey', 'yeah', 'ok so', 'honestly' — the first word of the first message "
-        + "is already about the notebook. "
-        + "Write two to four separate messages, one per line, each a single sentence under "
-        + "eighteen words, as if sending them one after another. Say what they keep coming back "
-        + "to, what seems to matter, and what it adds up to — specific to what is actually "
-        + "written, never generic. No preamble, no bullets, no numbering, no quotation marks, "
-        + "no hashtags, no emoji."
+        "you're texting the person who wrote this notebook. you know them well. write the way "
+        + "you'd actually text: all lowercase, contractions, short, direct, kind. "
+        + "you are talking to them, so the person is always 'you' — their notes are 'your notes'. "
+        + "each message is one plain sentence under eighteen words, written straight, words set in "
+        + "the sentence like any other words. "
+        + "write two to four messages, one per line, sent one after another. "
+        + "the first word of the first message is already about what's in the notes. "
+        + "each message names something concrete from the entries themselves — a name, a place, "
+        + "a plan, a worry, a thing they said they'd do — and what it shows about them. the "
+        + "notebook's title and its topic words are not the content; what they wrote is. "
+        + "good: 'you've mentioned the chicago move in three notes and never once said when.' "
+        + "weak: 'moving keeps showing up.' "
+        + "no slang that will sound dated in a year, no hashtags, no emoji."
     }
 
     private func load() async {
@@ -249,8 +257,10 @@ struct CoverSummary: View {
             .filter { !$0.isEmpty }
         var result = ""
         #if canImport(FoundationModels)
-        let prompt = "The notebook is called \"\(folder.name)\". Its recent entries, newest first:\n"
-            + thoughts.map { "- " + $0 }.joined(separator: "\n") + "\nWrite the messages."
+        // The name goes in unquoted and the entries as plain lines: the model mirrors the
+        // format it is shown, and a quoted name came back as a quoted word in every message.
+        let prompt = "notebook: \(folder.name)\nentries, newest first:\n\n"
+            + thoughts.joined(separator: "\n\n") + "\n\nwrite the messages."
         // 1. Private Cloud Compute — entitlement first; constructing the model without it traps.
         if #available(iOS 27.0, *), Self.hasEntitlement("com.apple.developer.private-cloud-compute") {
             let pcc = PrivateCloudComputeLanguageModel()
