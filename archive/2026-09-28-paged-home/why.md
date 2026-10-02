@@ -251,3 +251,19 @@ Open, noted for testing: bubble text is SwiftUI `Text`, not the shipped `Selecta
 select → Filament is not reachable from the nest and new filaments cannot be made there yet.
 
 Summary voice, verdict 2026-10-01: **casual** lowercase texting, with greetings cut ("hey", "yeah") — over the warm normal-case friend. Two to four one-line messages springing in 120ms apart. Lit words: yellow band. Chrome: glass. White: 0.86.
+
+### The summary, reframed — 2026-10-01, late
+
+Four prompt rounds in a row chased a *mirror* ("what you keep returning to") and the on-device
+model answered each with a different failure: quoted topic words, "they" for the writer, a greeting,
+and finally my own example sentence copied back as the first line. Stepping back, the question
+never asked was what the summary is for. Settled by cards:
+
+- **A briefing** — what's in this folder, fast — over a mirror or a nudge.
+- **Restate, then one observation last.** Every bubble but the last says one particular thing the
+  entries say; the last is the one place a reading is allowed, so a wrong one is contained by
+  position.
+- **On-device only** for now. The shipped Claude path exists and is Fil Extra-gated, and this phone
+  is not on Fil Extra; Private Cloud Compute waits on Apple's entitlement.
+- Voice stays casual lowercase, no greetings; two to four bubbles springing in; no example
+  sentences in the prompt, ever — the shape is described, never shown.
