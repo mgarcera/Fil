@@ -18,6 +18,9 @@ import SwiftData
 /// cannot reach TestFlight.
 struct SandboxRoute: View {
     @Environment(\.dismiss) private var dismiss
+    /// The real scheme, read HERE because this is the last place it is true: the studies force
+    /// dark for their glass and force light back inside each bubble, so nothing below can ask.
+    @Environment(\.colorScheme) private var systemScheme
 
     @State private var study: Study = .pagedHome
     @State private var variant: String = ""
@@ -88,6 +91,9 @@ struct SandboxRoute: View {
         }
         .preferredColorScheme(forcedScheme)
         .environment(\.homeInset, geo.safeAreaInsets.bottom)
+        // Which way the paper prints. The sun/moon utility already here is the override, so both
+        // printings can be judged without a trip to Settings; nil means follow the phone.
+        .environment(\.paperScheme, forcedScheme ?? systemScheme)
         }
         .ignoresSafeArea(.container, edges: [.top, .horizontal])
         .onChange(of: study) { _, new in

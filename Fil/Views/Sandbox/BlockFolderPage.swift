@@ -154,6 +154,7 @@ struct CoverPage: View {
 /// and on disk beneath that.
 struct CoverSummary: View {
     let folder: Folder
+    @Environment(\.paperScheme) private var scheme
     @State private var messages: [String] = []
     @State private var thinking = false
     /// Flipped once the messages land; the bubbles spring in off it, staggered.
@@ -180,8 +181,8 @@ struct CoverSummary: View {
         VStack(alignment: .leading, spacing: 8) {
             if thinking {
                 VStack(alignment: .leading, spacing: 10) {
-                    SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12)
-                    SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12).frame(maxWidth: 160)
+                    SkeletonView(Capsule(), Paper.ink(scheme, 0.12)).frame(height: 12)
+                    SkeletonView(Capsule(), Paper.ink(scheme, 0.12)).frame(height: 12).frame(maxWidth: 160)
                 }
                 .padding(.vertical, 5)
                 .frame(width: 240, alignment: .leading)
@@ -192,7 +193,7 @@ struct CoverSummary: View {
                     let isSignoff = i == shownMessages.count - 1
                     Text(line)
                         .font(.custom("Lexend-Regular", size: 14))
-                        .foregroundStyle(isSignoff ? .white : .black.opacity(0.9))
+                        .foregroundStyle(isSignoff ? .white : Paper.ink(scheme))
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                         .modifier(PaperBubble(tail: isSignoff ? .leading : .none, outlined: isSignoff))
@@ -621,6 +622,7 @@ private struct SelectionDock: View {
 private struct Block: View {
     let note: Note
     let palette: Palette
+    @Environment(\.paperScheme) private var scheme
     @State private var filament: FilamentTarget?
     @State private var player = AudioPlayerViewModel()
     @Environment(\.modelContext) private var context
@@ -654,16 +656,17 @@ private struct Block: View {
                                 Text(item.text)
                                     .font(.custom("Lexend-Regular", size: 14))
                                     .strikethrough(item.done)
-                                    .foregroundStyle(.black.opacity(item.done ? 0.4 : 0.9))
+                                    .foregroundStyle(Paper.ink(scheme, item.done ? 0.4 : 0.9))
                             }
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                // The bubble is white paper, so the circle's Theme colours resolve for a light
-                // scheme here; under the nest's forced dark scheme they came out white on white.
-                .environment(\.colorScheme, .light)
+                // The circle's Theme colours resolve from the scheme, so it gets the PAPER's,
+                // not the nest's: under the nest's forced dark they came out white on white, and
+                // on dark paper a light-scheme circle would be black on black.
+                .environment(\.colorScheme, scheme)
             } else if note.isImageFil,
                       let data = note.sortedImageFilImages.first?.data ?? note.imageData,
                       let image = UIImage(data: data) {
@@ -684,13 +687,13 @@ private struct Block: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 11) {
                         RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(.white.opacity(0.9)).frame(width: 24, height: 24)
+                            .fill(Paper.ink(scheme, 0.12)).frame(width: 24, height: 24)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(note.sourceTitle ?? note.sourceURLString ?? "")
                                 .font(.custom("Lexend-Medium", size: 14))
-                                .foregroundStyle(.black.opacity(0.9))
+                                .foregroundStyle(Paper.ink(scheme))
                             if let host = note.sourceURL?.host()?.replacingOccurrences(of: "www.", with: "") {
-                                Text(host).font(.custom("Lexend-Regular", size: 11)).foregroundStyle(.black.opacity(0.55))
+                                Text(host).font(.custom("Lexend-Regular", size: 11)).foregroundStyle(Paper.ink(scheme, 0.55))
                             }
                         }
                     }
@@ -705,7 +708,7 @@ private struct Block: View {
                 VStack(alignment: .leading, spacing: 10) {
                     PlaybackWaveformView(player: player, totalDuration: note.duration,
                                          labelFont: .custom("Lexend-Regular", size: 12))
-                        .environment(\.colorScheme, .light)
+                        .environment(\.colorScheme, scheme)
                         .onAppear { player.load(path: note.audioFilePath) }
                     caption
                 }
@@ -747,16 +750,19 @@ private struct Block: View {
                                     withAnimation(.snappy) { note.addTodo(t) }
                                     try? context.save()
                                 },
-                                textColor: UIColor.black.withAlphaComponent(0.9),
+                                textColor: Paper.uiInk(scheme),
                                 font: UIFont(name: "Lexend-Regular", size: 14),
                                 keywordFont: UIFont(name: "Lexend-Medium", size: 14),
                                 lineSpacing: 4,
+                                // Stays dark in both printings. The band is the same yellow either
+                                // way, and white on that yellow is unreadable — a lit word is ink
+                                // on a highlighter, which is not a thing that inverts.
                                 keywordForeground: .black,
                                 keywordBackground: UIColor(Self.highlight))
-                            // Light scheme on the text view itself: its link attributes use
+                            // The PAPER's scheme on the text view: its link attributes use
                             // `UIColor.label`, which the nest's forced dark scheme turned white —
-                            // every lit word and link read white on the paper.
-                            .environment(\.colorScheme, .light)
+                            // every lit word and link read white on white paper.
+                            .environment(\.colorScheme, scheme)
                         }
                 }
             }
@@ -792,11 +798,11 @@ private struct Block: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(note.titleLine)
                 .font(.custom("Lexend-Regular", size: 14))
-                .foregroundStyle(.black.opacity(0.9))
+                .foregroundStyle(Paper.ink(scheme))
             if !note.bodyAfterTitle.isEmpty {
                 Text(note.bodyAfterTitle)
                     .font(.custom("Lexend-Regular", size: 14))
-                    .foregroundStyle(.black.opacity(0.65))
+                    .foregroundStyle(Paper.ink(scheme, 0.65))
             }
         }
         .lineSpacing(4)
@@ -1001,11 +1007,41 @@ struct RealComposerBar: View {
 }
 
 /// The bottom safe-area inset as read before any ancestor ignores it — see `SandboxRoute`.
+/// Which way the paper is printed. NOT `\.colorScheme`: the nest forces dark at three places so
+/// its glass is the smoky variant, and each bubble forced light back so its ink resolved against
+/// white — by the time a bubble is drawn the real scheme is long gone. So the scheme is read once
+/// where it is still true (`SandboxRoute`, which also owns the study's own sun/moon override) and
+/// carried down here, the way `homeInset` carries the indicator's inset past the same wall.
+private struct PaperSchemeKey: EnvironmentKey { static let defaultValue: ColorScheme = .light }
+
+/// The paper's two printings. One place, because 27 lines in this file named black or white
+/// directly and a flip that misses one shows up as a bubble with invisible text.
+enum Paper {
+    /// #121212 at the same 0.86 the white has, so the bubble sits ON the ground rather than
+    /// replacing it — the cover still shows through at the edges either way.
+    static func fill(_ scheme: ColorScheme) -> Color {
+        scheme == .dark ? Color(white: 0.07).opacity(0.86) : .white.opacity(0.86)
+    }
+    /// The drawn 2pt edge. It has to invert with the fill or the drawing disappears into the
+    /// ground, which is the one thing the paper direction cannot afford.
+    static func line(_ scheme: ColorScheme) -> Color { scheme == .dark ? .white : .black }
+    static func ink(_ scheme: ColorScheme, _ opacity: Double = 0.9) -> Color {
+        (scheme == .dark ? Color.white : Color.black).opacity(opacity)
+    }
+    static func uiInk(_ scheme: ColorScheme, _ opacity: Double = 0.9) -> UIColor {
+        (scheme == .dark ? UIColor.white : UIColor.black).withAlphaComponent(opacity)
+    }
+}
+
 private struct HomeInsetKey: EnvironmentKey { static let defaultValue: CGFloat = 0 }
 extension EnvironmentValues {
     var homeInset: CGFloat {
         get { self[HomeInsetKey.self] }
         set { self[HomeInsetKey.self] = newValue }
+    }
+    var paperScheme: ColorScheme {
+        get { self[PaperSchemeKey.self] }
+        set { self[PaperSchemeKey.self] = newValue }
     }
 }
 
@@ -1133,6 +1169,7 @@ private struct TextOutline: ViewModifier {
 private struct PaperBubble: ViewModifier {
     enum Tail { case leading, trailing, none }
     let tail: Tail
+    @Environment(\.paperScheme) private var scheme
     /// White outline, no fill, for the summary's sign-off (2026-10-01): the model's bubbles are
     /// paper, the signature is drawn on the ground.
     var outlined: Bool = false
@@ -1146,8 +1183,11 @@ private struct PaperBubble: ViewModifier {
                 // Softened from full white: "a bit aggressive on the eyes". One shape; the tail is
                 // drawn trailing and a leading bubble is the same shape mirrored.
                 ZStack {
-                    let fill: Color = outlined ? .clear : .white.opacity(0.86)
-                    let line: Color = outlined ? .white : .black
+                    let fill: Color = outlined ? .clear : Paper.fill(scheme)
+                    // The sign-off keeps its white outline in both printings. In dark that is the
+                    // same line every bubble gets and its only difference is an interior of ground
+                    // rather than #121212 — quiet, and chosen over inverting it (2026-10-02).
+                    let line: Color = outlined ? .white : Paper.line(scheme)
                     if tail == .none {
                         RoundedRectangle(cornerRadius: 18, style: .continuous).fill(fill)
                         RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(line, lineWidth: 2)
