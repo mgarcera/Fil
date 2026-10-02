@@ -136,6 +136,11 @@ struct CoverPage: View {
                 .minimumScaleFactor(0.55)
                 .lineSpacing(-4)
                 .fixedSize(horizontal: false, vertical: true)
+                // A 2pt black outline on the glyphs themselves (2026-10-01), so the name holds
+                // its edge on a bright cover photograph. SwiftUI has no text stroke; this is the
+                // same text drawn eight times in black, offset 2pt around the compass, under the
+                // white one — see `TextOutline`.
+                .modifier(TextOutline(color: .black, width: 2))
             Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
             underline
                 .padding(.top, 4)
@@ -845,6 +850,33 @@ private struct PopGestureEnabler: UIViewRepresentable {
             pop.delegate = context.coordinator
             pop.isEnabled = true
         }
+    }
+}
+
+/// A stroke around text, drawn as eight offset copies of the same text beneath it. Every copy
+/// carries the view's full modifier chain (font, line limit, scale, wrapping), so the outline
+/// wraps and scales exactly as the text does. `width` is the outline's reach in points.
+private struct TextOutline: ViewModifier {
+    let color: Color
+    let width: CGFloat
+
+    private var offsets: [CGSize] {
+        let d = width, h = width * 0.7071
+        return [CGSize(width: d, height: 0), CGSize(width: -d, height: 0),
+                CGSize(width: 0, height: d), CGSize(width: 0, height: -d),
+                CGSize(width: h, height: h), CGSize(width: -h, height: h),
+                CGSize(width: h, height: -h), CGSize(width: -h, height: -h)]
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    ForEach(Array(offsets.enumerated()), id: \.offset) { _, o in
+                        content.foregroundStyle(color).offset(o)
+                    }
+                }
+            }
     }
 }
 #endif
