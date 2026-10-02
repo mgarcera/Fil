@@ -52,9 +52,6 @@ struct CoverPage: View {
     @State private var pick: PhotosPickerItem?
     @State private var coverImage: Data?
     @State private var choosing = false
-    /// The deck waits for the line above it. On the Summary chip that is the model finishing;
-    /// on the others there is nothing to wait for.
-    @State private var lineReady = false
     @Environment(\.homeInset) private var homeInset
 
     var body: some View {
@@ -119,34 +116,13 @@ struct CoverPage: View {
 
     // MARK: - The cover
     //
-    // Real data only: the folder's name at its real length, its real count, the months its
-    // thoughts actually span. The hard case is the longest name, which wraps to three lines and
-    // scales down from there.
-
-    private var count: Int { folder.notes.count }
-
-    /// "SEP 2026", or "JUL – SEP 2026" when the thoughts span months. Empty folder: nothing.
-    private var span: String {
-        let stamps = folder.notes.map(\.timestamp)
-        guard let first = stamps.min(), let last = stamps.max() else { return "" }
-        let f = DateFormatter(); f.dateFormat = "MMM yyyy"
-        let a = f.string(from: first).uppercased(), b = f.string(from: last).uppercased()
-        if a == b { return a }
-        let m = DateFormatter(); m.dateFormat = "MMM"
-        return Calendar.current.isDate(first, equalTo: last, toGranularity: .year)
-            ? "\(m.string(from: first).uppercased()) – \(b)" : "\(a) – \(b)"
-    }
-
-    /// "SEP 2026 • 15": the months and the bare count, a bullet between. No word for the count —
-    /// on a cover the number is enough, and the unit is the notebook itself.
-    private var deck: String {
-        [span, count > 0 ? "\(count)" : ""].filter { !$0.isEmpty }.joined(separator: "  •  ")
-    }
+    // Real data only: the folder's name at its real length. The hard case is the longest name,
+    // which wraps to three lines and scales down from there.
 
     /// Editorial, in Fraunces. Settled 2026-09-30 from three setups: this structure won,
     /// carrying the face from the Plate setup (Fraunces Black) in place of Newsreader. The deck
-    /// moved from above the name to beneath the summary the same day — the name leads, the rule,
-    /// then what's in here, then the deck. Poster (Anton all-caps, the count as a numeral) and Plate (the same
+    /// The months and count that were the deck now open the summary's own text:
+    /// "(4 from May to Aug 2026) - …" — see `CoverSummary.lead`. Poster (Anton all-caps, the count as a numeral) and Plate (the same
     /// face centred in a hairline frame) are in archive/2026-09-28-paged-home/why.md.
     private var editorial: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -163,22 +139,10 @@ struct CoverPage: View {
             Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
             underline
                 .padding(.top, 4)
-            // The deck closes the cover: name, rule, what's in here, then the months and count —
-            // and only once what's in here has arrived, so it never sits under the dots.
-            if !deck.isEmpty, lineReady {
-                Text(deck)
-                    .font(.custom("ArchivoNarrow-SemiBold", size: 12))
-                    .tracking(2.4)
-                    .opacity(0.8)
-                    .padding(.top, 4)
-                    .transition(.opacity)
-            }
             Spacer(minLength: 0)
         }
         .padding(.top, 84)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .animation(.easeOut(duration: 0.35), value: lineReady)
-        .onChange(of: line, initial: true) { _, new in lineReady = new != "summary" }
     }
 
     // MARK: - Under the line
@@ -211,7 +175,7 @@ struct CoverPage: View {
                     .opacity(0.8)
             }
         default:
-            CoverSummary(folder: folder, finished: $lineReady)
+            CoverSummary(folder: folder)
         }
     }
 
@@ -227,11 +191,23 @@ struct CoverPage: View {
 /// the newest thought's line when neither can. Cached per folder and count for the session.
 struct CoverSummary: View {
     let folder: Folder
-    /// True once the request has ended — text or not — so the cover can lay out what follows.
-    @Binding var finished: Bool
     @State private var text = ""
     @State private var source = ""
     @State private var thinking = false
+
+    /// "(4 from May to Aug 2026) - ": the count and the months, as the first words of the
+    /// summary rather than a line of their own. One month: "(4 in Sep 2026) - ".
+    private var lead: String {
+        let n = folder.notes.count
+        let stamps = folder.notes.map(\.timestamp)
+        guard n > 0, let first = stamps.min(), let last = stamps.max() else { return "" }
+        let my = DateFormatter(); my.dateFormat = "MMM yyyy"
+        let m = DateFormatter(); m.dateFormat = "MMM"
+        let a = my.string(from: first), b = my.string(from: last)
+        if a == b { return "(\(n) in \(b)) - " }
+        let sameYear = Calendar.current.isDate(first, equalTo: last, toGranularity: .year)
+        return "(\(n) from \(sameYear ? m.string(from: first) : a) to \(b)) - "
+    }
 
     /// Keyed on the folder AND its content signature, so a new thought re-summarises and a page
     /// turn, or a relaunch, does not. Memory first; `CoverSummaryStore` beneath it on disk. Static:
@@ -258,16 +234,16 @@ struct CoverSummary: View {
                 }
                 .padding(.vertical, 5)
             } else if !text.isEmpty {
-                // The composer's own reveal: each glyph in from a gradient, resting at 0.85 —
-                // the same renderer the search summary and the placeholder use.
-                AnimatedGradientRevealText(text: text, maxDuration: 1.4, settledOpacity: 0.85)
+                // The composer's own reveal: each glyph in from a gradient, resting at 0.85.
+                // No `maxDuration`: the cap clipped the per-glyph schedule, so on a long summary
+                // the tail never revealed and the animation looked stopped. The search cadence
+                // tightened instead — 0.004 a glyph, so ~300 characters finish in about 1.4s
+                // and every glyph gets its turn.
+                AnimatedGradientRevealText(text: lead + text, elementDuration: 0.2,
+                                           perElementDelay: 0.004, minDuration: 0.4,
+                                           settledOpacity: 0.85)
                     .font(.custom("Fraunces-Regular", size: 17))
                     .lineSpacing(3)
-                // Study chrome: which model wrote the line, so the verdict is on the right one.
-                Text(source)
-                    .font(.custom("ArchivoNarrow-Regular", size: 11))
-                    .tracking(2)
-                    .opacity(0.55)
             }
             // Neither: the model is unavailable or declined, and the slot stays empty rather
             // than standing another line in for it.
@@ -294,8 +270,6 @@ struct CoverSummary: View {
 
     private func load() async {
         let key = "\(folder.id)-\(signature)"
-        finished = false
-        defer { finished = true }
         if let hit = Self.cache[key] { (text, source) = hit; return }
         if let hit = CoverSummaryStore.load(folder.id, signature: signature) {
             Self.cache[key] = hit; (text, source) = hit; return
