@@ -150,8 +150,8 @@ struct CoverPage: View {
 
 /// The folder's summary as a run of short messages from Apple's Foundation Models — Private Cloud
 /// Compute where it can be reached, the on-device model beneath it. Two to four bubbles, one line
-/// each, in a casual lowercase voice. Cached per folder and content for the session, and on
-/// disk beneath that.
+/// each, a briefing in a casual lowercase voice. Cached per folder and content for the session,
+/// and on disk beneath that.
 struct CoverSummary: View {
     let folder: Folder
     @State private var messages: [String] = []
@@ -162,10 +162,10 @@ struct CoverSummary: View {
     private static var cache: [String: [String]] = [:]
 
     /// What the summary was written for: the count and the newest timestamp, plus a format
-    /// version, so a reworded prompt never reads a stale answer back (v5: no example sentence to copy).
+    /// version, so a reworded prompt never reads a stale answer back (v6: a briefing, one observation last).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v5-\(folder.notes.count)-\(newest)"
+        return "v6-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -219,30 +219,25 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Casual lowercase texting — settled 2026-10-01 over the warm normal-case friend.
-    ///
-    /// Rewritten the same evening from a screenshot: the model was quoting every topic word,
-    /// talking about the writer as "they", and summarising keywords instead of entries. Each
-    /// came from the prompt — the notebook's name was shown in quotes, the instruction said
-    /// "talk to them", and "specific" was never defined. So: the name goes in unquoted, the
-    /// person is "you" and only "you", and specific means a thing from an entry — a name, a
-    /// place, a plan, a worry — not the notebook's subject. No example sentences: the first draft
-    /// carried one, and the on-device model led the next folder's summary with it, word for word.
-    /// The shape is described instead.
+    /// A briefing, in casual lowercase texting — settled 2026-10-01 after four rounds that aimed
+    /// at a mirror ("what you keep returning to") and got keyword-counting from the on-device
+    /// model. The reframe: every bubble but the last restates one particular thing the entries
+    /// say; the last is the one place a single observation is allowed, so a wrong reading is
+    /// contained by position. No example sentences — an earlier draft's example came back as
+    /// the next folder's first line, word for word. The shape is described, never shown.
     private var instructions: String {
-        "you're texting the person who wrote this notebook. you know them well. write the way "
-        + "you'd actually text: all lowercase, contractions, short, direct, kind. "
-        + "you are talking to them, so the person is always 'you' — their notes are 'your notes'. "
-        + "each message is one plain sentence under eighteen words, written straight, words set in "
-        + "the sentence like any other words. "
-        + "write two to four messages, one per line, sent one after another. "
-        + "the first word of the first message is already about what's in the notes. "
-        + "each message names something concrete from the entries themselves — a name, a place, "
-        + "a plan, a worry, a thing they said they'd do — and what it shows about them. the "
-        + "notebook's title and its topic words are not the content; what they wrote is. "
-        + "a strong message points at one particular thing from one or more entries and says what "
-        + "it shows; a weak one says a subject keeps coming up. "
-        + "everything you write must come from these entries and nothing else. "
+        "you're texting the person who wrote these notes. you know them well. write the way you'd "
+        + "actually text: all lowercase, contractions, short, direct, kind. the person is always "
+        + "'you' and their notes are 'your notes'. "
+        + "your job is a briefing: tell them what's in this folder, fast. "
+        + "write two to four messages, one per line, each one plain sentence under eighteen words. "
+        + "every message except the last says one particular thing the entries say — a plan, a "
+        + "name, a place, a how-to, a worry — in your own short words. "
+        + "the last message is the one place you may add a single modest observation about what "
+        + "the entries have in common. "
+        + "the folder's title and its topic words are not the content; what's written is. "
+        + "everything comes from these entries and nothing else. "
+        + "no greeting and no opener: the first word is already about what's in the notes. "
         + "no slang that will sound dated in a year, no hashtags, no emoji."
     }
 
