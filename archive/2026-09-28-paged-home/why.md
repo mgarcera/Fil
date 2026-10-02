@@ -219,3 +219,5 @@ span, flipped on sandbox axis B from a picker moved to the bottom edge for the p
 Six faces were added for the round and stay registered: Anton, Archivo Narrow 400/600,
 Fraunces 400/700/900. Only Fraunces Black and Archivo Narrow SemiBold are used by the cover
 now; the rest are parked for the next type study, and the reason is this line.
+
+2026-10-01: the summary's face is Lexend Regular at 16 (Fraunces stays on the name). Lexend Light and Medium were fetched with it and are parked for a weight pass; the reason is this line.
