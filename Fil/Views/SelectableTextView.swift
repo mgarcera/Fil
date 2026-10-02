@@ -18,6 +18,14 @@ struct SelectableTextView: UIViewRepresentable {
     /// Fires with `true` when a selection appears and `false` when it clears. The player uses it to
     /// stand its swipe-to-page down: dragging a selection handle sideways is not a request to leave.
     var onSelectionActive: ((Bool) -> Void)? = nil
+    /// Optional overrides (2026-10-01, for the nest's paper bubbles): the body and keyword fonts,
+    /// the line spacing, and the lit keyword's colours. Nil keeps the fil card's Gabarito body
+    /// and the fil's lighter gradient colour, which every existing caller gets unchanged.
+    var font: UIFont? = nil
+    var keywordFont: UIFont? = nil
+    var lineSpacing: CGFloat = 6
+    var keywordForeground: UIColor? = nil
+    var keywordBackground: UIColor? = nil
 
     private var lighterHex: String { Theme.lighterHex(gradientStartHex, gradientEndHex) }
 
@@ -53,27 +61,29 @@ struct SelectableTextView: UIViewRepresentable {
         context.coordinator.parent = self
 
         let attributed = NSMutableAttributedString(string: text, attributes: [
-            .font: bodyFont,
+            .font: font ?? bodyFont,
             .foregroundColor: textColor ?? UIColor.label.withAlphaComponent(0.85),
             .paragraphStyle: {
                 let style = NSMutableParagraphStyle()
-                style.lineSpacing = 6
+                style.lineSpacing = lineSpacing
                 return style
             }()
         ])
 
-        let highlightColor = UIColor(Color(hex: lighterHex))
+        let highlightColor = keywordForeground ?? UIColor(Color(hex: lighterHex))
         for keyword in highlightedKeywords {
             var searchRange = text.startIndex..<text.endIndex
             while let range = text.range(of: keyword, options: .caseInsensitive, range: searchRange) {
                 let nsRange = NSRange(range, in: text)
                 let encoded = keyword.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? keyword
                 if let url = URL(string: "fil-highlight://\(encoded)") {
-                    attributed.addAttributes([
-                        .font: boldBodyFont,
+                    var attrs: [NSAttributedString.Key: Any] = [
+                        .font: keywordFont ?? boldBodyFont,
                         .foregroundColor: highlightColor,
                         .link: url
-                    ], range: nsRange)
+                    ]
+                    if let bg = keywordBackground { attrs[.backgroundColor] = bg }
+                    attributed.addAttributes(attrs, range: nsRange)
                 }
                 searchRange = range.upperBound..<text.endIndex
             }

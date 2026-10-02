@@ -541,24 +541,39 @@ private struct Block: View {
                     // are the only differences from the card.
                     // The shipped `SelectableTextView` (a UITextView), not SwiftUI `Text`: long-press
                     // selects, and the selection menu offers Filament and To-do, which is how a
-                    // new filament gets made. Tap a lit word to open its popup. Two things it
-                    // brings with it, both open: its own font (Gabarito body, not Lexend 14)
-                    // and its own highlight style (the fil's lighter colour, not the yellow band).
-                    SelectableTextView(
-                        text: note.transcript,
-                        highlightedKeywords: note.attachments.map(\.keyword),
-                        gradientStartHex: note.gradientStartHex,
-                        gradientEndHex: note.gradientEndHex,
-                        onSelectText: { keyword, _ in filament = FilamentTarget(keyword: keyword) },
-                        onTapHighlight: { filament = FilamentTarget(keyword: $0) },
-                        onMakeTodo: { text in
-                            let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !t.isEmpty else { return }
-                            withAnimation(.snappy) { note.addTodo(t) }
-                            try? context.save()
-                        },
-                        textColor: .black)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // new filament gets made. Tap a lit word to open its popup.
+                    //
+                    // A text view's natural width is all of it, so on its own every bubble ran
+                    // the full column. A hidden SwiftUI `Text` in the identical font sizes the
+                    // bubble — hugging short words, wrapping long ones at 300 — and the text view
+                    // is laid over it. The fonts have to match exactly for the lines to agree,
+                    // which is why the view now takes its font, spacing and band as parameters.
+                    Text(note.transcript)
+                        .font(.custom("Lexend-Regular", size: 14))
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .opacity(0)
+                        .overlay {
+                            SelectableTextView(
+                                text: note.transcript,
+                                highlightedKeywords: note.attachments.map(\.keyword),
+                                gradientStartHex: note.gradientStartHex,
+                                gradientEndHex: note.gradientEndHex,
+                                onSelectText: { keyword, _ in filament = FilamentTarget(keyword: keyword) },
+                                onTapHighlight: { filament = FilamentTarget(keyword: $0) },
+                                onMakeTodo: { text in
+                                    let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    guard !t.isEmpty else { return }
+                                    withAnimation(.snappy) { note.addTodo(t) }
+                                    try? context.save()
+                                },
+                                textColor: UIColor.black.withAlphaComponent(0.9),
+                                font: UIFont(name: "Lexend-Regular", size: 14),
+                                keywordFont: UIFont(name: "Lexend-Medium", size: 14),
+                                lineSpacing: 4,
+                                keywordForeground: .black,
+                                keywordBackground: UIColor(Self.highlight))
+                        }
                 }
             }
         }
@@ -818,10 +833,8 @@ private extension Block {
     /// every fil, a marker pen on a page (settled 2026-10-01 over the fil's own colour and an
     /// underline). Each range is a link the bubble's `openURL` handler turns into the popup.
     ///
-    /// PARKED, not dead: the bubble's text moved into the shipped `SelectableTextView` the same
-    /// evening so filaments can be made by selection, and that view draws its own highlight. The
-    /// verdict is the yellow band, so this is the reference for carrying the band into
-    /// `SelectableTextView`; it goes when that is done.
+    /// The band colour is what `SelectableTextView` now draws for a lit word; `lit(_:)` itself is
+    /// the SwiftUI form of the same treatment, kept for any non-selectable use.
     static let highlight = Color(red: 1.0, green: 0.92, blue: 0.35)
     static func lit(_ note: Note) -> AttributedString {
         var a = AttributedString(note.transcript)
