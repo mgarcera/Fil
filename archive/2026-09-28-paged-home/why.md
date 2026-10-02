@@ -235,3 +235,5 @@ paper. Open: what else on the cover and in the nest takes the edge — the rule,
 bubbles — and whether the glass dock survives a paper world.
 
 Also settled the same day, by verdict: bubbles are glass, not hairline (axis A stripped).
+
+Filaments on bubbles, verdict 2026-10-01: **lit words** (FilCard's treatment carried into the bubble) over chips. Chips not yet stripped — they are the only form that reaches a photo or voice fil, and the paper direction's ideas are pending; the strip waits on those.
