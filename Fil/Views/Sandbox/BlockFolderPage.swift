@@ -529,7 +529,7 @@ private struct Block: View {
                             // into the flat side you saw.
                             TodoStatusCircle(isCompleted: item.done, onColor: true)
                             Text(item.text)
-                                .font(StudyType.serif(16))
+                                .font(.custom("Lexend-Regular", size: 14))
                                 .strikethrough(item.done)
                                 .foregroundStyle(.white.opacity(item.done ? 0.45 : 0.9))
                         }
@@ -558,7 +558,7 @@ private struct Block: View {
                             .fill(.white.opacity(0.9)).frame(width: 24, height: 24)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(note.sourceTitle ?? note.sourceURLString ?? "")
-                                .font(StudyType.serif(15, weight: .semibold))
+                                .font(.custom("Lexend-Medium", size: 14))
                                 .foregroundStyle(.white)
                             if let host = note.sourceURL?.host()?.replacingOccurrences(of: "www.", with: "") {
                                 Text(host).font(Theme.dmMono(10.5)).foregroundStyle(.white.opacity(0.55))
@@ -578,11 +578,11 @@ private struct Block: View {
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     // One voice: no heading weight, no first-line emphasis. A thought is what was
-                    // written, at one size, and the bubble is what says where it ends.
-                    // 16 rather than the body's old 14.5 because Newsreader sets smaller than
-                    // Helvetica at the same point size.
+                    // written, at one size, and the bubble is what says where it ends. Lexend 14
+                    // (2026-10-01), the summary's face, so the cover and its thoughts read as one
+                    // voice; Newsreader 16 before that.
                     Text(note.transcript)
-                        .font(StudyType.serif(16))
+                        .font(.custom("Lexend-Regular", size: 14))
                         .foregroundStyle(.white.opacity(0.88))
                         .lineSpacing(4)
                 }
