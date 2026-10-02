@@ -274,3 +274,13 @@ Mason, late on the first of October: Fil comes off the App Store; what this sand
 new app, under a new name, free, in the notes or utilities category, "keeping thoughts in a familiar
 but unique format." Fil stays as archival content. The port the arc was heading toward is not into
 Fil's codebase; it is out of it. Everything above is the record of how the successor was found.
+
+## 2026-10-02 — the briefing stops asking
+
+The cover's messages asked questions because the model had nothing but the folder in front of it.
+Mason's call: it should extend the line of thinking instead, with a real link, and that is the
+thing worth paying for. Four decisions recorded in `docs/features/cover-briefing.md`: source is
+tiered (own folders free on device, the world paid through the worker), the finding is a resolved
+URL rather than a free-floating fact, the bubble offers and a tap files it, and it runs on open
+behind the signature cache. The open risk is cost shape, not cost per call: an ambient briefing
+breaks the human-paced assumption the locked break-even rests on.
