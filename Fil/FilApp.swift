@@ -111,7 +111,9 @@ private extension FilApp {
             // 2026-09-30 cover study: a condensed poster face, a narrow grotesque for decks
             // and folios, and a soft high-contrast serif. Sandbox only, like Newsreader.
             "Anton-400", "ArchivoNarrow-400", "ArchivoNarrow-600",
-            "Fraunces-400", "Fraunces-700", "Fraunces-900"
+            "Fraunces-400", "Fraunces-700", "Fraunces-900",
+            // 2026-10-01: the cover summary's face.
+            "Lexend-300", "Lexend-400", "Lexend-500"
         ]
         for name in names {
             guard let url = Bundle.main.url(forResource: name, withExtension: "ttf") else { continue }

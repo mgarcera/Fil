@@ -242,8 +242,10 @@ struct CoverSummary: View {
                 AnimatedGradientRevealText(text: lead + text, elementDuration: 0.2,
                                            perElementDelay: 0.004, minDuration: 0.4,
                                            settledOpacity: 0.85)
-                    .font(.custom("Fraunces-Regular", size: 17))
-                    .lineSpacing(3)
+                    // Lexend for the summary (2026-10-01): a reading face, where Fraunces is the
+                    // name's display face. 16 rather than 17 — Lexend sets wide.
+                    .font(.custom("Lexend-Regular", size: 16))
+                    .lineSpacing(4)
             }
             // Neither: the model is unavailable or declined, and the slot stays empty rather
             // than standing another line in for it.
