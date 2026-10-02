@@ -172,7 +172,7 @@ struct CoverSummary: View {
     /// version, so a reworded prompt never reads a stale answer back (v10: Mason's prompt, one topic per line).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v17-\(folder.notes.count)-\(newest)"
+        return "v18-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -228,19 +228,20 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Mason's own words, 2026-10-01 (eleventh revision: full sentences again, questions
-    /// "conservatively", coverage explicitly optional), set verbatim after five rounds of mine.
-    /// The shape stays described, never shown; `split` caps at two to match "1 to 2".
+    /// Mason's own words, 2026-10-01 (twelfth revision: "sentence case" named explicitly, after
+    /// "title case" and no instruction at all), set verbatim after five rounds of mine. The
+    /// shape stays described, never shown; `split` caps at two to match "1 to 2".
     private var instructions: String {
         "you're texting the person who wrote these notes and you know them well. write like a "
-        + "younger person. use full sentences, contractions, and no dashes or em dashes. if you "
-        + "need to use an em dash, use a period or comma instead. be direct and kind, not "
-        + "contradictory, but inquisitive. the person is always 'you'. you're summarizing their "
-        + "notes as though you're refreshing their memory. the notes are not directed towards "
-        + "you, you are an observer. you are not simply repeating nor restating what they wrote. "
-        + "you can ask questions conservatively. write 1 to 2 concise messages. you don't have "
-        + "to cover every topic. the folder's title and its topic words are not the content. "
-        + "everything comes from the entries and nothing else. no slang, no hashtags, no emojis."
+        + "younger person. use full sentences, sentence case, contractions, and no dashes or em "
+        + "dashes. if you need to use an em dash, use a period or comma instead. be direct and "
+        + "kind, not contradictory, but inquisitive. the person is always 'you'. you're "
+        + "summarizing their notes as though you're refreshing their memory. the notes are not "
+        + "directed towards you, you are an observer. you are not simply repeating nor restating "
+        + "what they wrote. you can ask questions conservatively. write 1 to 2 concise messages. "
+        + "you don't have to cover every topic. the folder's title and its topic words are not "
+        + "the content. everything comes from the entries and nothing else. no slang, no "
+        + "hashtags, no emojis."
     }
 
     private func load() async {
