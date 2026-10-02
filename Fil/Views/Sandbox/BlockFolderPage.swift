@@ -148,9 +148,22 @@ struct CoverPage: View {
 
 }
 
+#if canImport(FoundationModels)
+/// What the model is asked to return, instead of a paragraph we then try to cut up. The messages
+/// came back as one block on 2026-10-02 with three separate topics inside it, because `split`
+/// divides on newlines and nothing obliged the model to press return. An array is a contract the
+/// decoder enforces; a line break was only ever a request.
+@Generable(description: "A short run of text messages summarising someone's own notebook")
+private struct Briefing {
+    @Guide(description: "One message per distinct topic. Never put two topics in one message.",
+           .count(2...3))
+    var messages: [String]
+}
+#endif
+
 /// The folder's summary as a run of short messages from Apple's Foundation Models — Private Cloud
-/// Compute where it can be reached, the on-device model beneath it. One or two bubbles, one
-/// line each, in Mason's own prompt. Cached per folder and content for the session,
+/// Compute where it can be reached, the on-device model beneath it. Two or three bubbles, one
+/// topic each, in Mason's own prompt. Cached per folder and content for the session,
 /// and on disk beneath that.
 struct CoverSummary: View {
     let folder: Folder
@@ -174,7 +187,7 @@ struct CoverSummary: View {
     /// not need one: that happens in `split`, which runs on the cached text as well.
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v19-\(folder.notes.count)-\(newest)"
+        return "v20-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -230,9 +243,10 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Mason's own words, 2026-10-01 (thirteenth revision: cover the notable entries rather than
-    /// the recent ones), set verbatim after five rounds of mine. The shape stays described, never
-    /// shown; `split` caps at two and raises the case the prompt asks for.
+    /// Mason's own words, 2026-10-01 (thirteenth revision), with the count raised to two or three
+    /// and "one topic per message" restored on 2026-10-02, both his call. The shape stays
+    /// described, never shown; the count is also a `@Guide` on `Briefing`, which is what actually
+    /// holds it.
     private var instructions: String {
         "you're texting the person who wrote these notes and you know them well. write like a "
         + "younger person. use full sentences, sentence case, contractions, and no dashes or em "
@@ -240,7 +254,8 @@ struct CoverSummary: View {
         + "kind, not contradictory, but inquisitive. the person is always 'you'. you're "
         + "summarizing their notes as though you're refreshing their memory. the notes are not "
         + "directed towards you, you are an observer. you are not simply repeating nor restating "
-        + "what they wrote. you can ask questions conservatively. write 1 to 2 concise messages. "
+        + "what they wrote. you can ask questions conservatively. write 2 to 3 concise messages, "
+        + "one topic per message. "
         + "you don't have to cover every topic, but cover the notable notes rather than relying "
         + "solely on recency. the folder's title and its topic words are not the content. "
         + "everything comes from the entries and nothing else. no slang, no hashtags, no emojis."
@@ -259,6 +274,7 @@ struct CoverSummary: View {
             .map { String((($0.transcript.isEmpty ? $0.title : $0.transcript)).prefix(400)) }
             .filter { !$0.isEmpty }
         var result = ""
+        var listed: [String] = []
         #if canImport(FoundationModels)
         // The name goes in unquoted and the entries as plain lines: the model mirrors the
         // format it is shown, and a quoted name came back as a quoted word in every message.
@@ -269,29 +285,63 @@ struct CoverSummary: View {
             let pcc = PrivateCloudComputeLanguageModel()
             if case .available = pcc.availability, !pcc.quotaUsage.isLimitReached {
                 let session = LanguageModelSession(model: pcc, instructions: instructions)
-                if let r = try? await session.respond(to: prompt) { result = r.content }
+                if let r = try? await session.respond(to: prompt, generating: Briefing.self) {
+                    listed = r.content.messages
+                } else if let r = try? await session.respond(to: prompt) {
+                    result = r.content
+                }
             }
         }
-        // 2. The on-device model.
-        if result.isEmpty, case .available = SystemLanguageModel.default.availability {
+        // 2. The on-device model. Guided generation first; a plain response is the fallback, since
+        // a decode failure returns nothing at all rather than a usable paragraph.
+        if listed.isEmpty, result.isEmpty, case .available = SystemLanguageModel.default.availability {
             let session = LanguageModelSession(instructions: instructions)
-            if let r = try? await session.respond(to: prompt) { result = r.content }
+            if let r = try? await session.respond(to: prompt, generating: Briefing.self) {
+                listed = r.content.messages
+            } else if let r = try? await session.respond(to: prompt) {
+                result = r.content
+            }
         }
         #endif
-        let lines = Self.split(result)
+        let lines = listed.isEmpty ? Self.split(result) : Self.clean(listed)
         Self.cache[key] = lines
         if !lines.isEmpty { CoverSummaryStore.save(lines.joined(separator: "\n"), source: "casual", for: folder.id, signature: signature) }
         messages = lines
     }
 
-    /// One message per line, bullets and numbering stripped, sentence-cased, at most two.
+    /// The path for text rather than a list: what the disk cache holds, and what a model that
+    /// refused the `Briefing` shape returns. One message per line.
     private static func split(_ text: String) -> [String] {
-        let lines: [String] = text.split(whereSeparator: \.isNewline)
-            .map { String($0).trimmingCharacters(in: .whitespaces) }
+        clean(text.split(whereSeparator: \.isNewline).map(String.init))
+    }
+
+    /// Bullets and numbering stripped, sentence-cased, at most three — and a single message broken
+    /// at its sentences, because one message is how three topics arrived in one bubble.
+    private static func clean(_ raw: [String]) -> [String] {
+        var lines = raw
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .map { $0.replacingOccurrences(of: #"^(\d+[.)]|[-•*])\s*"#, with: "", options: .regularExpression) }
             .filter { !$0.isEmpty }
-            .map(sentenceCased)
-        return Array(lines.prefix(2))
+        if lines.count == 1 { lines = sentences(lines[0]) }
+        return Array(lines.map(sentenceCased).prefix(3))
+    }
+
+    /// One block cut after each full stop, question mark or exclamation. Only ever reached when
+    /// the model returned a single message, so it never breaks up a run it deliberately separated.
+    nonisolated private static func sentences(_ text: String) -> [String] {
+        var out: [String] = []
+        var current = ""
+        for ch in text {
+            current.append(ch)
+            if ch == "." || ch == "!" || ch == "?" {
+                let done = current.trimmingCharacters(in: .whitespaces)
+                if !done.isEmpty { out.append(done) }
+                current = ""
+            }
+        }
+        let tail = current.trimmingCharacters(in: .whitespaces)
+        if !tail.isEmpty { out.append(tail) }
+        return out.isEmpty ? [text] : out
     }
 
     /// The case the prompt asks for, applied after the fact. Asking was not enough: the
