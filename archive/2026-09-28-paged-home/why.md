@@ -237,3 +237,15 @@ bubbles — and whether the glass dock survives a paper world.
 Also settled the same day, by verdict: bubbles are glass, not hairline (axis A stripped).
 
 Filaments on bubbles, verdict 2026-10-01: **lit words** (FilCard's treatment carried into the bubble) over chips. Chips not yet stripped — they are the only form that reaches a photo or voice fil, and the paper direction's ideas are pending; the strip waits on those.
+
+### The paper pass, 2026-10-01
+
+Mason's ideas, laid out and built the same day: message bubbles are white with a 2pt black border
+and black ink; the cover's summary sits in the same bubble, leading (the folder answering you),
+with no hairline above it; the months and count become a stamp set exactly like the nest's day
+separators (`MAY – AUG 2026  ·  4`). On trial on the two axes: how a lit filament word reads on
+white (the fil's colour / black underlined / a pale band), and whether the dock and back control
+go paper, stay glass, or become line art.
+
+Open, noted for testing: bubble text is SwiftUI `Text`, not the shipped `SelectableTextView`, so
+select → Filament is not reachable from the nest and new filaments cannot be made there yet.
