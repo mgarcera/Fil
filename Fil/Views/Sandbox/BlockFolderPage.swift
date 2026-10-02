@@ -370,16 +370,19 @@ struct NestScreen: View {
                         if !selecting { selected.removeAll() }
                     }
                 } label: {
-                    // A bare checkmark, not the circled one (2026-10-02): the glass is already
-                    // the circle, so the symbol's own ring was a second one inside it.
-                    Image(systemName: selecting ? "xmark" : "checkmark")
-                        .font(.system(size: 17, weight: .semibold))
+                    // The word, not a glyph (2026-10-02). A checkmark asks to be read as a
+                    // confirmation; this enters a mode. Lexend Medium 13 is the pill's own face
+                    // from the composer, and the 44 height is the back control's, so the two
+                    // corners still read as a pair with one of them wider.
+                    Text(selecting ? "Cancel" : "Select")
+                        .font(.custom("Lexend-Medium", size: 13))
                         .foregroundStyle(.white)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Circle())
+                        .padding(.horizontal, 16)
+                        .frame(height: 44)
+                        .contentShape(.capsule)
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .circle)
+                .glassEffect(.regular.interactive(), in: .capsule)
                 .padding(.trailing, 16)
                 .padding(.top, 4)
             }
