@@ -150,7 +150,10 @@ struct CoverPage: View {
     /// face centred in a hairline frame) are in archive/2026-09-28-paged-home/why.md.
     private var editorial: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Spacer(minLength: 0)
+            // Pinned to the top, not centred. Centring put the rule wherever the name's height
+            // left it, so the summary's slot moved with the name; at the top the slot is fixed
+            // and the skeleton stands exactly where the text will land. 84 clears the status
+            // bar on a page that ignores the top inset.
             Text(folder.name)
                 .font(.custom("Fraunces-Black", size: 54))
                 .lineLimit(3)
@@ -172,7 +175,8 @@ struct CoverPage: View {
             }
             Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .padding(.top, 84)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .animation(.easeOut(duration: 0.35), value: lineReady)
         .onChange(of: line, initial: true) { _, new in lineReady = new != "summary" }
     }
@@ -244,15 +248,21 @@ struct CoverSummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if thinking {
-                // Three dots while the model writes — the wait is a beat per folder on device,
-                // and an empty slot for that beat read as a folder with nothing to say.
-                ThinkingDots()
-                    .padding(.vertical, 6)
+                // Three skeleton lines where the text will land — the app's own `SkeletonView`,
+                // the way CanvasHome stands in for a line of text. The third is short, as a
+                // last line of prose is. Fraunces 17 with 3pt leading is ~22pt a line.
+                VStack(alignment: .leading, spacing: 10) {
+                    SkeletonView(Capsule(), .white.opacity(0.18)).frame(height: 12)
+                    SkeletonView(Capsule(), .white.opacity(0.18)).frame(height: 12)
+                    SkeletonView(Capsule(), .white.opacity(0.18)).frame(height: 12).frame(maxWidth: 180)
+                }
+                .padding(.vertical, 5)
             } else if !text.isEmpty {
-                Text(text)
+                // The composer's own reveal: each glyph in from a gradient, resting at 0.85 —
+                // the same renderer the search summary and the placeholder use.
+                AnimatedGradientRevealText(text: text, maxDuration: 1.4, settledOpacity: 0.85)
                     .font(.custom("Fraunces-Regular", size: 17))
                     .lineSpacing(3)
-                    .opacity(0.85)
                 // Study chrome: which model wrote the line, so the verdict is on the right one.
                 Text(source)
                     .font(.custom("ArchivoNarrow-Regular", size: 11))
@@ -790,26 +800,6 @@ extension EnvironmentValues {
     var bubbleGlass: Bool {
         get { self[BubbleGlassKey.self] }
         set { self[BubbleGlassKey.self] = newValue }
-    }
-}
-
-/// Three dots breathing in sequence. Driven by one Bool flipped on appear, so `body` runs once and
-/// Core Animation carries the pulse — Pattern 1 in `swiftui-animation-performance`.
-private struct ThinkingDots: View {
-    @State private var on = false
-
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .fill(.white)
-                    .frame(width: 6, height: 6)
-                    .opacity(on ? 0.9 : 0.25)
-                    .animation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)
-                        .delay(Double(i) * 0.18), value: on)
-            }
-        }
-        .onAppear { on = true }
     }
 }
 
