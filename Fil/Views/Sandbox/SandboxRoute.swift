@@ -20,7 +20,7 @@ struct SandboxRoute: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var study: Study = .pagedHome
-    @State private var variant: String = "glass"
+    @State private var variant: String = "lit"
     /// A second, independent axis. Two open questions at once is the normal case in a refinement
     /// loop, and folding them into one key gives you nine combinations and no way to read a
     /// verdict.
@@ -32,7 +32,7 @@ struct SandboxRoute: View {
         case pagedHome = "Paged home"
         var id: String { rawValue }
 
-        /// Axis one: how a thought's bubble is drawn — glass, or the hairline.
+        /// Axis one: how a thought's filaments show — lit words, or chips.
         ///
         /// The reference Mason brought on 2026-09-28 has no plates at all — white text directly on
         /// a dark ground — and ours is the inverse. "mixed" splits it: prose on the ground, objects
@@ -40,9 +40,10 @@ struct SandboxRoute: View {
         var variants: [(key: String, label: String)] {
             switch self {
             case .pagedHome:
-                // Reopened 2026-09-29 for the bubble itself: the hairline it has had, or the
-                // same glass the composer sits on.
-                [("glass", "Glass"), ("line", "Hairline")]
+                // Bubbles settled as glass on 2026-10-01. The axis now carries how a thought's
+                // filaments show: its attached keywords lit inside the text, as FilCard does,
+                // or as chips beneath it.
+                [("lit", "Lit words"), ("chips", "Chips")]
             }
         }
 

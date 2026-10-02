@@ -221,3 +221,17 @@ Fraunces 400/700/900. Only Fraunces Black and Archivo Narrow SemiBold are used b
 now; the rest are parked for the next type study, and the reason is this line.
 
 2026-10-01: the summary's face is Lexend at 16 (Fraunces stays on the name) — Medium on the count-and-months lead, Light on the prose, after a first pass in Regular. Light read thin on the prose and Regular came back the same day; Lexend Light stays in the bundle, parked, and the reason is this line.
+
+## 2026-10-01 — the black edge, and the language it names
+
+A 2pt black outline on the cover name's glyphs — asked for as a legibility fix over bright cover
+photographs — read to Mason as "a totally different design language that I think I was going for
+in the first place: 2D, flat, paper." Not glass, not depth, not blur: ink on a sheet, with an edge.
+
+Recorded as a direction, not a decision. He has ideas and has not laid them out yet. What is
+settled by it so far: the name keeps its edge; the two materials rule from 09-29 (glass for
+navigation, line art for choices) may be the seam this pulls at, since glass is the opposite of
+paper. Open: what else on the cover and in the nest takes the edge — the rule, the deck, the
+bubbles — and whether the glass dock survives a paper world.
+
+Also settled the same day, by verdict: bubbles are glass, not hairline (axis A stripped).

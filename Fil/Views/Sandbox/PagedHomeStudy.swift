@@ -42,7 +42,7 @@ import QuickLook
 /// `TodoStatusCircle` are the app's own, and the text comes from `Note.titleLine` and
 /// `Note.bodyAfterTitle` rather than from a second line-splitting rule.
 struct PagedHomeStudy: View {
-    /// Axis A: "glass" or "line" — how a thought's bubble is drawn.
+    /// Axis A: "lit" or "chips" — how a thought's filaments show.
     let variant: String
     /// Axis B: what sits under the cover's hairline — "summary", "latest" or "themes".
     let line: String
@@ -131,7 +131,7 @@ struct PagedHomeStudy: View {
         // On the NavigationStack, not the ZStack inside it. A pushed destination inherits its
         // environment from the stack, so a value set on the pager never reached the nest — both
         // bubble chips rendered the default and looked identical.
-        .environment(\.bubbleGlass, variant == "glass")
+        .environment(\.filamentStyle, variant)
     }
 }
 // MARK: - The folder rail

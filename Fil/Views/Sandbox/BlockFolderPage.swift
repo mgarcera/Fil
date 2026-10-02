@@ -517,7 +517,8 @@ private struct Nest: View {
 private struct Block: View {
     let note: Note
     let palette: Palette
-    @Environment(\.bubbleGlass) private var bubbleGlass
+    @Environment(\.filamentStyle) private var filamentStyle
+    @State private var filament: FilamentTarget?
 
     @State private var preview: PhotoPreview?
 
@@ -587,13 +588,26 @@ private struct Block: View {
                     // written, at one size, and the bubble is what says where it ends. Lexend 14
                     // (2026-10-01), the summary's face, so the cover and its thoughts read as one
                     // voice; Newsreader 16 before that.
-                    Text(note.transcript)
+                    // Filaments, lit: each attached keyword's range in the fil's lighter gradient
+                    // colour and a heavier weight, as FilCard.highlighted does, and a link so a
+                    // tap on the word opens its filament. The bubble's own tint and dark ground
+                    // are the only differences from the card.
+                    Text(filamentStyle == "lit" ? Self.lit(note) : AttributedString(note.transcript))
                         .font(.custom("Lexend-Regular", size: 14))
                         .foregroundStyle(.white.opacity(0.88))
                         .lineSpacing(4)
                 }
             }
         }
+        // Filaments as chips: the keywords in a row beneath whatever the bubble holds, each a
+        // tap to its filament. Works for every kind — a photo or a voice fil has no words to
+        // light, so chips are the only form that reaches them.
+        .modifier(FilamentChips(note: note, style: filamentStyle) { filament = FilamentTarget(keyword: $0) })
+        .environment(\.openURL, OpenURLAction { url in
+            guard url.scheme == "fil-filament", let k = url.host()?.removingPercentEncoding else { return .systemAction }
+            filament = FilamentTarget(keyword: k); return .handled
+        })
+        .sheet(item: $filament) { KeywordPopup(note: note, keyword: $0.keyword) }
         // A bubble, trailing, the way your own messages sit. Transparent with a hairline rather
         // than filled: on a photograph ground a filled bubble becomes a second surface and the
         // cover stops showing through, which is the thing the cover was for.
@@ -605,19 +619,11 @@ private struct Block: View {
         // Room for the tail on the trailing side, so the text never runs into it.
         .padding(.trailing, 22)
         .background {
-            // Two treatments, flipped on the sandbox's first axis. The hairline was chosen so a
-            // photograph ground keeps showing through; glass keeps that and gives the bubble the
-            // composer's own material, so the two read as one family.
-            if bubbleGlass {
-                // `.regular`, the composer's own material. It looked milkier than the composer
-                // once, and a round went to `.clear` for it — but the material was never the
-                // difference. The composer is forced to the dark scheme and glass renders a
-                // smokier variant there; the bubbles inherited the app's scheme and got the
-                // light variant. The nest is dark now (see `NestScreen`), so they match.
-                Color.clear.glassEffect(.regular, in: ChatBubble())
-            } else {
-                ChatBubble().stroke(.white.opacity(0.4), lineWidth: 1)
-            }
+            // `.regular`, the composer's own material — settled over the hairline 2026-10-01. It
+            // looked milkier than the composer once, and a round went to `.clear` for it, but the
+            // material was never the difference: the composer is forced to the dark scheme and
+            // glass renders a smokier variant there. The nest is dark now (see `NestScreen`).
+            Color.clear.glassEffect(.regular, in: ChatBubble())
         }
         // .trailing, not .leading. The bubble hugs its content, so a short one sat at the LEFT
         // of this 300-wide box — and the box was what got right-aligned, not the bubble.
@@ -783,12 +789,72 @@ extension EnvironmentValues {
     }
 }
 
-/// Whether a thought's bubble is drawn in glass or as a hairline — the sandbox's first axis.
-private struct BubbleGlassKey: EnvironmentKey { static let defaultValue = true }
+/// How a thought's filaments show — "lit" words or "chips" — the sandbox's first axis.
+private struct FilamentStyleKey: EnvironmentKey { static let defaultValue = "lit" }
 extension EnvironmentValues {
-    var bubbleGlass: Bool {
-        get { self[BubbleGlassKey.self] }
-        set { self[BubbleGlassKey.self] = newValue }
+    var filamentStyle: String {
+        get { self[FilamentStyleKey.self] }
+        set { self[FilamentStyleKey.self] = newValue }
+    }
+}
+
+/// The keyword whose filament a tap asked for; `Identifiable` so a sheet can present it.
+private struct FilamentTarget: Identifiable { let keyword: String; var id: String { keyword } }
+
+private extension Block {
+    /// `FilCard.highlighted`'s treatment, carried into the bubble: every attached keyword's range
+    /// in the fil's lighter gradient colour at a heavier weight, each range a link the bubble's
+    /// `openURL` handler turns into the keyword's popup.
+    static func lit(_ note: Note) -> AttributedString {
+        var a = AttributedString(note.transcript)
+        let keywords = note.attachments.map(\.keyword)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        guard !keywords.isEmpty else { return a }
+        let color = Color(hex: Theme.lighterHex(note.gradientStartHex, note.gradientEndHex))
+        for k in keywords {
+            let enc = k.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? k
+            var start = a.startIndex
+            while start < a.endIndex, let range = a[start...].range(of: k, options: .caseInsensitive) {
+                a[range].font = .custom("Lexend-Medium", size: 14)
+                a[range].foregroundColor = color
+                a[range].link = URL(string: "fil-filament://\(enc)")
+                start = range.upperBound
+            }
+        }
+        return a
+    }
+}
+
+/// A row of keyword chips beneath a bubble's content, when the axis says chips.
+private struct FilamentChips: ViewModifier {
+    let note: Note
+    let style: String
+    let open: (String) -> Void
+
+    private var keywords: [String] {
+        note.attachments.map(\.keyword).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+    }
+
+    func body(content: Content) -> some View {
+        if style == "chips", !keywords.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                content
+                HStack(spacing: 6) {
+                    ForEach(keywords, id: \.self) { k in
+                        Button { open(k) } label: {
+                            Text(k)
+                                .font(.custom("Lexend-Medium", size: 11))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .padding(.horizontal, 9).padding(.vertical, 4)
+                                .overlay(Capsule().stroke(.white.opacity(0.45), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        } else {
+            content
+        }
     }
 }
 
