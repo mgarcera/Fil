@@ -169,11 +169,11 @@ struct CoverSummary: View {
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + signoff }
 
     /// What the summary was written for: the count and the newest timestamp, plus a format
-    /// version, so a reworded prompt never reads a stale answer back. It stays v18 through the
-    /// sentence-case change: that happens in `split`, which runs on the cached text as well.
+    /// version, so a reworded prompt never reads a stale answer back. The sentence-case change did
+    /// not need one: that happens in `split`, which runs on the cached text as well.
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v18-\(folder.notes.count)-\(newest)"
+        return "v19-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -229,9 +229,9 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// Mason's own words, 2026-10-01 (twelfth revision: "sentence case" named explicitly, after
-    /// "title case" and no instruction at all), set verbatim after five rounds of mine. The
-    /// shape stays described, never shown; `split` caps at two to match "1 to 2".
+    /// Mason's own words, 2026-10-01 (thirteenth revision: cover the notable entries rather than
+    /// the recent ones), set verbatim after five rounds of mine. The shape stays described, never
+    /// shown; `split` caps at two and raises the case the prompt asks for.
     private var instructions: String {
         "you're texting the person who wrote these notes and you know them well. write like a "
         + "younger person. use full sentences, sentence case, contractions, and no dashes or em "
@@ -240,9 +240,9 @@ struct CoverSummary: View {
         + "summarizing their notes as though you're refreshing their memory. the notes are not "
         + "directed towards you, you are an observer. you are not simply repeating nor restating "
         + "what they wrote. you can ask questions conservatively. write 1 to 2 concise messages. "
-        + "you don't have to cover every topic. the folder's title and its topic words are not "
-        + "the content. everything comes from the entries and nothing else. no slang, no "
-        + "hashtags, no emojis."
+        + "you don't have to cover every topic, but cover the notable notes rather than relying "
+        + "solely on recency. the folder's title and its topic words are not the content. "
+        + "everything comes from the entries and nothing else. no slang, no hashtags, no emojis."
     }
 
     private func load() async {
