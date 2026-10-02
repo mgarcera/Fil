@@ -162,10 +162,10 @@ struct CoverSummary: View {
     private static var cache: [String: [String]] = [:]
 
     /// What the summary was written for: the count and the newest timestamp, plus a format
-    /// version, so a reworded prompt never reads a stale answer back (v4: no quoted words, 'you').
+    /// version, so a reworded prompt never reads a stale answer back (v5: no example sentence to copy).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v4-\(folder.notes.count)-\(newest)"
+        return "v5-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -226,7 +226,9 @@ struct CoverSummary: View {
     /// came from the prompt — the notebook's name was shown in quotes, the instruction said
     /// "talk to them", and "specific" was never defined. So: the name goes in unquoted, the
     /// person is "you" and only "you", and specific means a thing from an entry — a name, a
-    /// place, a plan, a worry — not the notebook's subject.
+    /// place, a plan, a worry — not the notebook's subject. No example sentences: the first draft
+    /// carried one, and the on-device model led the next folder's summary with it, word for word.
+    /// The shape is described instead.
     private var instructions: String {
         "you're texting the person who wrote this notebook. you know them well. write the way "
         + "you'd actually text: all lowercase, contractions, short, direct, kind. "
@@ -238,8 +240,9 @@ struct CoverSummary: View {
         + "each message names something concrete from the entries themselves — a name, a place, "
         + "a plan, a worry, a thing they said they'd do — and what it shows about them. the "
         + "notebook's title and its topic words are not the content; what they wrote is. "
-        + "good: 'you've mentioned the chicago move in three notes and never once said when.' "
-        + "weak: 'moving keeps showing up.' "
+        + "a strong message points at one particular thing from one or more entries and says what "
+        + "it shows; a weak one says a subject keeps coming up. "
+        + "everything you write must come from these entries and nothing else. "
         + "no slang that will sound dated in a year, no hashtags, no emoji."
     }
 
