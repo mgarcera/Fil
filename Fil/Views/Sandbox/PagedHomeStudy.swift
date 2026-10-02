@@ -42,7 +42,7 @@ import QuickLook
 /// `TodoStatusCircle` are the app's own, and the text comes from `Note.titleLine` and
 /// `Note.bodyAfterTitle` rather than from a second line-splitting rule.
 struct PagedHomeStudy: View {
-    /// Axis A: the cover summary's voice — "casual" or "warm".
+    /// Axis A: free.
     let variant: String
     /// Axis B: the nest's chrome — "paper", "glass" or "line".
     let line: String
@@ -128,7 +128,6 @@ struct PagedHomeStudy: View {
         .navigationDestination(item: $opened) { NestScreen(folder: $0) }
         .toolbar(.hidden, for: .navigationBar)
         }
-        .environment(\.summaryVoice, variant)
         // On the NavigationStack, not the ZStack inside it. A pushed destination inherits its
         // environment from the stack, so a value set on the pager never reached the nest — both
         // bubble chips rendered the default and looked identical.

@@ -20,7 +20,7 @@ struct SandboxRoute: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var study: Study = .pagedHome
-    @State private var variant: String = "casual"
+    @State private var variant: String = ""
     /// A second, independent axis. Two open questions at once is the normal case in a refinement
     /// loop, and folding them into one key gives you nine combinations and no way to read a
     /// verdict.
@@ -32,7 +32,7 @@ struct SandboxRoute: View {
         case pagedHome = "Paged home"
         var id: String { rawValue }
 
-        /// Axis one: the cover summary's voice — casual lowercase, or warm normal case.
+        /// Axis one: free.
         ///
         /// The reference Mason brought on 2026-09-28 has no plates at all — white text directly on
         /// a dark ground — and ours is the inverse. "mixed" splits it: prose on the ground, objects
@@ -43,9 +43,9 @@ struct SandboxRoute: View {
                 // Bubbles settled as glass on 2026-10-01. The axis now carries how a thought's
                 // filaments show: its attached keywords lit inside the text, as FilCard does,
                 // or as chips beneath it.
-                // (Lit words settled 2026-10-01 as a yellow band.) The axis now tests the
-                // summary's voice: casual lowercase texting, or the warm friend in normal case.
-                [("casual", "Casual"), ("warm", "Warm")]
+                // Settled 2026-10-01: the summary's voice is casual lowercase texting, no
+                // greetings. Warm lost. (Lit words settled the same day as a yellow band.)
+                []
             }
         }
 

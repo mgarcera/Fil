@@ -150,11 +150,10 @@ struct CoverPage: View {
 
 /// The folder's summary as a run of short messages from Apple's Foundation Models — Private Cloud
 /// Compute where it can be reached, the on-device model beneath it. Two to four bubbles, one line
-/// each, in the voice axis A names. Cached per folder, content and voice for the session, and on
+/// each, in a casual lowercase voice. Cached per folder and content for the session, and on
 /// disk beneath that.
 struct CoverSummary: View {
     let folder: Folder
-    @Environment(\.summaryVoice) private var voice
     @State private var messages: [String] = []
     @State private var thinking = false
     /// Flipped once the messages land; the bubbles spring in off it, staggered.
@@ -162,11 +161,11 @@ struct CoverSummary: View {
 
     private static var cache: [String: [String]] = [:]
 
-    /// What the summary was written for: the count and the newest timestamp, plus the voice and
-    /// a format version, so a reworded prompt never reads a stale paragraph back.
+    /// What the summary was written for: the count and the newest timestamp, plus a format
+    /// version, so a reworded prompt never reads a stale answer back (v3: no greetings).
     private var signature: String {
         let newest = folder.notes.map(\.timestamp).max().map { "\(Int($0.timeIntervalSince1970))" } ?? "0"
-        return "v2-\(voice)-\(folder.notes.count)-\(newest)"
+        return "v3-\(folder.notes.count)-\(newest)"
     }
 
     var body: some View {
@@ -220,24 +219,20 @@ struct CoverSummary: View {
         return (entitlements[name] as? Bool) == true
     }
 
-    /// The two voices on axis A. Both ask for two to four one-line messages; what differs is the
-    /// register. Casual is texting — lowercase, contractions, no slang that dates, no emoji. Warm
-    /// is the trusted friend in normal case.
+    /// Casual lowercase texting — settled 2026-10-01 over the warm normal-case friend. No
+    /// greetings or openers: the model reached for "hey" and "yeah" and they were the first
+    /// thing cut. Two to four one-line messages, specific to what is written.
     private var instructions: String {
-        let shape = "Write two to four separate messages, one per line, each a single sentence under "
-            + "eighteen words, as if sending them one after another. Say what they keep coming back "
-            + "to, what seems to matter, and what it adds up to — specific to what is actually "
-            + "written, never generic. No preamble, no bullets, no numbering, no quotation marks, "
-            + "no hashtags, no emoji."
-        switch voice {
-        case "warm":
-            return "You are a trusted friend who has read someone's notebook and is texting them, warmly "
-                + "and plainly, what you see in it. Speak to them as 'you', in normal sentence case. " + shape
-        default:
-            return "You're texting a close friend about their notebook, like you'd actually text: all "
-                + "lowercase, contractions, short, direct, kind. Talk to them as 'you'. No slang that "
-                + "will sound dated in a year. " + shape
-        }
+        "You're texting a close friend about their notebook, like you'd actually text: all "
+        + "lowercase, contractions, short, direct, kind. Talk to them as 'you'. No slang that "
+        + "will sound dated in a year. Start straight in on the content: no greeting, no "
+        + "opener, no 'hey', 'yeah', 'ok so', 'honestly' — the first word of the first message "
+        + "is already about the notebook. "
+        + "Write two to four separate messages, one per line, each a single sentence under "
+        + "eighteen words, as if sending them one after another. Say what they keep coming back "
+        + "to, what seems to matter, and what it adds up to — specific to what is actually "
+        + "written, never generic. No preamble, no bullets, no numbering, no quotation marks, "
+        + "no hashtags, no emoji."
     }
 
     private func load() async {
@@ -272,7 +267,7 @@ struct CoverSummary: View {
         #endif
         let lines = Self.split(result)
         Self.cache[key] = lines
-        if !lines.isEmpty { CoverSummaryStore.save(lines.joined(separator: "\n"), source: voice, for: folder.id, signature: signature) }
+        if !lines.isEmpty { CoverSummaryStore.save(lines.joined(separator: "\n"), source: "casual", for: folder.id, signature: signature) }
         messages = lines
     }
 
@@ -867,9 +862,4 @@ private struct PaperBubble: ViewModifier {
     }
 }
 
-/// The cover summary's voice — "casual" or "warm" — the sandbox's first axis.
-private struct SummaryVoiceKey: EnvironmentKey { static let defaultValue = "casual" }
-extension EnvironmentValues {
-    var summaryVoice: String { get { self[SummaryVoiceKey.self] } set { self[SummaryVoiceKey.self] = newValue } }
-}
 #endif

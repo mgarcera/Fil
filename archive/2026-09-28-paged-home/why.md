@@ -249,3 +249,5 @@ go paper, stay glass, or become line art.
 
 Open, noted for testing: bubble text is SwiftUI `Text`, not the shipped `SelectableTextView`, so
 select → Filament is not reachable from the nest and new filaments cannot be made there yet.
+
+Summary voice, verdict 2026-10-01: **casual** lowercase texting, with greetings cut ("hey", "yeah") — over the warm normal-case friend. Two to four one-line messages springing in 120ms apart. Lit words: yellow band. Chrome: glass. White: 0.86.
