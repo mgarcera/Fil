@@ -20,11 +20,11 @@ struct SandboxRoute: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var study: Study = .pagedHome
-    @State private var variant: String = "lit"
+    @State private var variant: String = "tint"
     /// A second, independent axis. Two open questions at once is the normal case in a refinement
     /// loop, and folding them into one key gives you nine combinations and no way to read a
     /// verdict.
-    @State private var variantB: String = "summary"
+    @State private var variantB: String = "paper"
     @State private var forcedScheme: ColorScheme?
     @State private var stressed = false
 
@@ -32,7 +32,7 @@ struct SandboxRoute: View {
         case pagedHome = "Paged home"
         var id: String { rawValue }
 
-        /// Axis one: how a thought's filaments show — lit words, or chips.
+        /// Axis one: how a lit filament word reads on a white bubble.
         ///
         /// The reference Mason brought on 2026-09-28 has no plates at all — white text directly on
         /// a dark ground — and ours is the inverse. "mixed" splits it: prose on the ground, objects
@@ -43,7 +43,9 @@ struct SandboxRoute: View {
                 // Bubbles settled as glass on 2026-10-01. The axis now carries how a thought's
                 // filaments show: its attached keywords lit inside the text, as FilCard does,
                 // or as chips beneath it.
-                [("lit", "Lit words"), ("chips", "Chips")]
+                // Lit words won over chips 2026-10-01; the axis now tests how a lit word reads
+                // on white paper.
+                [("tint", "Fil colour"), ("underline", "Underlined"), ("band", "Highlight")]
             }
         }
 
@@ -53,10 +55,10 @@ struct SandboxRoute: View {
         var variantsB: [(key: String, label: String)] {
             switch self {
             case .pagedHome:
-                // Opened 2026-09-30: what goes under the cover's hairline. Three kinds — a
-                // sentence the on-device model writes from the thoughts, the newest thought's
-                // own first line, or the folder's recent keywords.
-                [("summary", "Summary"), ("latest", "Latest"), ("themes", "Themes")]
+                // The summary settled under the cover (Latest and Themes stripped 2026-10-01).
+                // The axis now tests the nest's chrome in the paper direction: the composer dock
+                // and the back control as white paper, as the glass they were, or as line art.
+                [("paper", "Paper"), ("glass", "Glass"), ("line", "Line art")]
             }
         }
     }

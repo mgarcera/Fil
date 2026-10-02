@@ -45,8 +45,6 @@ struct FolderGround: View {
 /// own screen and gets one plain container, the way the shipped home's composer has.
 struct CoverPage: View {
     let folder: Folder
-    /// Axis B: what sits under the hairline.
-    let line: String
     let open: () -> Void
 
     @State private var pick: PhotosPickerItem?
@@ -126,69 +124,50 @@ struct CoverPage: View {
     /// face centred in a hairline frame) are in archive/2026-09-28-paged-home/why.md.
     private var editorial: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Pinned to the top, not centred. Centring put the rule wherever the name's height
-            // left it, so the summary's slot moved with the name; at the top the slot is fixed
-            // and the skeleton stands exactly where the text will land. 84 clears the status
-            // bar on a page that ignores the top inset.
+            // Pinned to the top, not centred, so the summary's slot is fixed beneath the name.
+            // 84 clears the status bar on a page that ignores the top inset.
             Text(folder.name)
                 .font(.custom("Fraunces-Black", size: 54))
                 .lineLimit(3)
                 .minimumScaleFactor(0.55)
                 .lineSpacing(-4)
                 .fixedSize(horizontal: false, vertical: true)
-                // A 2pt black outline on the glyphs themselves (2026-10-01), so the name holds
-                // its edge on a bright cover photograph. SwiftUI has no text stroke; this is the
-                // same text drawn eight times in black, offset 2pt around the compass, under the
-                // white one — see `TextOutline`.
+                // A 2pt black outline on the glyphs themselves (2026-10-01). It read as "2D, flat,
+                // paper" — the language the rest of this page now follows. See `TextOutline`.
                 .modifier(TextOutline(color: .black, width: 2))
-            Rectangle().fill(.white.opacity(0.7)).frame(height: 1).padding(.top, 8)
-            underline
-                .padding(.top, 4)
+            // The months and count as a stamp, set exactly as the nest's day separators are —
+            // centred, tracked, small — in place of the hairline and the deck (2026-10-01).
+            if !stamp.isEmpty {
+                Text(stamp)
+                    .font(StudyType.sans(11))
+                    .tracking(0.6)
+                    .foregroundStyle(.white.opacity(0.5))
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 10)
+            }
+            // The summary in a message bubble of its own, leading, tail on the left: the folder's
+            // voice answering yours, the first turn of the conversation the nest continues.
+            CoverSummary(folder: folder)
+                .padding(.top, 2)
             Spacer(minLength: 0)
         }
         .padding(.top, 84)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    // MARK: - Under the line
-    //
-    // The cover as the folder's surface: what is in here, in a few lines, without opening it.
-    // Three kinds on axis B. The summary is written by Apple's Foundation Models: the server
-    // model on Private Cloud Compute where it can be reached (iOS 27, the managed entitlement,
-    // a network, quota left), the on-device model beneath it, and the newest thought's own
-    // line beneath that. The app's Claude caption (`Folder.summary`) is a separate, shipped
-    // feature and is left alone here.
-    @ViewBuilder private var underline: some View {
-        switch line {
-        case "latest":
-            if let newest = folder.notes.max(by: { $0.timestamp < $1.timestamp }) {
-                Text(Self.firstLine(of: newest))
-                    .font(.custom("Fraunces-Regular", size: 17))
-                    .lineLimit(2)
-                    .opacity(0.85)
-            }
-        case "themes":
-            let keys = Array(folder.notes.sorted { $0.timestamp > $1.timestamp }
-                .map { $0.keyword.trimmingCharacters(in: .whitespaces) }
-                .filter { !$0.isEmpty }
-                .reduce(into: [String]()) { if !$0.contains($1) { $0.append($1) } }
-                .prefix(3))
-            if !keys.isEmpty {
-                Text(keys.map { $0.uppercased() }.joined(separator: "   ·   "))
-                    .font(.custom("ArchivoNarrow-Regular", size: 12))
-                    .tracking(2.4)
-                    .opacity(0.8)
-            }
-        default:
-            CoverSummary(folder: folder)
-        }
+    /// "MAY – AUG 2026  ·  4", or "SEP 2026  ·  15" in one month. Empty folder: nothing.
+    private var stamp: String {
+        let n = folder.notes.count
+        let stamps = folder.notes.map(\.timestamp)
+        guard n > 0, let first = stamps.min(), let last = stamps.max() else { return "" }
+        let my = DateFormatter(); my.dateFormat = "MMM yyyy"; let m = DateFormatter(); m.dateFormat = "MMM"
+        let a = my.string(from: first).uppercased(), b = my.string(from: last).uppercased()
+        let span = a == b ? b
+            : Calendar.current.isDate(first, equalTo: last, toGranularity: .year)
+                ? "\(m.string(from: first).uppercased()) – \(b)" : "\(a) – \(b)"
+        return "\(span)  ·  \(n)"
     }
 
-    /// A thought's own first line: the transcript's, or the title when it has no transcript.
-    static func firstLine(of note: Note) -> String {
-        let body = note.transcript.isEmpty ? note.title : note.transcript
-        return body.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
-    }
 }
 
 /// A short summary of the folder from Apple's Foundation Models — Private Cloud Compute first,
@@ -200,27 +179,6 @@ struct CoverSummary: View {
     @State private var source = ""
     @State private var thinking = false
 
-    /// The lead in Medium, the prose in Regular (Light was tried and read thin), as one string
-    /// so it wraps as one.
-    private var styled: AttributedString {
-        var a = AttributedString(lead); a.font = .custom("Lexend-Medium", size: 16)
-        var b = AttributedString(text); b.font = .custom("Lexend-Regular", size: 16)
-        return a + b
-    }
-
-    /// "(4 from May to Aug 2026) - ": the count and the months, as the first words of the
-    /// summary rather than a line of their own. One month: "(4 in Sep 2026) - ".
-    private var lead: String {
-        let n = folder.notes.count
-        let stamps = folder.notes.map(\.timestamp)
-        guard n > 0, let first = stamps.min(), let last = stamps.max() else { return "" }
-        let my = DateFormatter(); my.dateFormat = "MMM yyyy"
-        let m = DateFormatter(); m.dateFormat = "MMM"
-        let a = my.string(from: first), b = my.string(from: last)
-        if a == b { return "(\(n) in \(b)) - " }
-        let sameYear = Calendar.current.isDate(first, equalTo: last, toGranularity: .year)
-        return "(\(n) from \(sameYear ? m.string(from: first) : a) to \(b)) - "
-    }
 
     /// Keyed on the folder AND its content signature, so a new thought re-summarises and a page
     /// turn, or a relaunch, does not. Memory first; `CoverSummaryStore` beneath it on disk. Static:
@@ -235,34 +193,29 @@ struct CoverSummary: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        Group {
             if thinking {
-                // Three skeleton lines where the text will land — the app's own `SkeletonView`,
-                // the way CanvasHome stands in for a line of text. The third is short, as a
-                // last line of prose is. Fraunces 17 with 3pt leading is ~22pt a line.
+                // Three skeleton lines where the text will land, inside the bubble.
                 VStack(alignment: .leading, spacing: 10) {
-                    SkeletonView(Capsule(), .white.opacity(0.18)).frame(height: 12)
-                    SkeletonView(Capsule(), .white.opacity(0.18)).frame(height: 12)
-                    SkeletonView(Capsule(), .white.opacity(0.18)).frame(height: 12).frame(maxWidth: 180)
+                    SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12)
+                    SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12)
+                    SkeletonView(Capsule(), .black.opacity(0.12)).frame(height: 12).frame(maxWidth: 160)
                 }
                 .padding(.vertical, 5)
+                .frame(width: 240, alignment: .leading)
             } else if !text.isEmpty {
-                // The composer's own reveal: each glyph in from a gradient, resting at 0.85.
-                // No `maxDuration`: the cap clipped the per-glyph schedule, so on a long summary
-                // the tail never revealed and the animation looked stopped. The search cadence
-                // tightened instead — 0.004 a glyph, so ~300 characters finish in about 1.4s
-                // and every glyph gets its turn.
-                // Lexend for the summary (2026-10-01): a reading face, where Fraunces is the
-                // name's display face. 16 rather than 17 — Lexend sets wide. Two weights in one
-                // wrapping line: Medium on the count-and-months lead, Regular on the prose.
-                AnimatedGradientRevealText(text: lead + text, elementDuration: 0.2,
+                // The composer's own reveal, uncapped so every glyph gets its turn; black ink on
+                // paper, settling at 0.9.
+                AnimatedGradientRevealText(text: text, elementDuration: 0.2,
                                            perElementDelay: 0.004, minDuration: 0.4,
-                                           settledOpacity: 0.85, attributed: styled)
+                                           settledOpacity: 0.9)
+                    .font(.custom("Lexend-Regular", size: 14))
+                    .foregroundStyle(.black)
                     .lineSpacing(4)
             }
-            // Neither: the model is unavailable or declined, and the slot stays empty rather
-            // than standing another line in for it.
         }
+        .modifier(PaperBubble(tail: .leading))
+        .frame(maxWidth: .infinity, alignment: .leading)
         .task(id: "\(folder.id)-\(signature)") { await load() }
     }
 
@@ -347,6 +300,7 @@ struct NestScreen: View {
     let folder: Folder
     @State private var coverImage: Data?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.chromeStyle) private var chrome
 
     var body: some View {
         Nest(folder: folder, palette: Palette(folder))
@@ -363,12 +317,12 @@ struct NestScreen: View {
                 Button { dismiss() } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(chrome == "paper" ? .black : .white)
                         .frame(width: 44, height: 44)
                         .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .glassEffect(.regular.interactive(), in: .circle)
+                .modifier(ChromeCircle())
                 .padding(.leading, 16)
                 .padding(.top, 4)
             }
@@ -517,7 +471,7 @@ private struct Nest: View {
 private struct Block: View {
     let note: Note
     let palette: Palette
-    @Environment(\.filamentStyle) private var filamentStyle
+    @Environment(\.litStyle) private var litStyle
     @State private var filament: FilamentTarget?
 
     @State private var preview: PhotoPreview?
@@ -534,11 +488,11 @@ private struct Block: View {
                             // No frame of our own: TodoStatusCircle sizes itself to 22 and its
                             // border is drawn at that edge, so a smaller frame clips the stroke
                             // into the flat side you saw.
-                            TodoStatusCircle(isCompleted: item.done, onColor: true)
+                            TodoStatusCircle(isCompleted: item.done, onColor: false)
                             Text(item.text)
                                 .font(.custom("Lexend-Regular", size: 14))
                                 .strikethrough(item.done)
-                                .foregroundStyle(.white.opacity(item.done ? 0.45 : 0.9))
+                                .foregroundStyle(.black.opacity(item.done ? 0.4 : 0.9))
                         }
                     }
                 }
@@ -592,9 +546,9 @@ private struct Block: View {
                     // colour and a heavier weight, as FilCard.highlighted does, and a link so a
                     // tap on the word opens its filament. The bubble's own tint and dark ground
                     // are the only differences from the card.
-                    Text(filamentStyle == "lit" ? Self.lit(note) : AttributedString(note.transcript))
+                    Text(Self.lit(note, style: litStyle))
                         .font(.custom("Lexend-Regular", size: 14))
-                        .foregroundStyle(.white.opacity(0.88))
+                        .foregroundStyle(.black.opacity(0.9))
                         .lineSpacing(4)
                 }
             }
@@ -602,7 +556,6 @@ private struct Block: View {
         // Filaments as chips: the keywords in a row beneath whatever the bubble holds, each a
         // tap to its filament. Works for every kind — a photo or a voice fil has no words to
         // light, so chips are the only form that reaches them.
-        .modifier(FilamentChips(note: note, style: filamentStyle) { filament = FilamentTarget(keyword: $0) })
         .environment(\.openURL, OpenURLAction { url in
             guard url.scheme == "fil-filament", let k = url.host()?.removingPercentEncoding else { return .systemAction }
             filament = FilamentTarget(keyword: k); return .handled
@@ -614,17 +567,7 @@ private struct Block: View {
         //
         // Photographs get no bubble, which is what iMessage does too — a picture is already an
         // object and a border around it reads as a frame nobody asked for.
-        .padding(.vertical, 12)
-        .padding(.leading, 16)
-        // Room for the tail on the trailing side, so the text never runs into it.
-        .padding(.trailing, 22)
-        .background {
-            // `.regular`, the composer's own material — settled over the hairline 2026-10-01. It
-            // looked milkier than the composer once, and a round went to `.clear` for it, but the
-            // material was never the difference: the composer is forced to the dark scheme and
-            // glass renders a smokier variant there. The nest is dark now (see `NestScreen`).
-            Color.clear.glassEffect(.regular, in: ChatBubble())
-        }
+        .modifier(PaperBubble(tail: .trailing))
         // .trailing, not .leading. The bubble hugs its content, so a short one sat at the LEFT
         // of this 300-wide box — and the box was what got right-aligned, not the bubble.
         .frame(maxWidth: 300, alignment: .trailing)
@@ -707,6 +650,7 @@ struct RealComposerBar: View {
     let folder: Folder?
     /// Reported to the nest so it can scroll to the end when the keyboard comes up.
     @Binding var focused: Bool
+    @Environment(\.chromeStyle) private var chrome
 
     @Environment(\.modelContext) private var context
     @State private var text = ""
@@ -735,16 +679,16 @@ struct RealComposerBar: View {
             // glass lives in the dock, not in `ComposerBar` — which is why mounting the composer
             // on a slab was the wrong comparison.
             .padding(14)
-            // The home dock's own 30.
-            .glassEffect(.regular, in: .rect(cornerRadius: 30))
+            // The home dock's own 30, in whichever material axis B says.
+            .modifier(ChromePanel(radius: 30))
             .padding(.horizontal, 12)
             // 8 beneath, as the shipped dock has. A pushed screen keeps the window's bottom inset
             // on its own, so adding the measured one here stacked two — the dock sat high.
             .padding(.bottom, 8)
             .frame(maxWidth: .infinity)
-            // Forced dark because the nest's ground always is, and `Theme.primaryText` resolves
-            // from the asset catalogue — in light it would be dark text on dark glass.
-            .environment(\.colorScheme, .dark)
+            // Dark on glass or line art so `Theme.primaryText` resolves light; on paper the dock
+            // is white and the controls go to the light scheme's ink.
+            .environment(\.colorScheme, chrome == "paper" ? .light : .dark)
             // No offset of its own. The keyboard region is alive all the way down, so the
             // system raises it — this is the nest's bottom inset, and the nest shrinks.
             .onChange(of: focus) { _, f in focused = f }
@@ -789,13 +733,13 @@ extension EnvironmentValues {
     }
 }
 
-/// How a thought's filaments show — "lit" words or "chips" — the sandbox's first axis.
-private struct FilamentStyleKey: EnvironmentKey { static let defaultValue = "lit" }
+/// How a lit filament word reads on white — "tint", "underline" or "band" — the sandbox's first axis.
+private struct LitStyleKey: EnvironmentKey { static let defaultValue = "tint" }
+/// The nest's chrome — "paper", "glass" or "line" — the sandbox's second axis.
+private struct ChromeStyleKey: EnvironmentKey { static let defaultValue = "paper" }
 extension EnvironmentValues {
-    var filamentStyle: String {
-        get { self[FilamentStyleKey.self] }
-        set { self[FilamentStyleKey.self] = newValue }
-    }
+    var litStyle: String { get { self[LitStyleKey.self] } set { self[LitStyleKey.self] = newValue } }
+    var chromeStyle: String { get { self[ChromeStyleKey.self] } set { self[ChromeStyleKey.self] = newValue } }
 }
 
 /// The keyword whose filament a tap asked for; `Identifiable` so a sheet can present it.
@@ -805,19 +749,30 @@ private extension Block {
     /// `FilCard.highlighted`'s treatment, carried into the bubble: every attached keyword's range
     /// in the fil's lighter gradient colour at a heavier weight, each range a link the bubble's
     /// `openURL` handler turns into the keyword's popup.
-    static func lit(_ note: Note) -> AttributedString {
+    /// Three readings of a lit word on white, on axis A: the fil's own gradient colour at full
+    /// strength; black underlined; or black on a pale band of the fil's colour.
+    static func lit(_ note: Note, style: String) -> AttributedString {
         var a = AttributedString(note.transcript)
         let keywords = note.attachments.map(\.keyword)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         guard !keywords.isEmpty else { return a }
-        let color = Color(hex: Theme.lighterHex(note.gradientStartHex, note.gradientEndHex))
+        let color = Color(hex: note.gradientStartHex)
         for k in keywords {
             let enc = k.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) ?? k
             var start = a.startIndex
             while start < a.endIndex, let range = a[start...].range(of: k, options: .caseInsensitive) {
                 a[range].font = .custom("Lexend-Medium", size: 14)
-                a[range].foregroundColor = color
                 a[range].link = URL(string: "fil-filament://\(enc)")
+                switch style {
+                case "underline":
+                    a[range].foregroundColor = .black
+                    a[range].underlineStyle = .single
+                case "band":
+                    a[range].foregroundColor = .black
+                    a[range].backgroundColor = color.opacity(0.22)
+                default:
+                    a[range].foregroundColor = color
+                }
                 start = range.upperBound
             }
         }
@@ -825,38 +780,6 @@ private extension Block {
     }
 }
 
-/// A row of keyword chips beneath a bubble's content, when the axis says chips.
-private struct FilamentChips: ViewModifier {
-    let note: Note
-    let style: String
-    let open: (String) -> Void
-
-    private var keywords: [String] {
-        note.attachments.map(\.keyword).map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
-    }
-
-    func body(content: Content) -> some View {
-        if style == "chips", !keywords.isEmpty {
-            VStack(alignment: .leading, spacing: 8) {
-                content
-                HStack(spacing: 6) {
-                    ForEach(keywords, id: \.self) { k in
-                        Button { open(k) } label: {
-                            Text(k)
-                                .font(.custom("Lexend-Medium", size: 11))
-                                .foregroundStyle(.white.opacity(0.9))
-                                .padding(.horizontal, 9).padding(.vertical, 4)
-                                .overlay(Capsule().stroke(.white.opacity(0.45), lineWidth: 1))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-        } else {
-            content
-        }
-    }
-}
 
 /// The cover summaries on disk, so a relaunch does not re-ask the model for every folder. One JSON
 /// file beside the cover images, keyed by folder id, each entry carrying the signature it was
@@ -939,6 +862,62 @@ private struct TextOutline: ViewModifier {
                     }
                 }
             }
+    }
+}
+
+/// The paper bubble: white, a 2pt black border, the chat tail on one side. The direction the
+/// cover's black-edged name named (2026-10-01).
+private struct PaperBubble: ViewModifier {
+    enum Tail { case leading, trailing }
+    let tail: Tail
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, 12)
+            .padding(.leading, tail == .leading ? 22 : 16)
+            .padding(.trailing, tail == .trailing ? 22 : 16)
+            .background {
+                let shape = ChatBubble()
+                ZStack {
+                    shape.fill(.white)
+                    shape.stroke(.black, lineWidth: 2)
+                }
+                // One shape; the tail is drawn trailing, and a leading bubble is the same shape
+                // mirrored.
+                .scaleEffect(x: tail == .leading ? -1 : 1)
+            }
+    }
+}
+
+/// The nest's chrome in axis B's material: a white bordered panel, the glass it was, or an
+/// outline on the ground.
+private struct ChromePanel: ViewModifier {
+    let radius: CGFloat
+    @Environment(\.chromeStyle) private var chrome
+    func body(content: Content) -> some View {
+        switch chrome {
+        case "paper":
+            content.background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(.white))
+                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(.black, lineWidth: 2))
+        case "line":
+            content.overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).stroke(.black, lineWidth: 2))
+        default:
+            content.glassEffect(.regular, in: .rect(cornerRadius: radius))
+        }
+    }
+}
+
+private struct ChromeCircle: ViewModifier {
+    @Environment(\.chromeStyle) private var chrome
+    func body(content: Content) -> some View {
+        switch chrome {
+        case "paper":
+            content.background(Circle().fill(.white)).overlay(Circle().stroke(.black, lineWidth: 2))
+        case "line":
+            content.overlay(Circle().stroke(.black, lineWidth: 2))
+        default:
+            content.glassEffect(.regular.interactive(), in: .circle)
+        }
     }
 }
 #endif

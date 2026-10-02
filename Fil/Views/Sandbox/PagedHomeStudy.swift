@@ -42,9 +42,9 @@ import QuickLook
 /// `TodoStatusCircle` are the app's own, and the text comes from `Note.titleLine` and
 /// `Note.bodyAfterTitle` rather than from a second line-splitting rule.
 struct PagedHomeStudy: View {
-    /// Axis A: "lit" or "chips" — how a thought's filaments show.
+    /// Axis A: how a lit filament word reads on white — "tint", "underline" or "band".
     let variant: String
-    /// Axis B: what sits under the cover's hairline — "summary", "latest" or "themes".
+    /// Axis B: the nest's chrome — "paper", "glass" or "line".
     let line: String
     /// "transport", "bin" or "folder" — what the bottom bar carries.
     var stressed: Bool
@@ -99,7 +99,7 @@ struct PagedHomeStudy: View {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(pages.enumerated()), id: \.offset) { i, folder in
-                            CoverPage(folder: folder, line: line) { opened = folder }
+                            CoverPage(folder: folder) { opened = folder }
                                 .containerRelativeFrame([.horizontal, .vertical])
                                 .id(i)
                                 .onAppear { folderIndex = i }
@@ -131,7 +131,8 @@ struct PagedHomeStudy: View {
         // On the NavigationStack, not the ZStack inside it. A pushed destination inherits its
         // environment from the stack, so a value set on the pager never reached the nest — both
         // bubble chips rendered the default and looked identical.
-        .environment(\.filamentStyle, variant)
+        .environment(\.litStyle, variant)
+        .environment(\.chromeStyle, line)
     }
 }
 // MARK: - The folder rail
