@@ -164,7 +164,7 @@ struct CoverSummary: View {
     /// The sign-off after the run, one bubble, the same on every folder. Mason's words,
     /// 2026-10-01, set verbatim (two bubbles were tried and reverted): the summary signs its name. Three seeded variants and then "just my take as your on-device
     /// AI." came before it the same evening.
-    private var signoff: [String] { ["on-device ai"] }
+    private var signoff: [String] { ["On-device AI"] }
     /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + signoff }
 
