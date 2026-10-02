@@ -323,9 +323,21 @@ struct NestScreen: View {
     let folder: Folder
     @State private var coverImage: Data?
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    /// Select mode. Entered from the control that mirrors the back button, because the gestures
+    /// a delete would normally use are all spoken for: swipe-to-reveal was built here and removed
+    /// (it fought the vertical scroll), and long press is the text view's selection, which is how
+    /// filaments get made. A mode costs a tap and conflicts with nothing.
+    @State private var selecting = false
+    @State private var selected: Set<UUID> = []
+    @State private var pending: PendingLandfil?
 
     var body: some View {
-        Nest(folder: folder, palette: Palette(folder))
+        Nest(folder: folder,
+             palette: Palette(folder),
+             selecting: $selecting,
+             selected: $selected,
+             onLandfil: { pending = PendingLandfil(count: selected.count) })
             .background { FolderGround(folder: folder, coverImage: coverImage) }
             .toolbar(.hidden, for: .navigationBar)
             // Hiding the navigation bar disables the system's edge-swipe pop; the recognizer is
@@ -348,6 +360,33 @@ struct NestScreen: View {
                 .padding(.leading, 16)
                 .padding(.top, 4)
             }
+            // Select, mirroring the back control: same glass, same 44, the opposite corner. In
+            // select mode it becomes the way out, so the dock below only ever carries the action.
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    withAnimation(.snappy) {
+                        selecting.toggle()
+                        if !selecting { selected.removeAll() }
+                    }
+                } label: {
+                    Image(systemName: selecting ? "xmark" : "checkmark.circle")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .padding(.trailing, 16)
+                .padding(.top, 4)
+            }
+            // The app's own confirmation, shared from `FilLandfil` so this reads and behaves like
+            // landfilling from the home grid or from a fil's own screen.
+            .landfilConfirmation(item: $pending) { p in
+                p.count == 1
+                    ? "This thought will be deleted. This cannot be undone."
+                    : "\(p.count) thoughts will be deleted. This cannot be undone."
+            } onConfirm: { _ in landfil() }
             // OUTERMOST, after the overlay. The whole screen in the dark scheme — its ground is
             // always dark — so every glass on it is the same smoky variant. This sat above the
             // overlay for a day, and an overlay's content inherits from outside the modifier it
@@ -356,12 +395,39 @@ struct NestScreen: View {
             .environment(\.colorScheme, .dark)
             .task(id: folder.id) { coverImage = FolderCoverStore.load(folder.id) }
     }
+
+    /// The same teardown the home grid runs: the fil's audio and attached video go first, then the
+    /// model, with the landfil sound and the destructive haptic. `order` in the nest holds UUIDs
+    /// rather than models, so a deleted thought simply stops resolving and the list closes over it.
+    private func landfil() {
+        let doomed = folder.notes.filter { selected.contains($0.uuid) }
+        guard !doomed.isEmpty else { return }
+        SoundscapeManager.shared.playLandfilSound(); Haptics.destructive()
+        withAnimation(.easeOut(duration: 0.3)) {
+            for note in doomed {
+                FilLandfil.cleanUpResources(for: note)
+                context.delete(note)
+            }
+            selected.removeAll()
+            selecting = false
+        }
+        try? context.save()
+    }
+}
+
+/// Keyed on an id rather than a count so re-selecting the same number presents the alert again.
+private struct PendingLandfil: Identifiable {
+    let id = UUID()
+    let count: Int
 }
 
 /// The nest: one vertical page of blocks.
 private struct Nest: View {
     let folder: Folder
     let palette: Palette
+    @Binding var selecting: Bool
+    @Binding var selected: Set<UUID>
+    let onLandfil: () -> Void
     /// Whether the composer has the keyboard up. Local: the nest is the only thing that reacts,
     /// by returning to the end of the thread so the newest thought sits above the keyboard.
     @State private var composing = false
@@ -443,8 +509,30 @@ private struct Nest: View {
                                     .padding(.top, i == 0 ? 0 : 16)
                                     .padding(.bottom, 16)
                             }
-                            Block(note: note, palette: palette)
-                                .padding(.bottom, 14)
+                            HStack(alignment: .center, spacing: 10) {
+                                if selecting {
+                                    Image(systemName: selected.contains(note.uuid)
+                                          ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(.white.opacity(
+                                            selected.contains(note.uuid) ? 0.95 : 0.45))
+                                        .transition(.move(edge: .leading).combined(with: .opacity))
+                                }
+                                // A block's own taps are the ones it earned: a to-do row toggles, a
+                                // photo opens, a lit word opens its filament. In select mode they
+                                // all stand down so the row has one meaning.
+                                Block(note: note, palette: palette)
+                                    .allowsHitTesting(!selecting)
+                            }
+                            .padding(.bottom, 14)
+                            .contentShape(.rect)
+                            .onTapGesture {
+                                guard selecting else { return }
+                                withAnimation(.snappy) {
+                                    if selected.contains(note.uuid) { selected.remove(note.uuid) }
+                                    else { selected.insert(note.uuid) }
+                                }
+                            }
                         }
                     }
                 }
@@ -461,7 +549,11 @@ private struct Nest: View {
             // only ever agreed by accident. As a bottom safe-area inset the scroll view reserves
             // exactly the composer's height, whatever it grows to, and nothing is measured.
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                RealComposerBar(folder: folder, focused: $composing)
+                if selecting {
+                    SelectionDock(count: selected.count, onLandfil: onLandfil)
+                } else {
+                    RealComposerBar(folder: folder, focused: $composing)
+                }
             }
 
             // Opens on the newest thought and returns there when one arrives.
@@ -488,7 +580,41 @@ private struct Nest: View {
     }
 }
 
-/// One thought as a block./// One thought as a block. Each kind keeps the form it earned; what changed is that it now sits in
+/// The composer's place while selecting: the count on the left, the action on the right, in the
+/// composer's own dock so the floor of the screen never moves. Same 14 / 30 / 12 / 8 as
+/// `RealComposerBar`, because it IS the composer's slot.
+private struct SelectionDock: View {
+    let count: Int
+    let onLandfil: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(count == 0 ? "Select thoughts" : "\(count) selected")
+                .font(.custom("Lexend-Regular", size: 14))
+                .foregroundStyle(.white.opacity(count == 0 ? 0.5 : 0.9))
+            Spacer(minLength: 0)
+            Button(action: onLandfil) {
+                Text("Landfil")
+                    .font(.custom("Lexend-Medium", size: 13))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(count == 0 ? 0.3 : 0.9), in: .capsule)
+            }
+            .buttonStyle(.plain)
+            .disabled(count == 0)
+        }
+        .frame(height: 36)
+        .padding(14)
+        .glassEffect(.regular, in: .rect(cornerRadius: 30))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity)
+        .environment(\.colorScheme, .dark)
+    }
+}
+
+/// One thought as a block. Each kind keeps the form it earned; what changed is that it now sits in
 /// a document rather than on a screen of its own.
 private struct Block: View {
     let note: Note
