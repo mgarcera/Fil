@@ -195,10 +195,11 @@ struct CoverSummary: View {
     @State private var source = ""
     @State private var thinking = false
 
-    /// The lead in Medium, the prose in Light, as one string so it wraps as one.
+    /// The lead in Medium, the prose in Regular (Light was tried and read thin), as one string
+    /// so it wraps as one.
     private var styled: AttributedString {
         var a = AttributedString(lead); a.font = .custom("Lexend-Medium", size: 16)
-        var b = AttributedString(text); b.font = .custom("Lexend-Light", size: 16)
+        var b = AttributedString(text); b.font = .custom("Lexend-Regular", size: 16)
         return a + b
     }
 
@@ -248,7 +249,7 @@ struct CoverSummary: View {
                 // and every glyph gets its turn.
                 // Lexend for the summary (2026-10-01): a reading face, where Fraunces is the
                 // name's display face. 16 rather than 17 — Lexend sets wide. Two weights in one
-                // wrapping line: Medium on the count-and-months lead, Light on the prose.
+                // wrapping line: Medium on the count-and-months lead, Regular on the prose.
                 AnimatedGradientRevealText(text: lead + text, elementDuration: 0.2,
                                            perElementDelay: 0.004, minDuration: 0.4,
                                            settledOpacity: 0.85, attributed: styled)
@@ -346,9 +347,13 @@ struct NestScreen: View {
         Nest(folder: folder, palette: Palette(folder))
             .background { FolderGround(folder: folder, coverImage: coverImage) }
             .toolbar(.hidden, for: .navigationBar)
-            // A back control of our own. Hiding the navigation bar also took the interactive pop
-            // with it — the edge swipe did nothing on device — so the way out has to be drawn.
-            // Same glass as the composer, upper left where the system's would be.
+            // Hiding the navigation bar disables the system's edge-swipe pop; the recognizer is
+            // still on the navigation controller and comes back with a delegate that allows it
+            // whenever there is something to pop. UIKit's own gesture, so it coexists with the
+            // scroll view — unlike the drag that was tried on the cover.
+            .background(PopGestureEnabler())
+            // A back control of our own as well, upper left where the system's would be, in the
+            // same glass as the composer.
             .overlay(alignment: .topLeading) {
                 Button { dismiss() } label: {
                     Image(systemName: "chevron.left")
@@ -815,6 +820,31 @@ enum CoverSummaryStore {
     static func save(_ text: String, source: String, for id: UUID, signature: String) {
         entries[id.uuidString] = Entry(signature: signature, text: text, source: source)
         if let data = try? JSONEncoder().encode(entries) { try? data.write(to: url, options: .atomic) }
+    }
+}
+
+/// Re-enables `interactivePopGestureRecognizer` on the enclosing navigation controller. SwiftUI
+/// turns it off when the bar is hidden; the delegate here says yes whenever the stack has more
+/// than one screen, which is the only condition the system itself uses.
+private struct PopGestureEnabler: UIViewRepresentable {
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        weak var navigation: UINavigationController?
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            (navigation?.viewControllers.count ?? 0) > 1
+        }
+    }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeUIView(context: Context) -> UIView { let v = UIView(); v.isUserInteractionEnabled = false; return v }
+    func updateUIView(_ view: UIView, context: Context) {
+        DispatchQueue.main.async {
+            var r: UIResponder? = view
+            while let next = r?.next { if let vc = next as? UIViewController { r = vc; break }; r = next }
+            guard let nav = (r as? UIViewController)?.navigationController,
+                  let pop = nav.interactivePopGestureRecognizer else { return }
+            context.coordinator.navigation = nav
+            pop.delegate = context.coordinator
+            pop.isEnabled = true
+        }
     }
 }
 #endif
