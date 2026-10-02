@@ -164,7 +164,7 @@ struct CoverSummary: View {
     /// The sign-off after the run, one bubble, the same on every folder. Mason's words,
     /// 2026-10-01, set verbatim (two bubbles were tried and reverted): the summary signs its name. Three seeded variants and then "just my take as your on-device
     /// AI." came before it the same evening.
-    private var signoff: [String] { ["sincerely, your on-device ai."] }
+    private var signoff: [String] { ["summarized by your on-device ai."] }
     /// What is drawn: the model's messages, then the sign-off as the last bubble with the tail.
     private var shownMessages: [String] { messages.isEmpty ? [] : messages + signoff }
 
@@ -477,18 +477,35 @@ private struct Block: View {
                 // typed alongside the items, has no representation on this page.
                 VStack(alignment: .leading, spacing: 11) {
                     ForEach(note.todoRowItems) { item in
-                        HStack(alignment: .top, spacing: 11) {
-                            // No frame of our own: TodoStatusCircle sizes itself to 22 and its
-                            // border is drawn at that edge, so a smaller frame clips the stroke
-                            // into the flat side you saw.
-                            TodoStatusCircle(isCompleted: item.done, onColor: false)
-                            Text(item.text)
-                                .font(.custom("Lexend-Regular", size: 14))
-                                .strikethrough(item.done)
-                                .foregroundStyle(.black.opacity(item.done ? 0.4 : 0.9))
+                        // A tap toggles the row, the way the shipped to-do rows do: flip the
+                        // parallel `completedTodos` entry and save.
+                        Button {
+                            withAnimation(.snappy) {
+                                note.normalizeCompletedTodos()
+                                if note.completedTodos.indices.contains(item.index) {
+                                    note.completedTodos[item.index].toggle()
+                                }
+                            }
+                            try? context.save()
+                        } label: {
+                            HStack(alignment: .top, spacing: 11) {
+                                // No frame of our own: TodoStatusCircle sizes itself to 22 and its
+                                // border is drawn at that edge, so a smaller frame clips the stroke
+                                // into the flat side you saw.
+                                TodoStatusCircle(isCompleted: item.done, onColor: false)
+                                Text(item.text)
+                                    .font(.custom("Lexend-Regular", size: 14))
+                                    .strikethrough(item.done)
+                                    .foregroundStyle(.black.opacity(item.done ? 0.4 : 0.9))
+                            }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
+                // The bubble is white paper, so the circle's Theme colours resolve for a light
+                // scheme here; under the nest's forced dark scheme they came out white on white.
+                .environment(\.colorScheme, .light)
             } else if note.isImageFil,
                       let data = note.sortedImageFilImages.first?.data ?? note.imageData,
                       let image = UIImage(data: data) {

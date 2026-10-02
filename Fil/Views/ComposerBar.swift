@@ -62,11 +62,13 @@ struct ComposerBar: View {
         VStack(alignment: .leading, spacing: 8) {
             if !searchMode && !stagedImageData.isEmpty { stagedImageRow }
 
-            inputArea
-
+            // While a list is being composed the rows are the whole entry: no field above them
+            // and no divider (2026-10-01). Titles are leaving, so there is nothing for the field
+            // to hold over a list.
             if !searchMode && !todos.isEmpty {
-                Divider().overlay(Theme.divider).padding(.top, 2)
                 todoRows
+            } else {
+                inputArea
             }
 
             HStack(alignment: .center, spacing: 10) {
