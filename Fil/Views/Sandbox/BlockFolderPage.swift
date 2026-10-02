@@ -1022,9 +1022,11 @@ enum Paper {
     static func fill(_ scheme: ColorScheme) -> Color {
         scheme == .dark ? Color(white: 0.07).opacity(0.86) : .white.opacity(0.86)
     }
-    /// The drawn 2pt edge. It has to invert with the fill or the drawing disappears into the
-    /// ground, which is the one thing the paper direction cannot afford.
-    static func line(_ scheme: ColorScheme) -> Color { scheme == .dark ? .white : .black }
+    /// The drawn 2pt edge, and only in the light printing. Inverting it to white was the first
+    /// attempt and it came out wrong (2026-10-02): a white line around every bubble on an already
+    /// dark page reads as a row of cut-outs rather than as paper, and it fought the sign-off,
+    /// whose white outline is its entire form. Dark paper holds its shape with fill alone.
+    static func line(_ scheme: ColorScheme) -> Color { scheme == .dark ? .clear : .black }
     static func ink(_ scheme: ColorScheme, _ opacity: Double = 0.9) -> Color {
         (scheme == .dark ? Color.white : Color.black).opacity(opacity)
     }
@@ -1184,9 +1186,9 @@ private struct PaperBubble: ViewModifier {
                 // drawn trailing and a leading bubble is the same shape mirrored.
                 ZStack {
                     let fill: Color = outlined ? .clear : Paper.fill(scheme)
-                    // The sign-off keeps its white outline in both printings. In dark that is the
-                    // same line every bubble gets and its only difference is an interior of ground
-                    // rather than #121212 — quiet, and chosen over inverting it (2026-10-02).
+                    // The sign-off keeps its white outline in both printings, and in the dark one
+                    // it is now the ONLY drawn edge on the page, which settles the collision the
+                    // other way round: every other bubble is a fill, the signature is a line.
                     let line: Color = outlined ? .white : Paper.line(scheme)
                     if tail == .none {
                         RoundedRectangle(cornerRadius: 18, style: .continuous).fill(fill)
