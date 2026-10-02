@@ -465,6 +465,7 @@ private struct Block: View {
     let note: Note
     let palette: Palette
     @State private var filament: FilamentTarget?
+    @Environment(\.modelContext) private var context
 
     @State private var preview: PhotoPreview?
 
@@ -538,10 +539,26 @@ private struct Block: View {
                     // colour and a heavier weight, as FilCard.highlighted does, and a link so a
                     // tap on the word opens its filament. The bubble's own tint and dark ground
                     // are the only differences from the card.
-                    Text(Self.lit(note))
-                        .font(.custom("Lexend-Regular", size: 14))
-                        .foregroundStyle(.black.opacity(0.9))
-                        .lineSpacing(4)
+                    // The shipped `SelectableTextView` (a UITextView), not SwiftUI `Text`: long-press
+                    // selects, and the selection menu offers Filament and To-do, which is how a
+                    // new filament gets made. Tap a lit word to open its popup. Two things it
+                    // brings with it, both open: its own font (Gabarito body, not Lexend 14)
+                    // and its own highlight style (the fil's lighter colour, not the yellow band).
+                    SelectableTextView(
+                        text: note.transcript,
+                        highlightedKeywords: note.attachments.map(\.keyword),
+                        gradientStartHex: note.gradientStartHex,
+                        gradientEndHex: note.gradientEndHex,
+                        onSelectText: { keyword, _ in filament = FilamentTarget(keyword: keyword) },
+                        onTapHighlight: { filament = FilamentTarget(keyword: $0) },
+                        onMakeTodo: { text in
+                            let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !t.isEmpty else { return }
+                            withAnimation(.snappy) { note.addTodo(t) }
+                            try? context.save()
+                        },
+                        textColor: .black)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
@@ -644,13 +661,23 @@ struct RealComposerBar: View {
     @Binding var focused: Bool
 
     @Environment(\.modelContext) private var context
+    @Environment(\.openURL) private var openURL
     @State private var text = ""
     @State private var todos: [ComposerTodo] = []
     @State private var photos: [PhotosPickerItem] = []
     @State private var staged: [Data] = []
     @FocusState private var focus: Bool
+    /// Fil's own recorder: permission, start, stop, on-device transcription. The mic in the
+    /// composer's + menu lands here (2026-10-01); the dock shows the live waveform and a stop
+    /// control in the composer's place while it runs, the way the shipped home does it.
+    @State private var recorder = VoiceRecorderViewModel()
+    @State private var showMicPriming = false
 
     var body: some View {
+        Group {
+            if recorder.isRecording {
+                recording
+            } else {
         ComposerBar(text: $text,
                     todos: $todos,
                     selectedPhotos: $photos,
@@ -662,9 +689,11 @@ struct RealComposerBar: View {
                     contextLabel: folder.map { "Add to \($0.name)" },
                     focus: $focus,
                     onSend: send,
-                    onRecordVoice: {},
+                    onRecordVoice: startVoiceCapture,
                     onRemoveStagedImage: { staged.remove(at: $0) },
                     onCapturePhoto: { staged.append($0) })
+            }
+        }
             // The home's own dock treatment, lifted from `CanvasHome`: pad 14, glass at a 30
             // radius, then inset 12 / 8 so it FLOATS rather than meeting the screen edges. The
             // glass lives in the dock, not in `ComposerBar` — which is why mounting the composer
@@ -683,6 +712,12 @@ struct RealComposerBar: View {
             // No offset of its own. The keyboard region is alive all the way down, so the
             // system raises it — this is the nest's bottom inset, and the nest shrinks.
             .onChange(of: focus) { _, f in focused = f }
+            .sheet(isPresented: $showMicPriming) {
+                MicPrimingSheet {
+                    showMicPriming = false
+                    Task { if await recorder.requestPermissions() { await recorder.startRecording() } }
+                }
+            }
 
             .task(id: photos.map(\.itemIdentifier)) {
                 guard !photos.isEmpty else { return }
@@ -692,6 +727,54 @@ struct RealComposerBar: View {
                 }
                 staged = loaded
             }
+    }
+
+    /// The live state in the composer's place: elapsed time and the animated waveform, and a stop
+    /// control where the send arrow sits.
+    private var recording: some View {
+        HStack(spacing: 14) {
+            WaveformView(duration: recorder.recordingDuration, isAnimating: true, fillsWidth: true)
+            Button { Task { await finishRecording() } } label: {
+                Image(systemName: "stop.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(Theme.primaryText)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Stop recording")
+        }
+        .frame(minHeight: 56)
+    }
+
+    /// `CanvasHome.startVoiceCapture`, as it ships: authorised starts, undecided asks through the
+    /// priming sheet (one forward button, the system prompt is the real decision), denied goes
+    /// to Settings.
+    private func startVoiceCapture() {
+        switch recorder.permissionStatus {
+        case .authorized:    Task { await recorder.startRecording() }
+        case .notDetermined: showMicPriming = true
+        case .denied:
+            if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+        }
+    }
+
+    /// `CanvasHome.finishRecording`, minus the home's blob choreography: stop, transcribe on the
+    /// device, and file the voice note into this folder. Silence makes no note — the clip is
+    /// discarded rather than a ghost fil landing in the thread.
+    private func finishRecording() async {
+        guard let (url, duration) = recorder.stopRecording() else { return }
+        let transcript = ((try? await recorder.transcribe(url: url)) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !transcript.isEmpty else { try? FileManager.default.removeItem(at: url); return }
+        let gradient = Theme.randomGradientPair()
+        let note = Note(title: "", transcript: transcript,
+                        audioFilePath: url.lastPathComponent,   // bare filename, resolved against the docs dir
+                        duration: duration, keyword: "",
+                        gradientStartHex: gradient.start, gradientEndHex: gradient.end)
+        note.folder = folder
+        context.insert(note)
+        try? context.save()
     }
 
     /// Text or to-do rows unlock send, the same rule the shipped composer enforces. Staged
